@@ -200,7 +200,7 @@ export const CONFIRM_ARG_PROPERTY = {
   [CONFIRM_ARG]: {
     type: "boolean" as const,
     description:
-      "Explicit confirmation for this irreversible action. Required only when the client " +
+      "Explicit confirmation for this action. Required only when the client " +
       "declared no elicitation capability and therefore cannot be prompted (e.g. the " +
       "gateway); interactive clients are prompted instead, and this argument never " +
       "suppresses that prompt.",
