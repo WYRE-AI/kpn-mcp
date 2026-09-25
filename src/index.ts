@@ -32,6 +32,9 @@ import {
   resolveGatewayCredentials,
 } from "./mcp-server.js";
 import { logger } from "./utils/logger.js";
+import { verifyS2sHeader, S2S_HEADER } from "./s2s-verify.js";
+
+const S2S_SECRET = process.env.CONDUIT_S2S_SECRET || "";
 
 const CORS_ALLOW_HEADERS = [
   "Content-Type",
@@ -90,6 +93,16 @@ async function startHttpTransport(): Promise<void> {
           mcpTransport: "http",
           authMode: isGatewayMode ? "gateway" : "env",
           timestamp: new Date().toISOString(),
+        })
+      );
+      return;
+    }
+
+    if (S2S_SECRET && !verifyS2sHeader(req.headers[S2S_HEADER] as string | undefined, S2S_SECRET)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          error: "Missing or invalid X-Gateway-S2S header: this endpoint only accepts requests signed by the gateway.",
         })
       );
       return;

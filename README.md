@@ -60,6 +60,11 @@ In gateway mode a request missing `X-KPN-Client-Id` / `X-KPN-Client-Secret`, or 
 only half of the MSM pair, is answered `401` (JSON-RPC error `-32001`) before the MCP
 handler runs. It never falls through to env credentials.
 
+When `CONDUIT_S2S_SECRET` is set (conduit provisions this sidecar's own derived subkey),
+every request except `/health` must also carry a valid `X-Gateway-S2S` HMAC header signed
+by the gateway, or it is answered `401`. This stops a compromised sibling sidecar from
+impersonating the gateway. Unset, the check is off (the fleet's dormant default).
+
 ## Running
 
 ```bash
