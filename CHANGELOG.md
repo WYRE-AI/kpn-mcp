@@ -31,5 +31,5 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Notes
 
-- `@wyre-ai/node-kpn` is a `file:../node-kpn` dependency during the initial build
-  and is swapped for the published `^1.0.0` before the first release.
+- Built from KPN's published OpenAPI specs and documentation, and tested against mocks only.
+  It has not yet been run against live KPN credentials.

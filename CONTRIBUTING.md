@@ -9,9 +9,6 @@ export NODE_AUTH_TOKEN=$(gh auth token)   # GitHub Packages registry auth
 npm install
 ```
 
-Until `@wyre-ai/node-kpn@1.0.0` is published, the dependency points at a sibling
-`../node-kpn` checkout (see README "Local-dev note").
-
 ## Workflow
 
 - `npm run build`: tsc build to `dist/`.

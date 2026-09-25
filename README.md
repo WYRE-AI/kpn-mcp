@@ -71,11 +71,6 @@ MCP_TRANSPORT=http node dist/index.js     # HTTP on :8080 (/mcp, /health)
 npm run smoke                             # proves both protocol eras serve the same tools
 ```
 
-> **Local-dev note:** during the initial build `@wyre-ai/node-kpn` is a
-> `file:../node-kpn` dependency (a sibling checkout, built with `npm run build`). It is
-> swapped for the published `^1.0.0` before release; the Docker build needs the published
-> package.
-
 Docker (linux/amd64 per fleet law):
 
 ```bash
