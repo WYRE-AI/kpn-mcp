@@ -1,0 +1,77 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.wyre-technology/kpn-mcp",
+  "title": "KPN",
+  "description": "MCP server for KPN: outage checks, address availability, SIM swap and business mobile (MSM).",
+  "repository": {
+    "url": "https://github.com/wyre-technology/kpn-mcp",
+    "source": "github"
+  },
+  "version": "0.0.0",
+  "websiteUrl": "https://github.com/wyre-technology/kpn-mcp",
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/wyre-technology/kpn-mcp:0.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "KPN_CLIENT_ID",
+          "description": "KPN API Store project client ID (developer.kpn.com → Dashboard → Projects)",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "KPN_CLIENT_SECRET",
+          "description": "KPN API Store project client secret",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "KPN_MSM_CLIENT_ID",
+          "description": "Optional customer GRIP-bound Mobile Services Management app ID (falls back to KPN_CLIENT_ID)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "KPN_MSM_CLIENT_SECRET",
+          "description": "Optional MSM app secret; must be set together with KPN_MSM_CLIENT_ID",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "KPN_BASE_URL",
+          "description": "KPN API base URL (env mode only)",
+          "isRequired": false,
+          "default": "https://api-prd.kpn.com",
+          "format": "string"
+        },
+        {
+          "name": "MCP_TRANSPORT",
+          "description": "Transport mode. Set to 'stdio' for local CLI use; the image defaults to 'http' for gateway hosting.",
+          "isRequired": false,
+          "default": "stdio",
+          "format": "string"
+        },
+        {
+          "name": "AUTH_MODE",
+          "description": "Credential source: 'env' reads vars locally, 'gateway' expects header injection from the WYRE MCP Gateway.",
+          "isRequired": false,
+          "default": "env",
+          "format": "string"
+        },
+        {
+          "name": "LOG_LEVEL",
+          "description": "Log verbosity: debug, info, warn, error",
+          "isRequired": false,
+          "default": "info",
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
