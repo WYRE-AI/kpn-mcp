@@ -1,0 +1,11 @@
+[
+  {
+    "package_name": "@wyre-ai/node-kpn@^1.0.1",
+    "manifest_id": "node-kpn@^1-0-1",
+    "ecosystem": "npm",
+    "detected_at": "2026-09-25T22:06:05.563Z",
+    "source_project": "/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/kpn-mcp",
+    "install_command": "cd /Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/kpn-mcp && git pull -q --rebase && export NODE_AUTH_TOKEN=$(gh auth token) && npm install --silent @wyre-ai/node-kpn@^1.0.1 2>&1 | tail -2; grep -n '\"@wyre-ai/node-kpn\"' package.json; grep -A1 '\"node_modules/@wyre-ai/node-kpn\"' package-lock.json | tail -1; npm run build >/dev/null && npm test 2>&1 | grep -E \"Tests \"; ls scripts",
+    "status": "pending"
+  }
+]

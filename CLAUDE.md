@@ -17,9 +17,12 @@ Build contract and scope decisions: `docs/DESIGN.md`.
   the project, so entitlement failures surface as 401/403 on the call, not at mint.
 - **developer.kpn.com login rejects automated browsers** ("Browser check failed").
   Creating the sandbox app and keys has to be done by a human.
-- **Not live-verified.** Everything is tested against MSW/stub fixtures; no KPN
-  credentials existed at build time. MSM write tools in particular have mock-only
-  coverage.
+- **Partially live-verified with fake credentials.** Both token endpoints and all four
+  product base paths exist on api-prd.kpn.com (unknown paths return 404
+  `ApplicationNotFound`; ours return invalid-token). The MSM token endpoint rejects a
+  bad client with **HTTP 500** + `invalid_client-invalid_client_id`, not 401, and SIM
+  Swap sends its invalid-token fault as HTTP 500. No authenticated call has been made;
+  MSM write tools have mock-only coverage.
 - **MSM writes are never retried** (a duplicate block/authorize is a real side effect),
   and success means an order was created, not completed.
 - **Fleet conventions moved on from the scaffolding skill**: `@wyre-ai` scope,
