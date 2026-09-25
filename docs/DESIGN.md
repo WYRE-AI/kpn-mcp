@@ -400,7 +400,7 @@ export class MobileOrdersResource {
   get(id: number): Promise<OrderDetails>;                           // GET /track-and-trace/orders/{id}
   getPretty(id: number): Promise<unknown>;                          // GET /track-and-trace/orders/{id}/pretty
   authorize(orderId: number): Promise<OrderSummary>;                // POST /order/authorize {orderId} (NOT idempotent)
-  cancel(id: number, note?: string): Promise<unknown>;              // POST /track-and-trace/orders/{id}/cancel {note} (NOT idempotent)
+  cancel(id: number, note?: string): Promise<unknown>;              // POST /track-and-trace/orders/{id}/cancel?note=… (query param per MSM OAS; NOT idempotent)
 }
 // resources/mobile-service-requests.ts
 export class MobileServiceRequestsResource {
@@ -414,9 +414,9 @@ export class MobileServiceRequestsResource {
   - `ContractDetails`: the service.md §1b field list, including `pin` and `puk`
   - `ContractItem`: a recursive tree
   - `OperationAvailability`: `{enabled?, visible?, blockingOrders?: BlockingOrder[]}`
-  - `OperationsAvailability`: `{contractId?, blockSim?, unblockSim?, replaceSim?, modify?, move?, terminate?, portingOut?, combineFixedMobile?, [k: string]: unknown}`
+  - `OperationsAvailability`: `{contractId?, blockSim?, unblockSim?, replaceSim?, modify?, move?, terminate?, portOut?, separateFixedMobile?, combineFixedMobile?, [k: string]: unknown}`
 - `types/mobile-order.ts`:
-  - `OrderStatus` = 'IN_PROGRESS'|'UNAUTHORIZED'|'NEW'|'CLOSED'|'CANCELED'|'REJECTED'|'DRAFT'|'THIRD_PARTY'|'HOLD_CUS'
+  - `OrderStatus` = 'IN_PROGRESS'|'UNAUTHORIZED'|'NEW'|'CLOSED'|'CANCELED'|'REJECTED'|'DRAFT'|'THIRD_PARTY'|'HOLD_CUSTOMER'|'WAITING' (per MSM OAS; corrected at integration)
   - `Order`
   - `OrderDetails` (service.md §1d)
 - `types/mobile-service-request.ts`:
