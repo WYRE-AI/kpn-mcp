@@ -1,18 +1,18 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.wyre-technology/kpn-mcp",
+  "name": "io.github.WYRE-AI/kpn-mcp",
   "title": "KPN",
   "description": "MCP server for KPN: outage checks, address availability, SIM swap and business mobile (MSM).",
   "repository": {
-    "url": "https://github.com/wyre-technology/kpn-mcp",
+    "url": "https://github.com/WYRE-AI/kpn-mcp",
     "source": "github"
   },
   "version": "0.0.0",
-  "websiteUrl": "https://github.com/wyre-technology/kpn-mcp",
+  "websiteUrl": "https://github.com/WYRE-AI/kpn-mcp",
   "packages": [
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/wyre-technology/kpn-mcp:0.0.0",
+      "identifier": "ghcr.io/wyre-ai/kpn-mcp:0.0.0",
       "transport": {
         "type": "stdio"
       },

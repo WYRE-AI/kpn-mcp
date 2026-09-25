@@ -10,7 +10,7 @@ serving**: one shared `McpServerFactory` behind `createMcpHandler({ legacy: 'sta
 answers both 2025-era `initialize`-handshake clients (the WYRE gateway today) and modern
 2026-07-28 envelope clients, with an identical, deterministic 23-tool surface for every
 caller. Ships as a GHCR container only (no MCPB bundle). The KPN client is
-[`@wyre-technology/node-kpn`](https://github.com/wyre-technology/node-kpn).
+[`@wyre-ai/node-kpn`](https://github.com/WYRE-AI/node-kpn).
 
 ## Tools (23, flat)
 
@@ -63,7 +63,7 @@ handler runs. It never falls through to env credentials.
 ## Running
 
 ```bash
-export NODE_AUTH_TOKEN=$(gh auth token)   # GitHub Packages auth for @wyre-technology/*
+export NODE_AUTH_TOKEN=$(gh auth token)   # GitHub Packages auth for @wyre-ai/*
 npm install
 npm run build
 node dist/index.js                        # stdio (default)
@@ -71,7 +71,7 @@ MCP_TRANSPORT=http node dist/index.js     # HTTP on :8080 (/mcp, /health)
 npm run smoke                             # proves both protocol eras serve the same tools
 ```
 
-> **Local-dev note:** during the initial build `@wyre-technology/node-kpn` is a
+> **Local-dev note:** during the initial build `@wyre-ai/node-kpn` is a
 > `file:../node-kpn` dependency (a sibling checkout, built with `npm run build`). It is
 > swapped for the published `^1.0.0` before release; the Docker build needs the published
 > package.

@@ -11,7 +11,7 @@ import {
   NotFoundError,
   ServerError,
   ValidationError,
-} from "@wyre-technology/node-kpn";
+} from "@wyre-ai/node-kpn";
 import { CONFIRM_ARG, type ElicitationContext } from "../elicitation.js";
 import { handleToolCall } from "../handlers/index.js";
 import type { ToolResult } from "../handlers/results.js";

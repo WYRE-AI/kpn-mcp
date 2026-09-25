@@ -1,6 +1,6 @@
 /** Shared tool-result helpers, the handler signature, and argument validation. */
 import type { InputRequiredResult } from "@modelcontextprotocol/server";
-import type { KpnClient } from "@wyre-technology/node-kpn";
+import type { KpnClient } from "@wyre-ai/node-kpn";
 import type { ElicitationContext } from "../elicitation.js";
 
 export type ToolContent =

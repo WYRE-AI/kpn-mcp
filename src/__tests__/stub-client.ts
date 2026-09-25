@@ -14,7 +14,7 @@
  * Build it inside each test: vitest.config.ts sets `mockReset: true`.
  */
 import { vi, type Mock } from "vitest";
-import type { KpnClient, QuotaInfo } from "@wyre-technology/node-kpn";
+import type { KpnClient, QuotaInfo } from "@wyre-ai/node-kpn";
 
 type Methods = Record<string, Mock>;
 

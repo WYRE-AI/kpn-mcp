@@ -1,10 +1,10 @@
-# kpn-mcp + @wyre-technology/node-kpn — Design (build contract)
+# kpn-mcp + @wyre-ai/node-kpn — Design (build contract)
 
 Status: v1 design, 2026-09-25. This document is the contract that parallel implementation agents follow.
 If code and this document disagree, fix one of them in the same PR. Do not let them drift.
 
-- SDK repo: `/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/node-kpn` (package `@wyre-technology/node-kpn`)
-- Server repo: `/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/kpn-mcp` (package `@wyre-technology/kpn-mcp`)
+- SDK repo: `/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/node-kpn` (package `@wyre-ai/node-kpn`)
+- Server repo: `/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/kpn-mcp` (package `@wyre-ai/kpn-mcp`)
 - Reference repos to mirror (read them before writing code):
   - SDK: `node-connectwise-cpq`. Zero-dep native fetch, error hierarchy, token-bucket rate limiter, `resources/`, `types/`, MSW tests, tsup dual ESM/CJS.
   - Server: `connectwise-cpq-mcp`. SDK v2 split packages, `createMcpHandler({ legacy: 'stateless' })`, `McpServerFactory`, 401 gate, MRTR elicitation, `confirmDestructive`, destructive-warning lint, dual-era smoke script.
@@ -110,7 +110,7 @@ It never falls through to env credentials. The response body mirrors CPQ: JSON-R
 
 ---
 
-## 3. SDK: `@wyre-technology/node-kpn`
+## 3. SDK: `@wyre-ai/node-kpn`
 
 ### 3.1 Conventions (mirror node-connectwise-cpq)
 
@@ -591,7 +591,7 @@ File: `/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/conduit/src/
       msmClientSecret: "X-KPN-MSM-Client-Secret",
     },
     docsUrl: "https://developer.kpn.com/",
-    credentialDocsUrl: "https://github.com/wyre-technology/kpn-mcp#credentials",
+    credentialDocsUrl: "https://github.com/WYRE-AI/kpn-mcp#credentials",
     async validate(creds) {
       // Minting a client-credentials token is the cheapest authenticated check.
       // It proves the id/secret pair; it does NOT prove product entitlement.
@@ -633,7 +633,7 @@ Follow-ups outside these repos, owned by the integration step: the Bicep/Contain
 Each unit owns only the files it lists. Nobody else edits them. Units code against the contracts in §3 and §4, so they do not need each other's code in order to write their own.
 
 - **Wave 1** runs SDK-CORE, SDK-NET, SDK-MOB-ORG, SDK-MOB-ORD and SRV-CORE in parallel. SDK domain units write their tests against `tests/helpers.ts` exactly as specified in §3.5. The SDK builds green once SDK-CORE lands.
-- **Wave 2** runs SRV-NET, SRV-MOB-READ, SRV-MOB-WRITE and GW in parallel. Server units depend on the SDK through `"@wyre-technology/node-kpn": "file:../node-kpn"` during development; INTEGRATE swaps it for the published `^1.0.0`. Server domain units can start in wave 1 against `stub-client.ts`, since they only need the SDK types.
+- **Wave 2** runs SRV-NET, SRV-MOB-READ, SRV-MOB-WRITE and GW in parallel. Server units depend on the SDK through `"@wyre-ai/node-kpn": "file:../node-kpn"` during development; INTEGRATE swaps it for the published `^1.0.0`. Server domain units can start in wave 1 against `stub-client.ts`, since they only need the SDK types.
 - **INTEGRATE** runs last.
 
 | Unit | Repo | Owns (exact) |

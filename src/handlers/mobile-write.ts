@@ -19,7 +19,7 @@ import {
   type OperationAvailability,
   type OrderDetails,
   type OrderSummary,
-} from "@wyre-technology/node-kpn";
+} from "@wyre-ai/node-kpn";
 import { confirmDestructive, type ElicitationContext } from "../elicitation.js";
 import {
   errorResult,

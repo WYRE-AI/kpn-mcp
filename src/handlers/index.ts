@@ -15,7 +15,7 @@ import {
   RateLimitError,
   ServerError,
   type KpnClient,
-} from "@wyre-technology/node-kpn";
+} from "@wyre-ai/node-kpn";
 import { NO_ELICITATION, type ElicitationContext } from "../elicitation.js";
 import { TOOLS } from "../tools/index.js";
 import { CORE_HANDLERS } from "./core.js";

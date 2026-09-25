@@ -9,7 +9,7 @@ import {
   NotFoundError,
   RateLimitError,
   ServerError,
-} from "@wyre-technology/node-kpn";
+} from "@wyre-ai/node-kpn";
 import { handleToolCall } from "../handlers/index.js";
 import { stripHtml } from "../handlers/network.js";
 import type { ToolResult } from "../handlers/results.js";

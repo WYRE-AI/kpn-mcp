@@ -10,7 +10,7 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Added
 
-- Initial KPN MCP server: flat 23-tool surface over `@wyre-technology/node-kpn` covering
+- Initial KPN MCP server: flat 23-tool surface over `@wyre-ai/node-kpn` covering
   Disturbance Check, Internet Speed Check, SIM Swap and Mobile Services Management (MSM v11).
 - Dual-era serving on the v2 SDK (`^2.0.0-beta.5`): one shared `McpServerFactory` via
   `createMcpHandler({ legacy: 'stateless' })` + `toNodeHandler` for HTTP and `serveStdio`
@@ -31,5 +31,5 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Notes
 
-- `@wyre-technology/node-kpn` is a `file:../node-kpn` dependency during the initial build
+- `@wyre-ai/node-kpn` is a `file:../node-kpn` dependency during the initial build
   and is swapped for the published `^1.0.0` before the first release.

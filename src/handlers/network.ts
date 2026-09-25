@@ -4,7 +4,7 @@ import {
   type AddressAlert,
   type Disturbance,
   type KpnClient,
-} from "@wyre-technology/node-kpn";
+} from "@wyre-ai/node-kpn";
 import { normalizeNlMobile, normalizeZip } from "./addresses.js";
 import {
   errorResult,

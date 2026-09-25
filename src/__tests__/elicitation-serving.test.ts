@@ -33,8 +33,8 @@ const { contractsApi } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@wyre-technology/node-kpn", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@wyre-technology/node-kpn")>();
+vi.mock("@wyre-ai/node-kpn", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@wyre-ai/node-kpn")>();
   return {
     ...actual,
     KpnClient: class {

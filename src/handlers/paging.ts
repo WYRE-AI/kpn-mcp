@@ -3,7 +3,7 @@
  * `from`/`to` window. Every MSM list tool goes through these two helpers so
  * the mapping and the paging metadata stay identical across tools.
  */
-import type { MsmPage } from "@wyre-technology/node-kpn";
+import type { MsmPage } from "@wyre-ai/node-kpn";
 import { optionalNumber, ToolInputError } from "./results.js";
 
 export const DEFAULT_LIMIT = 20;

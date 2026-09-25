@@ -4,7 +4,7 @@
  * core kpn_test_connection handler.
  */
 import { describe, expect, it, vi } from "vitest";
-import { parseKpnError } from "@wyre-technology/node-kpn";
+import { parseKpnError } from "@wyre-ai/node-kpn";
 import { normalizeNlMobile, normalizeZip } from "../handlers/addresses.js";
 import { describeKpnError, handleToolCall } from "../handlers/index.js";
 import { MASK, maskContract } from "../handlers/masking.js";

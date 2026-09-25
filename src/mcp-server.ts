@@ -13,7 +13,7 @@
  */
 import { Server } from "@modelcontextprotocol/server";
 import type { McpServerFactory } from "@modelcontextprotocol/server";
-import { KpnClient } from "@wyre-technology/node-kpn";
+import { KpnClient } from "@wyre-ai/node-kpn";
 import { handleToolCall } from "./handlers/index.js";
 import { errorResult } from "./handlers/results.js";
 import { TOOLS } from "./tools/index.js";

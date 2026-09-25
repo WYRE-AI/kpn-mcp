@@ -18,7 +18,7 @@ import {
   type KpnClient,
   type MsmPage,
   type OrderStatus,
-} from "@wyre-technology/node-kpn";
+} from "@wyre-ai/node-kpn";
 import { confirmDestructive, type ElicitationContext } from "../elicitation.js";
 import { CONTRACT_STATES, ORDER_STATUSES } from "../tools/mobile-read.js";
 import { maskContract } from "./masking.js";
