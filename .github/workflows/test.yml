@@ -45,5 +45,8 @@ jobs:
       - name: Dual-era smoke test
         run: node scripts/smoke-dual-era.mjs
 
+      - name: Grexx live smoke (skips without credentials)
+        run: node scripts/smoke-grexx.mjs
+
       - name: Test Docker build
         run: docker build --platform linux/amd64 --build-arg GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} -t kpn-mcp:test .

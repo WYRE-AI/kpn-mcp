@@ -2,6 +2,9 @@
 # Build with: docker build --platform linux/amd64 --build-arg GITHUB_TOKEN=$(gh auth token) -t kpn-mcp .
 FROM node:22-alpine AS builder
 
+# git is required while @wyre-ai/node-kpn is installed from a GitHub branch.
+RUN apk add --no-cache git
+
 # Build arguments
 ARG VERSION="unknown"
 ARG COMMIT_SHA="unknown"
@@ -15,9 +18,10 @@ COPY package*.json ./
 
 # Install dependencies with GitHub Packages auth for @wyre-ai/* scope.
 # --ignore-scripts prevents lifecycle scripts from running before source is copied.
-RUN echo "@wyre-ai:registry=https://npm.pkg.github.com" > .npmrc && \
+RUN echo "git-protocol=https" > .npmrc && \
+    echo "@wyre-ai:registry=https://npm.pkg.github.com" >> .npmrc && \
     echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc && \
-    npm ci --ignore-scripts && \
+    npm ci && \
     rm -f .npmrc
 
 # Copy source code

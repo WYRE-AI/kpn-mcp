@@ -1,111 +1,76 @@
 # kpn-mcp
 
-MCP server for [KPN](https://developer.kpn.com/) APIs, aimed at MSP helpdesks supporting Dutch
-customers on KPN: network outage checks, address availability, SIM-swap fraud checks, and
-KPN Zakelijk business mobile (Mobile Services Management, MSM v11).
+MCP server for the **KPN Grexx / IRMA** partner pilot (acceptatie). Phase 1 is
+**15 realtime reads** on `POST /realtime`. Queued calls, OrderModule and inbound
+notifications are not exposed: the partner portal has no Proxymodule tile, so
+those results would never arrive.
 
-Built on the MCP **2026-07-28** spec via the split v2 SDK
-(`@modelcontextprotocol/server` / `/node` / `/client` `^2.0.0-beta.5`) with **dual-era
-serving**: one shared `McpServerFactory` behind `createMcpHandler({ legacy: 'stateless' })`
-answers both 2025-era `initialize`-handshake clients (the WYRE gateway today) and modern
-2026-07-28 envelope clients, with an identical, deterministic 23-tool surface for every
-caller. Ships as a GHCR container only (no MCPB bundle). The KPN client is
-[`@wyre-ai/node-kpn`](https://github.com/WYRE-AI/node-kpn).
+Client: [`@wyre-ai/node-kpn` 2.0](https://github.com/WYRE-AI/node-kpn/pull/1)
+(`cursor/grexx-irma-client-00dd`) until that release is published. The client
+sends **OAuth Bearer** by default (`authMode: 'oauth'`). Set
+`KPN_GREXX_AUTH_MODE=basic` only if acceptatie answers Grexx code 101.
 
-## Tools (23, flat)
+## Tools
 
-Network (free, self-serve products):
-
-- `kpn_test_connection`: mint OAuth tokens, report the account tier, MSM status and quota.
-- `kpn_disturbances_check`: current and planned outages at a Dutch address.
-- `kpn_availability_check`: fibre/copper availability and speeds at a Dutch address.
-- `kpn_sim_swap_get_date`: the most recent SIM swap on a KPN mobile number.
-
-Business mobile (MSM), reads: `kpn_mobile_subscribers_list`, `kpn_mobile_subscribers_get`,
-`kpn_mobile_contracts_list`, `kpn_mobile_contracts_get` (PIN/PUK always masked),
-`kpn_mobile_contracts_get_operations`, `kpn_mobile_orders_list`, `kpn_mobile_orders_get`,
-`kpn_mobile_service_requests_list`, `kpn_mobile_service_requests_get`,
-`kpn_mobile_invoices_list`, `kpn_mobile_invoices_get_pdf`, `kpn_mobile_hierarchy_list`,
-`kpn_mobile_thresholds_list`.
-
-Gated behind confirmation: `kpn_mobile_contracts_get_puk` (⚠ HIGH-IMPACT sensitive read),
-`kpn_mobile_sim_block`, `kpn_mobile_sim_unblock`, `kpn_mobile_orders_authorize`
-(⚠ HIGH-IMPACT), `kpn_mobile_sim_replace` and `kpn_mobile_orders_cancel` (⚠ DESTRUCTIVE).
-
-MSM writes create KPN **orders** that are processed asynchronously and may need
-authorization. A successful call means the order was created, not that the SIM is already
-blocked. They are never retried automatically; after a transient error, check
-`kpn_mobile_orders_list` before trying again.
+1. `kpn_grexx_test_connection`
+2. `kpn_grexx_zipcode_check` — `ZipCodeCheckRequest_V6`
+3. `kpn_grexx_prequalification` — `PrequalificationRequest_V2`
+4. `kpn_grexx_carrier_info` — `CarrierInfoRequest_V1`
+5. `kpn_grexx_radius_check` — `RadiusCheckRequest_V1` (RADIUS passwords masked)
+6. `kpn_grexx_ras_check` — `RasCheckRequest_V1`
+7. `kpn_grexx_start_line_diagnose` — `StartLineDiagnoseRequest_V1` (start only)
+8. `kpn_grexx_customer_data` — `CustomerDataRequest_V1`
+9. `kpn_grexx_order_summary` — `OrderSummaryRequest_V1`
+10. `kpn_grexx_order_data` — `OrderDataRequest_V1`
+11. `kpn_grexx_get_sim` — `GetSimRequest_V1` (integer `OrderId`; PUK / eSIM codes masked)
+12. `kpn_grexx_mobile_settings` — `GetMobileSettingsRequest_V1`
+13. `kpn_grexx_mobile_usage` — `GetMobileSubscriptionUsageRequest_V1`
+14. `kpn_grexx_mobile_orders` — `GetMobileSubscriptionOrdersRequest_V1`
+15. `kpn_grexx_available_portings` — `AvailablePortingsRequest_V1`
 
 ## Credentials
 
-Credentials belong to a KPN API Store **project** (developer.kpn.com → Dashboard →
-Projects). Each product (Disturbance Check, Internet Speed Check, SIM Swap, MSM) must be
-added to that project; a token still mints when a product is missing, and the call then
-fails with 401/403.
-
-| Env var (env mode) | Gateway header (`AUTH_MODE=gateway`) | Required |
+| Env (env mode) | Gateway header (`AUTH_MODE=gateway`) | Required |
 |---|---|---|
-| `KPN_CLIENT_ID` | `X-KPN-Client-Id` | yes |
-| `KPN_CLIENT_SECRET` | `X-KPN-Client-Secret` | yes |
-| `KPN_MSM_CLIENT_ID` | `X-KPN-MSM-Client-Id` | no; falls back to the main pair |
-| `KPN_MSM_CLIENT_SECRET` | `X-KPN-MSM-Client-Secret` | only together with the MSM id |
-| `KPN_BASE_URL` | none (deliberately) | no; default `https://api-prd.kpn.com` |
+| `KPN_GREXX_USERNAME` | `X-KPN-Grexx-Username` | yes |
+| `KPN_GREXX_PASSWORD` | `X-KPN-Grexx-Password` | yes |
+| `KPN_GREXX_BASE_URL` | none | yes, env only |
+| `KPN_GREXX_AUTH_MODE` | none | no; `oauth` (default) or `basic` |
 
-MSM access is **per end customer**: the MSM token is bound to one customer's GRIP user, so
-one gateway connection is one KPN business customer. `KPN_BASE_URL` is env-mode only; a
-header-controlled base URL would let a caller redirect client secrets to any host.
+Acceptatie base URL (set it explicitly; it is not a default):
 
-In gateway mode a request missing `X-KPN-Client-Id` / `X-KPN-Client-Secret`, or carrying
-only half of the MSM pair, is answered `401` (JSON-RPC error `-32001`) before the MCP
-handler runs. It never falls through to env credentials.
+`https://service-accept.grexx.today/interfaces/kpn/kpn_partners_acceptatieomgeving/697fbf4b18a076446aa2cd4a/`
 
-When `CONDUIT_S2S_SECRET` is set (conduit provisions this sidecar's own derived subkey),
-every request except `/health` must also carry a valid `X-Gateway-S2S` HMAC header signed
-by the gateway, or it is answered `401`. This stops a compromised sibling sidecar from
-impersonating the gateway. Unset, the check is off (the fleet's dormant default).
+Username and password come from the portal **API Gegevens** page. Do not commit them.
+In gateway mode a request missing either Grexx header is `401` before the handler runs.
+`KPN_GREXX_BASE_URL` is never taken from a header. `CONDUIT_S2S_SECRET` / `X-Gateway-S2S` is unchanged.
 
 ## Running
 
 ```bash
-export NODE_AUTH_TOKEN=$(gh auth token)   # GitHub Packages auth for @wyre-ai/*
 npm install
 npm run build
-node dist/index.js                        # stdio (default)
-MCP_TRANSPORT=http node dist/index.js     # HTTP on :8080 (/mcp, /health)
-npm run smoke                             # proves both protocol eras serve the same tools
+npm test
+npm run smoke          # both protocol eras, no Grexx calls
+npm run smoke:grexx    # skips unless KPN_GREXX_USERNAME, PASSWORD and BASE_URL are set
 ```
 
-Docker (linux/amd64 per fleet law):
+Live acceptatie check (not used in CI):
 
 ```bash
-docker build --platform linux/amd64 --build-arg GITHUB_TOKEN=$(gh auth token) -t kpn-mcp .
-docker run -p 8080:8080 -e KPN_CLIENT_ID=... -e KPN_CLIENT_SECRET=... kpn-mcp
+export KPN_GREXX_USERNAME=...
+export KPN_GREXX_PASSWORD=...
+export KPN_GREXX_BASE_URL='https://service-accept.grexx.today/interfaces/kpn/kpn_partners_acceptatieomgeving/697fbf4b18a076446aa2cd4a/'
+# optional: KPN_GREXX_AUTH_MODE=basic
+# optional: KPN_GREXX_SMOKE_ZIPCODE=1012JS KPN_GREXX_SMOKE_HOUSE_NUMBER=1 KPN_GREXX_SMOKE_PORTFOLIO=All
+npm run build && npm run smoke:grexx
 ```
 
-## Elicitation and destructive-action consent
+Docker (linux/amd64). The image installs `node-kpn` from the GitHub branch, so the builder needs `git` (already in the Dockerfile):
 
-Every gated tool asks before acting, naming the concrete target (for example the phone
-number, subscriber and contract for a SIM block). Elicitation rides the SDK v2 MRTR seam:
-handlers return `input_required` results that 2026-07-28 clients fulfil and retry, and that
-the SDK's legacy shim fulfils server-side for 2025-era stateful connections (stdio). All
-reads and the confirmation happen before the single mutating KPN call, so a retried request
-cannot duplicate an order.
-
-Callers that cannot be prompted (including stateless legacy HTTP requests, which is how the
-WYRE Conduit gateway connects) fail closed: the gated tools refuse to run unless the call
-passes `"confirm_destructive_action": true`. That argument is consulted only when no prompt
-is possible and never skips a confirmation an interactive user would have seen.
-
-## Vendor quirks encoded here
-
-- Two OAuth realms on one host: `gateway` for the network products and SIM Swap, `msm` for
-  business mobile. Tokens are Apigee client-credentials tokens whose values are all strings.
-- Test and production share one host and keys; the tier (`demo`/`prod`) lives on the account.
-- Entitlement failures look like auth failures (401/403); error messages say so.
-- No published rate limits; `kpn_test_connection` surfaces the `quota-*` headers.
-- ContractDetails carries the SIM's PIN and PUK in clear text; the server masks them
-  everywhere except the gated `kpn_mobile_contracts_get_puk`.
+```bash
+docker build --platform linux/amd64 -t kpn-mcp .
+```
 
 ## License
 

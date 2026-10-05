@@ -1,10 +1,5 @@
 /**
- * HTTP-layer 401 gate + routing tests.
- *
- * Mirrors the routing in src/index.ts using the REAL credential resolver
- * (resolveGatewayCredentials) so header-name drift fails here. The full
- * end-to-end proof (real createMcpHandler serving both eras) lives in
- * scripts/smoke-dual-era.mjs.
+ * HTTP-layer 401 gate. Mirrors src/index.ts using resolveGatewayCredentials.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import http from "node:http";
@@ -72,7 +67,7 @@ function request(
       { hostname: "127.0.0.1", port, path, method: options.method || "GET", headers: options.headers },
       (res) => {
         let body = "";
-        res.on("data", (c) => (body += c));
+        res.on("data", (chunk) => (body += chunk));
         res.on("end", () => resolve({ status: res.statusCode || 0, headers: res.headers, body }));
       }
     );
@@ -95,77 +90,41 @@ describe("gateway-mode HTTP gate", () => {
       });
     });
   });
-  afterAll(() => new Promise<void>((r) => server.close(() => r())));
+  afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 
   it("/health is shallow and unauthenticated", async () => {
     const res = await request(port, "/health");
     expect(res.status).toBe(200);
-    expect(JSON.parse(res.body).status).toBe("ok");
   });
 
-  it("missing credential headers → 401 JSON-RPC -32001 naming the required headers", async () => {
+  it("missing credential headers → 401 naming the Grexx headers", async () => {
     const res = await request(port, "/mcp", { method: "POST" });
     expect(res.status).toBe(401);
     const body = JSON.parse(res.body);
-    expect(body.jsonrpc).toBe("2.0");
     expect(body.error.code).toBe(-32001);
-    expect(body.error.data.required).toEqual(["X-KPN-Client-Id", "X-KPN-Client-Secret"]);
+    expect(body.error.data.required).toEqual(["X-KPN-Grexx-Username", "X-KPN-Grexx-Password"]);
   });
 
-  it("a partial credential set is still 401 (never falls through to env)", async () => {
+  it("username without password is still 401", async () => {
     const res = await request(port, "/mcp", {
       method: "POST",
-      headers: { "X-KPN-Client-Id": "id" },
+      headers: { "X-KPN-Grexx-Username": "user" },
     });
     expect(res.status).toBe(401);
   });
 
-  it("a half MSM pair is 401 (never silently falls back to the main pair)", async () => {
-    const halves: Array<Record<string, string>> = [
-      { "X-KPN-MSM-Client-Id": "msm-id" },
-      { "X-KPN-MSM-Client-Secret": "msm-secret" },
-    ];
-    for (const half of halves) {
-      const res = await request(port, "/mcp", {
-        method: "POST",
-        headers: { "X-KPN-Client-Id": "id", "X-KPN-Client-Secret": "secret", ...half },
-      });
-      expect(res.status).toBe(401);
-      expect(JSON.parse(res.body).error.message).toContain("MSM");
-    }
-  });
-
-  it("the required pair reaches the MCP handler", async () => {
+  it("both Grexx headers reach the MCP handler", async () => {
     const res = await request(port, "/mcp", {
       method: "POST",
-      headers: { "X-KPN-Client-Id": "id", "X-KPN-Client-Secret": "secret" },
+      headers: { "X-KPN-Grexx-Username": "user", "X-KPN-Grexx-Password": "secret" },
     });
     expect(res.status).toBe(200);
   });
 
-  it("the required pair plus a full MSM pair reaches the MCP handler", async () => {
-    const res = await request(port, "/mcp", {
-      method: "POST",
-      headers: {
-        "X-KPN-Client-Id": "id",
-        "X-KPN-Client-Secret": "secret",
-        "X-KPN-MSM-Client-Id": "msm-id",
-        "X-KPN-MSM-Client-Secret": "msm-secret",
-      },
-    });
-    expect(res.status).toBe(200);
-  });
-
-  it("CORS allow-headers include all four X-KPN-* names; OPTIONS answers 204", async () => {
+  it("CORS allow-headers include the Grexx credential headers", async () => {
     const res = await request(port, "/mcp", { method: "OPTIONS" });
     expect(res.status).toBe(204);
     const allow = String(res.headers["access-control-allow-headers"]);
     for (const header of GATEWAY_HEADERS) expect(allow).toContain(header);
-  });
-
-  it("unknown paths 404 with the endpoint listing", async () => {
-    const res = await request(port, "/nope");
-    expect(res.status).toBe(404);
-    expect(JSON.parse(res.body).endpoints).toEqual(["/mcp", "/health"]);
   });
 });

@@ -25,15 +25,10 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const GATEWAY_PORT = PORT + 300;
 const GATEWAY_BASE = `http://127.0.0.1:${GATEWAY_PORT}`;
 
-/** The gateway-injected credential headers, per the conduit vendor-config headerMapping. */
+/** The gateway-injected Grexx credential headers. */
 const CRED_HEADERS = {
-  'X-KPN-Client-Id': 'gateway-client-id',
-  'X-KPN-Client-Secret': 'gateway-client-secret',
-};
-/** The optional MSM pair; sending only half of it must be rejected too. */
-const MSM_HEADERS = {
-  'X-KPN-MSM-Client-Id': 'gateway-msm-client-id',
-  'X-KPN-MSM-Client-Secret': 'gateway-msm-client-secret',
+  'X-KPN-Grexx-Username': 'gateway-user',
+  'X-KPN-Grexx-Password': 'gateway-password',
 };
 
 const failures = [];
@@ -87,8 +82,15 @@ async function waitForHealth(base = BASE, timeoutMs = 15000) {
  */
 async function gatewayLeg(expectedToolCount) {
   console.log('\nGATEWAY leg (AUTH_MODE=gateway, no env credentials):');
-  const { KPN_CLIENT_ID, KPN_CLIENT_SECRET, KPN_MSM_CLIENT_ID, KPN_MSM_CLIENT_SECRET, ...cleanEnv } =
-    process.env;
+  const {
+    KPN_GREXX_USERNAME,
+    KPN_GREXX_PASSWORD,
+    KPN_CLIENT_ID,
+    KPN_CLIENT_SECRET,
+    KPN_MSM_CLIENT_ID,
+    KPN_MSM_CLIENT_SECRET,
+    ...cleanEnv
+  } = process.env;
   const child = spawn(process.execPath, [serverEntry], {
     cwd: root,
     env: {
@@ -120,21 +122,18 @@ async function gatewayLeg(expectedToolCount) {
       body?.error?.code === -32001 && Array.isArray(body?.error?.data?.required),
       `code=${body?.error?.code} required=${(body?.error?.data?.required ?? []).join(',')}`);
 
-    const { 'X-KPN-Client-Secret': _omitted, ...partial } = CRED_HEADERS;
+    const { 'X-KPN-Grexx-Password': _omitted, ...partial } = CRED_HEADERS;
     const partialRes = await post(partial, toolsList);
     check('partial credential headers → 401 (no partial bind)', partialRes.status === 401, `status=${partialRes.status}`);
-
-    const halfMsm = await post({ ...CRED_HEADERS, 'X-KPN-MSM-Client-Id': MSM_HEADERS['X-KPN-MSM-Client-Id'] }, toolsList);
-    check('half MSM pair → 401 (no silent fallback to the main pair)', halfMsm.status === 401, `status=${halfMsm.status}`);
-
-    const withMsm = await post({ ...CRED_HEADERS, ...MSM_HEADERS }, toolsList);
-    check('required pair + full MSM pair → 200', withMsm.status === 200, `status=${withMsm.status}`);
 
     const full = await post(CRED_HEADERS, toolsList);
     check('complete credential headers → 200', full.status === 200, `status=${full.status}`);
     const tools = (await mcpBody(full))?.result?.tools ?? [];
     check('gateway mode serves the same tool surface', tools.length === expectedToolCount,
       `gateway=${tools.length} expected=${expectedToolCount}`);
+    check('tool surface is the 15 kpn_grexx_* tools',
+      tools.length === 15 && tools.every((tool) => tool.name.startsWith('kpn_grexx_')),
+      `count=${tools.length}`);
   } finally {
     child.kill('SIGTERM');
   }
@@ -205,9 +204,10 @@ async function main() {
       MCP_TRANSPORT: 'http',
       MCP_HTTP_PORT: String(PORT),
       MCP_HTTP_HOST: '127.0.0.1',
-      // env-mode dummy credentials — tools/list never touches the vendor API
-      KPN_CLIENT_ID: 'dummy-client-id',
-      KPN_CLIENT_SECRET: 'dummy-client-secret',
+      // env-mode dummy credentials — tools/list never touches Grexx
+      KPN_GREXX_USERNAME: 'dummy-user',
+      KPN_GREXX_PASSWORD: 'dummy-password',
+      KPN_GREXX_BASE_URL: 'https://grexx.example.invalid/interfaces/pilot/',
       LOG_LEVEL: 'error',
     },
     stdio: ['ignore', 'inherit', 'inherit'],

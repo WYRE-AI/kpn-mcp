@@ -8,6 +8,18 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ## [Unreleased]
 
+### Breaking
+
+- Replaced the developer.kpn.com OAuth / MSM tool surface with 15 Phase 1
+  `kpn_grexx_*` realtime tools on `@wyre-ai/node-kpn` 2.0 (git branch
+  `cursor/grexx-irma-client-00dd` until that release is published).
+- Credentials are `KPN_GREXX_USERNAME`, `KPN_GREXX_PASSWORD` and
+  `KPN_GREXX_BASE_URL` (env only). Gateway headers are
+  `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`.
+- `npm run smoke:grexx` calls `kpn_grexx_test_connection` and
+  `kpn_grexx_zipcode_check` when those env vars are set, and skips when they
+  are not. CI does not call Grexx.
+
 ### Added
 
 - Initial KPN MCP server: flat 23-tool surface over `@wyre-ai/node-kpn` covering
