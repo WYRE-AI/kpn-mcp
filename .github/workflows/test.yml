@@ -49,4 +49,4 @@ jobs:
         run: node scripts/smoke-grexx.mjs
 
       - name: Test Docker build
-        run: docker build --platform linux/amd64 --build-arg GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} -t kpn-mcp:test .
+        run: docker build --platform linux/amd64 -t kpn-mcp:test .

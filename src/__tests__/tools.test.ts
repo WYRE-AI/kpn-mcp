@@ -36,8 +36,9 @@ describe("tool surface", () => {
     for (const tool of TOOLS) {
       expect(tool.description, tool.name).toBeTruthy();
       expect(tool.inputSchema.type, tool.name).toBe("object");
-      expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
-      expect(tool.annotations?.destructiveHint, tool.name).toBeUndefined();
+      const isStartLineDiagnose = tool.name === "kpn_grexx_start_line_diagnose";
+      expect(tool.annotations?.readOnlyHint, tool.name).toBe(!isStartLineDiagnose);
+      expect(tool.annotations?.destructiveHint, tool.name).toBe(isStartLineDiagnose ? false : undefined);
       const properties = (tool.inputSchema.properties ?? {}) as Record<string, unknown>;
       expect(properties.confirm_destructive_action, tool.name).toBeUndefined();
     }

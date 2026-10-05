@@ -139,6 +139,6 @@ export const CONNECTIVITY_TOOLS: Tool[] = [
       },
       required: ["orderId", "symptomCode"],
     },
-    annotations: READ,
+    annotations: { ...READ, readOnlyHint: false, destructiveHint: false },
   },
 ];
