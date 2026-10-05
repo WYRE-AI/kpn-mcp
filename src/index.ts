@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * KPN MCP server — flat 23-tool surface.
+ * KPN Grexx MCP server — flat 15-tool realtime surface.
  *
  * Transports:
  * - stdio (default): local Claude Desktop / CLI usage. `serveStdio` owns the
@@ -11,12 +11,10 @@
  *   modern envelope traffic natively. NEVER `legacy: 'reject'`.
  *
  * Credentials via environment variables (env mode):
- * - KPN_CLIENT_ID / KPN_CLIENT_SECRET (required)
- * - KPN_MSM_CLIENT_ID / KPN_MSM_CLIENT_SECRET (optional pair)
- * - KPN_BASE_URL (optional; env mode only)
+ * - KPN_GREXX_USERNAME / KPN_GREXX_PASSWORD / KPN_GREXX_BASE_URL
  * Or via gateway headers (AUTH_MODE=gateway):
- * - X-KPN-Client-Id / X-KPN-Client-Secret (required)
- * - X-KPN-MSM-Client-Id / X-KPN-MSM-Client-Secret (optional pair)
+ * - X-KPN-Grexx-Username / X-KPN-Grexx-Password
+ * Base URL is env-only in both modes.
  */
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { createMcpHandler } from "@modelcontextprotocol/server";
@@ -109,10 +107,8 @@ async function startHttpTransport(): Promise<void> {
     }
 
     if (url.pathname === "/mcp") {
-      // 401 gate: reject unauthenticated gateway traffic BEFORE serving —
-      // falling through to env-configured credentials would serve the
-      // operator's tenant data to whoever asked (cross-tenant leak). A half
-      // MSM pair is rejected too, rather than silently using the main pair.
+      // 401 gate: reject unauthenticated gateway traffic BEFORE serving.
+      // Falling through to env credentials would serve another tenant's data.
       if (isGatewayMode) {
         const { error } = resolveGatewayCredentials(
           (name) => req.headers[name] as string | undefined

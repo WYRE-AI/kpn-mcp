@@ -1,8 +1,10 @@
 # kpn-mcp
 
-MCP server for KPN's developer APIs (Disturbance Check, Speed Check, SIM Swap,
-Mobile Services Management v11). SDK: `@wyre-ai/node-kpn` (WYRE-AI/node-kpn).
-Build contract and scope decisions: `docs/DESIGN.md`.
+MCP server for the KPN Grexx / IRMA acceptatie pilot. Phase 1 is 15
+`kpn_grexx_*` realtime tools. SDK: `@wyre-ai/node-kpn` 2.0 from
+`WYRE-AI/node-kpn` branch `cursor/grexx-irma-client-00dd` (draft PR 1) until
+publish. Queued / OrderModule / notifications stay out (no Proxymodule).
+See `README.md`. The v1 notes below are historical.
 
 ## Learnings - 2026-09-25
 

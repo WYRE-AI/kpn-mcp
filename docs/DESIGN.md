@@ -1,3 +1,10 @@
+# SUPERSEDED — Grexx / IRMA Phase 1
+
+The v1 developer.kpn.com contract below is historical. The shipping surface is
+15 `kpn_grexx_*` realtime tools. See `README.md` and
+https://github.com/WYRE-AI/node-kpn/pull/1. Do not add queued, OrderModule or
+notification tools until a Proxymodule receiver exists.
+
 # kpn-mcp + @wyre-ai/node-kpn — Design (build contract)
 
 Status: v1 design, 2026-09-25. This document is the contract that parallel implementation agents follow.

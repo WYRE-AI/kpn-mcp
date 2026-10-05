@@ -1,4 +1,4 @@
-/** Credential resolution + stateless tool-list invariants. */
+/** Credential resolution for the Grexx gateway and env modes. */
 import { describe, expect, it } from "vitest";
 import {
   buildCredentials,
@@ -12,140 +12,128 @@ import {
 } from "../mcp-server.js";
 import { TOOLS } from "../tools/index.js";
 
-describe("buildCredentials", () => {
-  it("accepts the required pair alone", () => {
-    const { creds, error } = buildCredentials("id", "secret");
-    expect(error).toBeUndefined();
-    expect(creds).toEqual({ clientId: "id", clientSecret: "secret" });
-  });
+const BASE = "https://grexx.example.invalid/interfaces/pilot/";
 
-  it("accepts the required pair plus a complete MSM pair", () => {
-    const { creds } = buildCredentials("id", "secret", "msm-id", "msm-secret");
-    expect(creds).toEqual({
-      clientId: "id",
-      clientSecret: "secret",
-      msmClientId: "msm-id",
-      msmClientSecret: "msm-secret",
-    });
+describe("buildCredentials", () => {
+  it("accepts username and password", () => {
+    const { creds, error } = buildCredentials("user", "secret", { baseUrl: BASE });
+    expect(error).toBeUndefined();
+    expect(creds).toEqual({ username: "user", password: "secret", baseUrl: BASE });
   });
 
   it("names every missing required header", () => {
-    const { creds, error } = buildCredentials(undefined, undefined);
-    expect(creds).toBeUndefined();
+    const { error } = buildCredentials(undefined, undefined);
     for (const header of REQUIRED_GATEWAY_HEADERS) expect(error).toContain(header);
   });
 
-  it("rejects a half MSM pair either way round", () => {
-    expect(buildCredentials("id", "secret", "msm-id", undefined).error).toMatch(/MSM/);
-    expect(buildCredentials("id", "secret", undefined, "msm-secret").error).toMatch(/MSM/);
-  });
-
   it("treats empty strings as absent", () => {
-    expect(buildCredentials("", "secret").error).toContain("X-KPN-Client-Id");
-    expect(buildCredentials("id", "secret", "", "").creds).toEqual({
-      clientId: "id",
-      clientSecret: "secret",
-    });
+    expect(buildCredentials("", "secret").error).toContain("X-KPN-Grexx-Username");
+    expect(buildCredentials("user", "  ").error).toContain("X-KPN-Grexx-Password");
   });
 });
 
 describe("resolveGatewayCredentials", () => {
-  it("reads the exact lowercased x-kpn-* headers", () => {
+  it("reads the Grexx headers and the env base URL", () => {
     const headers: Record<string, string> = {
-      "x-kpn-client-id": "id",
-      "x-kpn-client-secret": "secret",
-      "x-kpn-msm-client-id": "msm-id",
-      "x-kpn-msm-client-secret": "msm-secret",
+      "x-kpn-grexx-username": "user",
+      "x-kpn-grexx-password": "secret",
     };
-    const seen: string[] = [];
-    const { creds } = resolveGatewayCredentials((name) => {
-      seen.push(name);
-      return headers[name];
+    const { creds } = resolveGatewayCredentials((name) => headers[name], {
+      KPN_GREXX_BASE_URL: BASE,
+      KPN_GREXX_AUTH_MODE: "basic",
     });
-    expect(creds).toEqual({
-      clientId: "id",
-      clientSecret: "secret",
-      msmClientId: "msm-id",
-      msmClientSecret: "msm-secret",
+    expect(creds).toMatchObject({
+      username: "user",
+      password: "secret",
+      baseUrl: BASE,
+      authMode: "basic",
     });
-    expect(seen).toEqual(GATEWAY_HEADERS.map((h) => h.toLowerCase()));
   });
 
-  it("errors when a required header is absent", () => {
-    const { error } = resolveGatewayCredentials((name) =>
-      name === "x-kpn-client-id" ? "id" : undefined
+  it("never takes the base URL from a header", () => {
+    const { creds } = resolveGatewayCredentials(
+      (name) => (name === "x-kpn-grexx-base-url" ? "https://attacker.example" : `v-${name}`),
+      { KPN_GREXX_BASE_URL: BASE }
     );
-    expect(error).toBeTruthy();
+    expect(creds?.baseUrl).toBe(BASE);
+    expect(creds?.baseUrl).not.toContain("attacker");
   });
 
-  it("never carries a base URL (env mode only — SSRF guard)", () => {
-    const { creds } = resolveGatewayCredentials((name) =>
-      name === "x-kpn-base-url" ? "https://attacker.example" : `v-${name}`
-    );
-    expect(creds?.baseUrl).toBeUndefined();
+  it("does not fall through to env username or password", () => {
+    const { creds, error } = resolveGatewayCredentials(() => undefined, {
+      KPN_GREXX_USERNAME: "env-user",
+      KPN_GREXX_PASSWORD: "env-pass",
+      KPN_GREXX_BASE_URL: BASE,
+    });
+    expect(creds).toBeUndefined();
+    expect(error).toContain("X-KPN-Grexx-Username");
   });
 });
 
 describe("resolveEnvCredentials", () => {
-  it("reads KPN_* env vars, including the base URL", () => {
+  it("reads KPN_GREXX_* including auth mode", () => {
     const { creds } = resolveEnvCredentials({
-      KPN_CLIENT_ID: "id",
-      KPN_CLIENT_SECRET: "secret",
-      KPN_MSM_CLIENT_ID: "msm-id",
-      KPN_MSM_CLIENT_SECRET: "msm-secret",
-      KPN_BASE_URL: "https://kpn.test.invalid",
+      KPN_GREXX_USERNAME: "user",
+      KPN_GREXX_PASSWORD: "secret",
+      KPN_GREXX_BASE_URL: BASE,
+      KPN_GREXX_AUTH_MODE: "oauth",
+      KPN_GREXX_TOKEN_URL: "https://grexx.example.invalid/oauth/access_token",
     });
-    expect(creds).toEqual({
-      clientId: "id",
-      clientSecret: "secret",
-      msmClientId: "msm-id",
-      msmClientSecret: "msm-secret",
-      baseUrl: "https://kpn.test.invalid",
+    expect(creds).toMatchObject({
+      username: "user",
+      password: "secret",
+      baseUrl: BASE,
+      authMode: "oauth",
+      tokenUrl: "https://grexx.example.invalid/oauth/access_token",
     });
   });
 
-  it("leaves the base URL to the SDK default when unset", () => {
-    const { creds } = resolveEnvCredentials({ KPN_CLIENT_ID: "id", KPN_CLIENT_SECRET: "s" });
-    expect(creds).toEqual({ clientId: "id", clientSecret: "s" });
+  it("rejects an unknown auth mode", () => {
+    const { error } = resolveEnvCredentials({
+      KPN_GREXX_USERNAME: "user",
+      KPN_GREXX_PASSWORD: "secret",
+      KPN_GREXX_BASE_URL: BASE,
+      KPN_GREXX_AUTH_MODE: "bearer",
+    });
+    expect(error).toMatch(/oauth/);
   });
 });
 
 describe("stateless tool surface", () => {
-  it("returns the module-scope TOOLS array by reference every time", () => {
+  it("is the module-scope TOOLS array regardless of credentials", () => {
     expect(listToolsResult().tools).toBe(TOOLS);
-    expect(listToolsResult().tools).toBe(listToolsResult().tools);
-  });
-
-  it("is identical (same order) regardless of credentials", () => {
-    // The list never varies by caller — createMcpServer with and without
-    // credentials serves the same reference.
     createMcpServer();
-    const withoutCreds = listToolsResult().tools.map((t) => t.name);
-    createMcpServer({ clientId: "id", clientSecret: "secret" });
-    const withCreds = listToolsResult().tools.map((t) => t.name);
-    expect(withoutCreds).toEqual(withCreds);
+    createMcpServer({ username: "user", password: "secret", baseUrl: BASE });
+    expect(listToolsResult().tools.map((tool) => tool.name)).toEqual(
+      TOOLS.map((tool) => tool.name)
+    );
   });
 });
 
 describe("makeMcpServerFactory", () => {
-  it("builds a server from gateway headers per request", () => {
-    const factory = makeMcpServerFactory({ gatewayMode: true });
-    const headers = new Map<string, string>([
-      ["x-kpn-client-id", "id"],
-      ["x-kpn-client-secret", "secret"],
-    ]);
-    const server = factory({
-      requestInfo: { headers: { get: (n: string) => headers.get(n) ?? null } },
-    } as never);
-    expect(server).toBeTruthy();
-  });
-
-  it("never throws even with no credentials (401 gate lives in the HTTP layer)", () => {
+  it("never throws when gateway headers are missing", () => {
     const factory = makeMcpServerFactory({ gatewayMode: true });
     expect(() =>
-      factory({
-        requestInfo: { headers: { get: () => null } },
-      } as never)
+      factory({ requestInfo: { headers: { get: () => null } } } as never)
     ).not.toThrow();
+  });
+
+  it("reads gateway headers", () => {
+    const factory = makeMcpServerFactory({ gatewayMode: true });
+    const headers = new Map<string, string>([
+      ["x-kpn-grexx-username", "user"],
+      ["x-kpn-grexx-password", "secret"],
+    ]);
+    expect(
+      factory({
+        requestInfo: { headers: { get: (name: string) => headers.get(name) ?? null } },
+      } as never)
+    ).toBeTruthy();
+  });
+});
+
+describe("gateway header list", () => {
+  it("is the two Grexx headers", () => {
+    expect(GATEWAY_HEADERS).toEqual(["X-KPN-Grexx-Username", "X-KPN-Grexx-Password"]);
   });
 });

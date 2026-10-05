@@ -1,28 +1,27 @@
 /**
- * The complete KPN tool surface — 23 tools, FLAT (no router).
+ * Phase 1 Grexx tool surface — 15 realtime tools, flat (no router).
  *
- * Deterministic ordering rule: `TOOLS` is one module-scope array in the exact
- * order of design.md §4.3, assembled from the domain modules below.
- * `tools/list` returns this array by reference for every request, every era,
- * every caller. Never sorted at runtime, never filtered per-session, never
- * varied by credentials.
+ * `TOOLS` is one module-scope array in MCP-TOOL-PROPOSAL order. `tools/list`
+ * returns this array by reference for every request, every era, every caller.
+ * Never sorted at runtime, never filtered per session, never varied by
+ * credentials.
  *
- * Hand-written JSON Schema (no zod). Destructive (D) and sensitive-read (S)
- * tools follow fleet convention §2.7b: a "⚠ DESTRUCTIVE" / "⚠ HIGH-IMPACT"
- * description prefix, inline annotations, CONFIRM_ARG_PROPERTY in the schema,
- * and a description ending "Confirm with the user before invoking."
+ * Queued calls, OrderModule and inbound notifications are absent on purpose.
+ * The partner portal has no Proxymodule rights, so those results never arrive.
+ * Do not register them until a receiver exists.
  */
 import type { Tool } from "@modelcontextprotocol/server";
-import { CORE_TOOLS } from "./core.js";
-import { MOBILE_READ_TOOLS } from "./mobile-read.js";
-import { MOBILE_WRITE_TOOLS } from "./mobile-write.js";
-import { NETWORK_TOOLS } from "./network.js";
+import { CONNECTIVITY_TOOLS } from "./connectivity.js";
+import { GENERIC_TOOLS } from "./generic.js";
+import { MOBILE_TOOLS } from "./mobile.js";
 
 export const TOOLS: Tool[] = [
-  ...CORE_TOOLS, // 1
-  ...NETWORK_TOOLS, // 2–4
-  ...MOBILE_READ_TOOLS, // 5–18
-  ...MOBILE_WRITE_TOOLS, // 19–23
+  ...GENERIC_TOOLS.slice(0, 1), // 1 test_connection
+  ...CONNECTIVITY_TOOLS.slice(0, 4), // 2–5 zipcode, prequalification, carrier, radius
+  ...GENERIC_TOOLS.slice(1, 2), // 6 ras_check
+  ...CONNECTIVITY_TOOLS.slice(4), // 7 start_line_diagnose
+  ...GENERIC_TOOLS.slice(2), // 8–10 customer, order summary, order data
+  ...MOBILE_TOOLS, // 11–15
 ];
 
 export const TOOL_NAMES = TOOLS.map((tool) => tool.name);

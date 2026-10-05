@@ -1,6 +1,6 @@
 /** Shared tool-result helpers, the handler signature, and argument validation. */
 import type { InputRequiredResult } from "@modelcontextprotocol/server";
-import type { KpnClient } from "@wyre-ai/node-kpn";
+import type { KpnGrexxClient } from "@wyre-ai/node-kpn";
 import type { ElicitationContext } from "../elicitation.js";
 
 export type ToolContent =
@@ -21,7 +21,7 @@ export interface ToolResult {
  * isError result, so nothing ever escapes to the transport.
  */
 export type ToolHandler = (
-  client: KpnClient,
+  client: KpnGrexxClient,
   args: Record<string, unknown>,
   elicitation: ElicitationContext
 ) => Promise<ToolResult | InputRequiredResult>;
@@ -107,6 +107,56 @@ export function optionalStringArray(
     throw new ToolInputError(`Argument "${key}" must be an array of strings.`);
   }
   return value as string[];
+}
+
+export function requireBoolean(args: Record<string, unknown>, key: string): boolean {
+  const value = args[key];
+  if (typeof value !== "boolean") {
+    throw new ToolInputError(`Argument "${key}" is required and must be a boolean.`);
+  }
+  return value;
+}
+
+export function optionalInteger(args: Record<string, unknown>, key: string): number | undefined {
+  const value = args[key];
+  if (value === undefined || value === null) return undefined;
+  const num = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  if (typeof num !== "number" || !Number.isInteger(num)) {
+    throw new ToolInputError(`Argument "${key}" must be an integer.`);
+  }
+  return num;
+}
+
+export function requireEnum<T extends string>(
+  args: Record<string, unknown>,
+  key: string,
+  allowed: readonly T[]
+): T {
+  const value = optionalEnum(args, key, allowed);
+  if (value === undefined) {
+    throw new ToolInputError(`Argument "${key}" is required and must be one of: ${allowed.join(", ")}.`);
+  }
+  return value;
+}
+
+export function requireIntegerArray(
+  args: Record<string, unknown>,
+  key: string,
+  min: number,
+  max: number
+): number[] {
+  const value = args[key];
+  if (!Array.isArray(value) || value.length < min || value.length > max) {
+    throw new ToolInputError(
+      `Argument "${key}" is required and must contain ${min} to ${max} integers.`
+    );
+  }
+  return value.map((item, index) => {
+    if (typeof item !== "number" || !Number.isInteger(item)) {
+      throw new ToolInputError(`Argument "${key}[${index}]" must be an integer.`);
+    }
+    return item;
+  });
 }
 
 export function optionalEnum<T extends string>(

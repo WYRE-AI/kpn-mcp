@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.WYRE-AI/kpn-mcp",
   "title": "KPN",
-  "description": "MCP server for KPN: outage checks, address availability, SIM swap and business mobile (MSM).",
+  "description": "MCP server for the KPN Grexx IRMA partner pilot: 15 realtime connectivity, customer and mobile reads.",
   "repository": {
     "url": "https://github.com/WYRE-AI/kpn-mcp",
     "source": "github"
@@ -18,36 +18,29 @@
       },
       "environmentVariables": [
         {
-          "name": "KPN_CLIENT_ID",
-          "description": "KPN API Store project client ID (developer.kpn.com → Dashboard → Projects)",
+          "name": "KPN_GREXX_USERNAME",
+          "description": "Grexx API username (portal API Gegevens). OAuth client_id by default.",
           "isRequired": true,
           "format": "string"
         },
         {
-          "name": "KPN_CLIENT_SECRET",
-          "description": "KPN API Store project client secret",
+          "name": "KPN_GREXX_PASSWORD",
+          "description": "Grexx API password. OAuth client_secret by default.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"
         },
         {
-          "name": "KPN_MSM_CLIENT_ID",
-          "description": "Optional customer GRIP-bound Mobile Services Management app ID (falls back to KPN_CLIENT_ID)",
-          "isRequired": false,
+          "name": "KPN_GREXX_BASE_URL",
+          "description": "Grexx interface base URL including the partner path. Required. Env only; never a gateway header. Acceptatie is documented in the README and is not a default.",
+          "isRequired": true,
           "format": "string"
         },
         {
-          "name": "KPN_MSM_CLIENT_SECRET",
-          "description": "Optional MSM app secret; must be set together with KPN_MSM_CLIENT_ID",
+          "name": "KPN_GREXX_AUTH_MODE",
+          "description": "oauth (default, Bearer) or basic. Set basic only if acceptatie returns Grexx code 101.",
           "isRequired": false,
-          "isSecret": true,
-          "format": "string"
-        },
-        {
-          "name": "KPN_BASE_URL",
-          "description": "KPN API base URL (env mode only)",
-          "isRequired": false,
-          "default": "https://api-prd.kpn.com",
+          "default": "oauth",
           "format": "string"
         },
         {
