@@ -11,9 +11,9 @@ import {
   NotFoundError,
   ServerError,
   ValidationError,
-} from "@wyre-ai/node-kpn";
+} from "@wyre-ai/node-kpn/legacy";
 import { CONFIRM_ARG, type ElicitationContext } from "../elicitation.js";
-import { handleToolCall } from "../handlers/index.js";
+import { handleLegacyToolCall } from "../handlers/index.js";
 import type { ToolResult } from "../handlers/results.js";
 import { stubClient, type StubTree } from "./stub-client.js";
 
@@ -204,7 +204,7 @@ const CASES: Case[] = [
 describe.each(CASES)("$tool — common paths", (tc) => {
   it("rejects invalid arguments without calling KPN", async () => {
     const client = stubClient();
-    const result = await handleToolCall(client, tc.tool, tc.invalid);
+    const result = await handleLegacyToolCall(client, tc.tool, tc.invalid);
     expectError(result, new RegExp(`Invalid arguments for ${tc.tool}`));
     expect(tc.sdk(client)).not.toHaveBeenCalled();
   });
@@ -212,14 +212,14 @@ describe.each(CASES)("$tool — common paths", (tc) => {
   it("maps an SDK error to isError with the MSM hint", async () => {
     const client = stubClient();
     tc.sdk(client).mockRejectedValue(forbidden());
-    const result = await handleToolCall(client, tc.tool, tc.args);
+    const result = await handleLegacyToolCall(client, tc.tool, tc.args);
     expectError(result, /KPN error \(HTTP 403\): Forbidden.*GRIP-bound MSM app/);
   });
 
   it("reports an empty result as isError", async () => {
     const client = stubClient();
     tc.sdk(client).mockResolvedValue(tc.empty);
-    const result = await handleToolCall(client, tc.tool, tc.args);
+    const result = await handleLegacyToolCall(client, tc.tool, tc.args);
     expectError(result, tc.emptyMessage);
   });
 });
@@ -232,7 +232,7 @@ describe("kpn_mobile_subscribers_list", () => {
       mobile: { subscribers: { list: vi.fn(async () => page([{ id: 1, firstName: "Jan" }], 41)) } },
     });
     const out = parse(
-      await handleToolCall(client, "kpn_mobile_subscribers_list", {
+      await handleLegacyToolCall(client, "kpn_mobile_subscribers_list", {
         search: "jan",
         firstName: "Jan",
         employeeNumber: "E-001",
@@ -254,7 +254,7 @@ describe("kpn_mobile_subscribers_list", () => {
     const client = stubClient({
       mobile: { subscribers: { list: vi.fn(async () => page([], 5)) } },
     });
-    const result = await handleToolCall(client, "kpn_mobile_subscribers_list", { offset: 40 });
+    const result = await handleLegacyToolCall(client, "kpn_mobile_subscribers_list", { offset: 40 });
     expectError(result, /No subscribers found at offset 40; there are 5 in total/);
   });
 });
@@ -269,7 +269,7 @@ describe("kpn_mobile_subscribers_get", () => {
         },
       },
     });
-    const out = parse(await handleToolCall(client, "kpn_mobile_subscribers_get", { id: 1 }));
+    const out = parse(await handleLegacyToolCall(client, "kpn_mobile_subscribers_get", { id: 1 }));
     expect(client.mobile.subscribers.listContracts).toHaveBeenCalledWith(1, { from: 0, to: 100 });
     expect(out).toMatchObject({ id: 1, contracts: [CONTRACT_ROW], contractsTotal: 1 });
   });
@@ -277,7 +277,7 @@ describe("kpn_mobile_subscribers_get", () => {
   it("skips contracts when includeContracts is false", async () => {
     const client = stubClient();
     parse(
-      await handleToolCall(client, "kpn_mobile_subscribers_get", { id: 1, includeContracts: false })
+      await handleLegacyToolCall(client, "kpn_mobile_subscribers_get", { id: 1, includeContracts: false })
     );
     expect(client.mobile.subscribers.listContracts).not.toHaveBeenCalled();
   });
@@ -289,7 +289,7 @@ describe("kpn_mobile_contracts_list", () => {
       mobile: { contracts: { list: vi.fn(async () => page([CONTRACT_ROW])) } },
     });
     const out = parse(
-      await handleToolCall(client, "kpn_mobile_contracts_list", {
+      await handleLegacyToolCall(client, "kpn_mobile_contracts_list", {
         mobileNumber: "0600000001",
         simCardNumber: "8931000000000000001",
         state: "ACTIVE",
@@ -309,14 +309,14 @@ describe("kpn_mobile_contracts_list", () => {
     const client = stubClient({
       mobile: { subscribers: { listContracts: vi.fn(async () => page([CONTRACT_ROW])) } },
     });
-    parse(await handleToolCall(client, "kpn_mobile_contracts_list", { subscriberId: 12 }));
+    parse(await handleLegacyToolCall(client, "kpn_mobile_contracts_list", { subscriberId: 12 }));
     expect(client.mobile.subscribers.listContracts).toHaveBeenCalledWith(12, { from: 0, to: 20 });
     expect(client.mobile.contracts.list).not.toHaveBeenCalled();
   });
 
   it("refuses subscriberId combined with filters rather than ignoring them", async () => {
     const client = stubClient();
-    const result = await handleToolCall(client, "kpn_mobile_contracts_list", {
+    const result = await handleLegacyToolCall(client, "kpn_mobile_contracts_list", {
       subscriberId: 12,
       imei: "350000000000001",
     });
@@ -330,7 +330,7 @@ describe("kpn_mobile_contracts_get", () => {
     const client = stubClient({
       mobile: { contracts: { get: vi.fn(async () => ({ ...CONTRACT_DETAILS })) } },
     });
-    const result = await handleToolCall(client, "kpn_mobile_contracts_get", { id: 5001 });
+    const result = await handleLegacyToolCall(client, "kpn_mobile_contracts_get", { id: 5001 });
     const raw = text(result);
     expect(raw).not.toContain(FAKE_PIN);
     expect(raw).not.toContain(FAKE_PUK);
@@ -347,7 +347,7 @@ describe("kpn_mobile_contracts_get", () => {
         },
       },
     });
-    const result = await handleToolCall(client, "kpn_mobile_contracts_get", {
+    const result = await handleLegacyToolCall(client, "kpn_mobile_contracts_get", {
       id: 5001,
       includeItems: true,
     });
@@ -358,7 +358,7 @@ describe("kpn_mobile_contracts_get", () => {
 
   it("maps a 404 to isError", async () => {
     const client = stubClient({ mobile: { contracts: { get: vi.fn(async () => { throw notFound(); }) } } });
-    const result = await handleToolCall(client, "kpn_mobile_contracts_get", { id: 5001 });
+    const result = await handleLegacyToolCall(client, "kpn_mobile_contracts_get", { id: 5001 });
     expectError(result, /KPN error \(HTTP 404, NOT_FOUND\)/);
   });
 });
@@ -368,7 +368,7 @@ describe("kpn_mobile_contracts_get_puk (tier S gate)", () => {
     stubClient({ mobile: { contracts: { get: vi.fn(async () => ({ ...CONTRACT_DETAILS })) } } });
 
   it("form-capable client with no answer → input_required naming the target, no PUK", async () => {
-    const result = await handleToolCall(withContract(), "kpn_mobile_contracts_get_puk", { id: 5001 }, FORM_CAPABLE);
+    const result = await handleLegacyToolCall(withContract(), "kpn_mobile_contracts_get_puk", { id: 5001 }, FORM_CAPABLE);
     expect((result as InputRequiredResult).resultType).toBe("input_required");
     const serialized = JSON.stringify(result);
     expect(serialized).toContain("+31600000001");
@@ -379,14 +379,14 @@ describe("kpn_mobile_contracts_get_puk (tier S gate)", () => {
   it("accepted → returns only contractId, phoneNumber and puk", async () => {
     const client = withContract();
     const out = parse(
-      await handleToolCall(client, "kpn_mobile_contracts_get_puk", { id: 5001 }, answered({ confirm: true }))
+      await handleLegacyToolCall(client, "kpn_mobile_contracts_get_puk", { id: 5001 }, answered({ confirm: true }))
     );
     expect(out).toEqual({ contractId: 5001, phoneNumber: "+31600000001", puk: FAKE_PUK });
     expect(client.mobile.contracts.get).toHaveBeenCalledTimes(1);
   });
 
   it("declined → cancelled, PUK not revealed", async () => {
-    const result = await handleToolCall(
+    const result = await handleLegacyToolCall(
       withContract(),
       "kpn_mobile_contracts_get_puk",
       { id: 5001 },
@@ -397,7 +397,7 @@ describe("kpn_mobile_contracts_get_puk (tier S gate)", () => {
   });
 
   it("accepted with confirm: false → cancelled, PUK not revealed", async () => {
-    const result = await handleToolCall(
+    const result = await handleLegacyToolCall(
       withContract(),
       "kpn_mobile_contracts_get_puk",
       { id: 5001 },
@@ -407,21 +407,21 @@ describe("kpn_mobile_contracts_get_puk (tier S gate)", () => {
   });
 
   it("no elicitation and no confirm argument → blocked, PUK not revealed", async () => {
-    const result = await handleToolCall(withContract(), "kpn_mobile_contracts_get_puk", { id: 5001 });
+    const result = await handleLegacyToolCall(withContract(), "kpn_mobile_contracts_get_puk", { id: 5001 });
     expectError(result, new RegExp(`re-invoke this tool with "${CONFIRM_ARG}": true`));
     expect(text(result)).not.toContain(FAKE_PUK);
   });
 
   it("no elicitation but confirm argument → returns the PUK", async () => {
     const out = parse(
-      await handleToolCall(withContract(), "kpn_mobile_contracts_get_puk", { id: 5001, [CONFIRM_ARG]: true })
+      await handleLegacyToolCall(withContract(), "kpn_mobile_contracts_get_puk", { id: 5001, [CONFIRM_ARG]: true })
     );
     expect(out.puk).toBe(FAKE_PUK);
   });
 
   it("a contract without a PUK is an error, before any prompt", async () => {
     const client = stubClient({ mobile: { contracts: { get: vi.fn(async () => ({ id: 5001 })) } } });
-    const result = await handleToolCall(client, "kpn_mobile_contracts_get_puk", { id: 5001 }, FORM_CAPABLE);
+    const result = await handleLegacyToolCall(client, "kpn_mobile_contracts_get_puk", { id: 5001 }, FORM_CAPABLE);
     expectError(result, /No PUK is available for contract 5001/);
   });
 });
@@ -431,7 +431,7 @@ describe("kpn_mobile_contracts_get_operations", () => {
     const ops = { contractId: 5001, blockSim: { enabled: true, visible: true } };
     const client = stubClient({ mobile: { contracts: { getOperations: vi.fn(async () => ops) } } });
     const out = parse(
-      await handleToolCall(client, "kpn_mobile_contracts_get_operations", { contractId: 5001 })
+      await handleLegacyToolCall(client, "kpn_mobile_contracts_get_operations", { contractId: 5001 })
     );
     expect(out).toEqual(ops);
     expect(client.mobile.contracts.getOperations).toHaveBeenCalledWith(5001);
@@ -443,7 +443,7 @@ describe("kpn_mobile_orders_list", () => {
     const client = stubClient({
       mobile: { orders: { list: vi.fn(async () => page([{ id: 7001, status: "UNAUTHORIZED" }])) } },
     });
-    const out = parse(await handleToolCall(client, "kpn_mobile_orders_list", {}));
+    const out = parse(await handleLegacyToolCall(client, "kpn_mobile_orders_list", {}));
     expect(client.mobile.orders.list).toHaveBeenCalledWith({
       from: 0,
       to: 20,
@@ -460,7 +460,7 @@ describe("kpn_mobile_orders_list", () => {
       mobile: { orders: { list: vi.fn(async () => page([{ id: 7001 }])) } },
     });
     parse(
-      await handleToolCall(client, "kpn_mobile_orders_list", {
+      await handleLegacyToolCall(client, "kpn_mobile_orders_list", {
         status: ["CLOSED", "HOLD_CUSTOMER"],
         search: "WYRE-",
         currentUserOnly: true,
@@ -480,7 +480,7 @@ describe("kpn_mobile_orders_get", () => {
   it("returns the pretty view with any pin/puk masked", async () => {
     const pretty = { id: 7001, sim: { pin: FAKE_PIN, puk: FAKE_PUK } };
     const client = stubClient({ mobile: { orders: { getPretty: vi.fn(async () => pretty) } } });
-    const result = await handleToolCall(client, "kpn_mobile_orders_get", { id: 7001 });
+    const result = await handleLegacyToolCall(client, "kpn_mobile_orders_get", { id: 7001 });
     expect(text(result)).not.toContain(FAKE_PUK);
     expect(parse(result)).toMatchObject({ id: 7001, pinPukMasked: true });
     expect(client.mobile.orders.get).not.toHaveBeenCalled();
@@ -498,7 +498,7 @@ describe("kpn_mobile_orders_get", () => {
         },
       },
     });
-    const out = parse(await handleToolCall(client, "kpn_mobile_orders_get", { id: 7001 }));
+    const out = parse(await handleLegacyToolCall(client, "kpn_mobile_orders_get", { id: 7001 }));
     expect(out).toEqual({ id: 7001, status: "IN_PROGRESS" });
     expect(client.mobile.orders.get).toHaveBeenCalledWith(7001);
   });
@@ -507,7 +507,7 @@ describe("kpn_mobile_orders_get", () => {
     const client = stubClient({
       mobile: { orders: { getPretty: vi.fn(async () => { throw forbidden(); }) } },
     });
-    const result = await handleToolCall(client, "kpn_mobile_orders_get", { id: 7001 });
+    const result = await handleLegacyToolCall(client, "kpn_mobile_orders_get", { id: 7001 });
     expectError(result, /HTTP 403/);
     expect(client.mobile.orders.get).not.toHaveBeenCalled();
   });
@@ -518,7 +518,7 @@ describe("kpn_mobile_service_requests_list / _get", () => {
     const client = stubClient({
       mobile: { serviceRequests: { list: vi.fn(async () => page([{ id: 8001 }])) } },
     });
-    const out = parse(await handleToolCall(client, "kpn_mobile_service_requests_list", { limit: 5 }));
+    const out = parse(await handleLegacyToolCall(client, "kpn_mobile_service_requests_list", { limit: 5 }));
     expect(client.mobile.serviceRequests.list).toHaveBeenCalledWith({
       from: 0,
       to: 5,
@@ -533,7 +533,7 @@ describe("kpn_mobile_service_requests_list / _get", () => {
     const client = stubClient({
       mobile: { serviceRequests: { get: vi.fn(async () => ({ id: 8001, status: "CLOSED" })) } },
     });
-    const out = parse(await handleToolCall(client, "kpn_mobile_service_requests_get", { id: 8001 }));
+    const out = parse(await handleLegacyToolCall(client, "kpn_mobile_service_requests_get", { id: 8001 }));
     expect(out).toEqual({ id: 8001, status: "CLOSED" });
   });
 });
@@ -548,7 +548,7 @@ describe("kpn_mobile_invoices_list", () => {
       },
     });
     const out = parse(
-      await handleToolCall(client, "kpn_mobile_invoices_list", {
+      await handleLegacyToolCall(client, "kpn_mobile_invoices_list", {
         debtorId: 3,
         searchFrom: "2026-01-01",
         searchTo: "2026-06-30",
@@ -568,7 +568,7 @@ describe("kpn_mobile_invoices_list", () => {
 describe("kpn_mobile_invoices_get_pdf", () => {
   it("returns the PDF as an embedded base64 resource", async () => {
     const client = stubClient();
-    const result = asTool(await handleToolCall(client, "kpn_mobile_invoices_get_pdf", { id: 9001 }));
+    const result = asTool(await handleLegacyToolCall(client, "kpn_mobile_invoices_get_pdf", { id: 9001 }));
     expect(result.isError).toBeFalsy();
     expect(result.content[1]).toEqual({
       type: "resource",
@@ -592,7 +592,7 @@ describe("kpn_mobile_invoices_get_pdf", () => {
         },
       },
     });
-    const result = await handleToolCall(client, "kpn_mobile_invoices_get_pdf", { id: 9001 });
+    const result = await handleLegacyToolCall(client, "kpn_mobile_invoices_get_pdf", { id: 9001 });
     expectError(result, /over the 4 MB limit/);
   });
 });
@@ -603,7 +603,7 @@ describe("kpn_mobile_hierarchy_list", () => {
       mobile: { hierarchy: { listChildren: vi.fn(async () => page([{ id: 3, type: "DEBTOR" }])) } },
     });
     const out = parse(
-      await handleToolCall(client, "kpn_mobile_hierarchy_list", { parentId: 2, search: "sales" })
+      await handleLegacyToolCall(client, "kpn_mobile_hierarchy_list", { parentId: 2, search: "sales" })
     );
     expect(client.mobile.hierarchy.listChildren).toHaveBeenCalledWith({
       from: 0,
@@ -617,7 +617,7 @@ describe("kpn_mobile_hierarchy_list", () => {
   });
 
   it("names the parent in the empty message", async () => {
-    const result = await handleToolCall(stubClient(), "kpn_mobile_hierarchy_list", { parentId: 2 });
+    const result = await handleLegacyToolCall(stubClient(), "kpn_mobile_hierarchy_list", { parentId: 2 });
     expectError(result, /No hierarchy items found under hierarchy item 2/);
   });
 });
@@ -627,7 +627,7 @@ describe("kpn_mobile_thresholds_list", () => {
     const all = [1, 2, 3].map((id) => ({ id, type: "DATA_ROAMING_MB" }));
     const client = stubClient({ mobile: { thresholds: { list: vi.fn(async () => all) } } });
     const out = parse(
-      await handleToolCall(client, "kpn_mobile_thresholds_list", { offset: 1, limit: 1 })
+      await handleLegacyToolCall(client, "kpn_mobile_thresholds_list", { offset: 1, limit: 1 })
     );
     expect(out).toMatchObject({ total: 3, returned: 1, hasMore: true, thresholds: [{ id: 2 }] });
   });
@@ -637,7 +637,7 @@ describe("kpn_mobile_thresholds_list", () => {
       mobile: { thresholds: { listContracts: vi.fn(async () => page([CONTRACT_ROW])) } },
     });
     const out = parse(
-      await handleToolCall(client, "kpn_mobile_thresholds_list", { thresholdId: 4 })
+      await handleLegacyToolCall(client, "kpn_mobile_thresholds_list", { thresholdId: 4 })
     );
     expect(client.mobile.thresholds.listContracts).toHaveBeenCalledWith(4, { from: 0, to: 20 });
     expect(client.mobile.thresholds.list).not.toHaveBeenCalled();
@@ -652,7 +652,7 @@ describe("kpn_mobile_thresholds_list", () => {
         },
       },
     });
-    const result = await handleToolCall(client, "kpn_mobile_thresholds_list", { thresholdId: 4 });
+    const result = await handleLegacyToolCall(client, "kpn_mobile_thresholds_list", { thresholdId: 4 });
     expectError(result, /KPN error \(HTTP 400, INVALID_ID\): Bad threshold/);
   });
 });

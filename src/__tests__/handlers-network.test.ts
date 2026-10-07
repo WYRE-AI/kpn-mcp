@@ -9,8 +9,8 @@ import {
   NotFoundError,
   RateLimitError,
   ServerError,
-} from "@wyre-ai/node-kpn";
-import { handleToolCall } from "../handlers/index.js";
+} from "@wyre-ai/node-kpn/legacy";
+import { handleLegacyToolCall } from "../handlers/index.js";
 import { stripHtml } from "../handlers/network.js";
 import type { ToolResult } from "../handlers/results.js";
 import { stubClient } from "./stub-client.js";
@@ -57,7 +57,7 @@ describe("kpn_disturbances_check", () => {
         })),
       },
     });
-    const result = await handleToolCall(client, "kpn_disturbances_check", {
+    const result = await handleLegacyToolCall(client, "kpn_disturbances_check", {
       ...ADDRESS,
       houseNumberExtension: " A ",
     });
@@ -80,7 +80,7 @@ describe("kpn_disturbances_check", () => {
 
   it("no disturbances is a success with an explicit message", async () => {
     const client = stubClient();
-    const result = asTool(await handleToolCall(client, "kpn_disturbances_check", ADDRESS));
+    const result = asTool(await handleLegacyToolCall(client, "kpn_disturbances_check", ADDRESS));
     expect(result.isError).toBeFalsy();
     expect(text(result)).toBe("No known KPN disturbances at this address.\nAddress: 1234AB 12");
   });
@@ -97,7 +97,7 @@ describe("kpn_disturbances_check", () => {
         })),
       },
     });
-    const result = asTool(await handleToolCall(client, "kpn_disturbances_check", ADDRESS));
+    const result = asTool(await handleLegacyToolCall(client, "kpn_disturbances_check", ADDRESS));
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("ADDRESS_NOT_FOUND: Address unknown");
   });
@@ -109,7 +109,7 @@ describe("kpn_disturbances_check", () => {
     [{ zipCode: "1234AB", houseNumber: 0 }, '"houseNumber"'],
   ])("invalid arguments %j → isError, no KPN call", async (args, message) => {
     const client = stubClient();
-    const result = asTool(await handleToolCall(client, "kpn_disturbances_check", args));
+    const result = asTool(await handleLegacyToolCall(client, "kpn_disturbances_check", args));
     expect(result.isError).toBe(true);
     expect(text(result)).toContain(message);
     expect(client.disturbances.getByAddress).not.toHaveBeenCalled();
@@ -123,7 +123,7 @@ describe("kpn_disturbances_check", () => {
         }),
       },
     });
-    const result = asTool(await handleToolCall(client, "kpn_disturbances_check", ADDRESS));
+    const result = asTool(await handleLegacyToolCall(client, "kpn_disturbances_check", ADDRESS));
     expect(result.isError).toBe(true);
     expect(text(result)).toBe(
       "KPN error (HTTP 401, oauth.v2.InvalidAccessToken): Invalid access token"
@@ -141,7 +141,7 @@ describe("kpn_availability_check", () => {
 
   it("returns the availability info without the empty alerts", async () => {
     const client = stubClient({ availability: { getByAddress: vi.fn(async () => AVAILABLE) } });
-    const payload = parse(await handleToolCall(client, "kpn_availability_check", ADDRESS));
+    const payload = parse(await handleLegacyToolCall(client, "kpn_availability_check", ADDRESS));
     expect(client.availability.getByAddress).toHaveBeenCalledWith({
       zipCode: "1234AB",
       houseNumber: 12,
@@ -163,7 +163,7 @@ describe("kpn_availability_check", () => {
         })),
       },
     });
-    const result = asTool(await handleToolCall(client, "kpn_availability_check", ADDRESS));
+    const result = asTool(await handleLegacyToolCall(client, "kpn_availability_check", ADDRESS));
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("AMBIGUOUS: Extension required");
     expect(text(result)).toContain("Valid house number extensions: A, B.");
@@ -171,7 +171,7 @@ describe("kpn_availability_check", () => {
 
   it("empty result → isError", async () => {
     const client = stubClient();
-    const result = asTool(await handleToolCall(client, "kpn_availability_check", ADDRESS));
+    const result = asTool(await handleLegacyToolCall(client, "kpn_availability_check", ADDRESS));
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("No KPN availability information found");
   });
@@ -179,7 +179,7 @@ describe("kpn_availability_check", () => {
   it("invalid postcode → isError, no KPN call", async () => {
     const client = stubClient();
     const result = asTool(
-      await handleToolCall(client, "kpn_availability_check", { zipCode: "0123AB", houseNumber: 1 })
+      await handleLegacyToolCall(client, "kpn_availability_check", { zipCode: "0123AB", houseNumber: 1 })
     );
     expect(result.isError).toBe(true);
     expect(client.availability.getByAddress).not.toHaveBeenCalled();
@@ -196,7 +196,7 @@ describe("kpn_availability_check", () => {
         }),
       },
     });
-    const result = asTool(await handleToolCall(client, "kpn_availability_check", ADDRESS));
+    const result = asTool(await handleLegacyToolCall(client, "kpn_availability_check", ADDRESS));
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("retry after 7s");
     expect(text(result)).toContain("2026-09-25T12:00:00Z");
@@ -213,7 +213,7 @@ describe("kpn_sim_swap_get_date", () => {
       simSwap: { retrieveDate: vi.fn(async () => ({ latestSimChange: swappedAt })) },
     });
     const payload = parse(
-      await handleToolCall(client, "kpn_sim_swap_get_date", { phoneNumber: "06 1234 5678" })
+      await handleLegacyToolCall(client, "kpn_sim_swap_get_date", { phoneNumber: "06 1234 5678" })
     );
     expect(client.simSwap.retrieveDate).toHaveBeenCalledWith("+31612345678");
     expect(payload).toEqual({
@@ -231,7 +231,7 @@ describe("kpn_sim_swap_get_date", () => {
       simSwap: { retrieveDate: vi.fn(async () => ({ latestSimChange: hoursAgo(10) })) },
     });
     const payload = parse(
-      await handleToolCall(client, "kpn_sim_swap_get_date", {
+      await handleLegacyToolCall(client, "kpn_sim_swap_get_date", {
         phoneNumber: "+31612345678",
         maxAgeHours,
       })
@@ -242,7 +242,7 @@ describe("kpn_sim_swap_get_date", () => {
   it("no SIM-swap date → isError (not proof of no swap)", async () => {
     const client = stubClient();
     const result = asTool(
-      await handleToolCall(client, "kpn_sim_swap_get_date", { phoneNumber: "0612345678" })
+      await handleLegacyToolCall(client, "kpn_sim_swap_get_date", { phoneNumber: "0612345678" })
     );
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("could not be verified");
@@ -257,7 +257,7 @@ describe("kpn_sim_swap_get_date", () => {
       },
     });
     const result = asTool(
-      await handleToolCall(client, "kpn_sim_swap_get_date", { phoneNumber: "+31612345678" })
+      await handleLegacyToolCall(client, "kpn_sim_swap_get_date", { phoneNumber: "+31612345678" })
     );
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("not a KPN mobile number or unknown");
@@ -272,7 +272,7 @@ describe("kpn_sim_swap_get_date", () => {
       },
     });
     const result = asTool(
-      await handleToolCall(client, "kpn_sim_swap_get_date", { phoneNumber: "+31612345678" })
+      await handleLegacyToolCall(client, "kpn_sim_swap_get_date", { phoneNumber: "+31612345678" })
     );
     expect(result.isError).toBe(true);
     expect(text(result)).toBe("KPN error (HTTP 502): Bad gateway (transactionId: tx-fake-1)");
@@ -285,7 +285,7 @@ describe("kpn_sim_swap_get_date", () => {
     [{ phoneNumber: "0612345678", maxAgeHours: 1.5 }, '"maxAgeHours"'],
   ])("invalid arguments %j → isError, no KPN call", async (args, message) => {
     const client = stubClient();
-    const result = asTool(await handleToolCall(client, "kpn_sim_swap_get_date", args));
+    const result = asTool(await handleLegacyToolCall(client, "kpn_sim_swap_get_date", args));
     expect(result.isError).toBe(true);
     expect(text(result)).toContain(message);
     expect(client.simSwap.retrieveDate).not.toHaveBeenCalled();

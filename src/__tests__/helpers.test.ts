@@ -4,9 +4,9 @@
  * core kpn_test_connection handler.
  */
 import { describe, expect, it, vi } from "vitest";
-import { parseKpnError } from "@wyre-ai/node-kpn";
+import { parseKpnError } from "@wyre-ai/node-kpn/legacy";
 import { normalizeNlMobile, normalizeZip } from "../handlers/addresses.js";
-import { describeKpnError, handleToolCall } from "../handlers/index.js";
+import { describeKpnError, handleLegacyToolCall } from "../handlers/index.js";
 import { MASK, maskContract } from "../handlers/masking.js";
 import { pageMeta, readPaging, toMsmPage } from "../handlers/paging.js";
 import {
@@ -174,7 +174,7 @@ function text(result: unknown): string {
 describe("dispatch", () => {
   it("unknown tools are an isError result, including prototype keys", async () => {
     for (const name of ["kpn_nope", "constructor", "__proto__"]) {
-      const result = (await handleToolCall(stubClient(), name, {})) as ToolResult;
+      const result = (await handleLegacyToolCall(stubClient(), name, {})) as ToolResult;
       expect(result.isError, name).toBe(true);
       expect(text(result)).toContain("Unknown tool");
     }
@@ -186,13 +186,13 @@ describe("dispatch", () => {
         throw parseKpnError(500, "boom");
       }),
     });
-    const result = (await handleToolCall(client, "kpn_test_connection", {})) as ToolResult;
+    const result = (await handleLegacyToolCall(client, "kpn_test_connection", {})) as ToolResult;
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("KPN error (HTTP 500)");
   });
 
   it("maps invalid arguments to an isError result", async () => {
-    const result = (await handleToolCall(stubClient(), "kpn_test_connection", {
+    const result = (await handleLegacyToolCall(stubClient(), "kpn_test_connection", {
       includeMsm: "yes",
     })) as ToolResult;
     expect(result.isError).toBe(true);
@@ -209,7 +209,7 @@ describe("kpn_test_connection", () => {
       })),
       lastQuota: { limit: 100, used: 3 },
     });
-    const result = (await handleToolCall(client, "kpn_test_connection", {})) as ToolResult;
+    const result = (await handleLegacyToolCall(client, "kpn_test_connection", {})) as ToolResult;
     expect(result.isError).toBeUndefined();
     expect(client.testConnection).toHaveBeenCalledWith({ includeMsm: true });
     const body = JSON.parse(text(result));
@@ -221,7 +221,7 @@ describe("kpn_test_connection", () => {
 
   it("skips MSM when includeMsm is false", async () => {
     const client = stubClient();
-    await handleToolCall(client, "kpn_test_connection", { includeMsm: false });
+    await handleLegacyToolCall(client, "kpn_test_connection", { includeMsm: false });
     expect(client.testConnection).toHaveBeenCalledWith({ includeMsm: false });
   });
 
@@ -232,7 +232,7 @@ describe("kpn_test_connection", () => {
         msm: { ok: false, error: "ClientId is Invalid" },
       })),
     });
-    const result = (await handleToolCall(client, "kpn_test_connection", {})) as ToolResult;
+    const result = (await handleLegacyToolCall(client, "kpn_test_connection", {})) as ToolResult;
     expect(result.isError).toBeUndefined();
     expect(text(result)).toContain("GRIP-bound");
   });
@@ -241,7 +241,7 @@ describe("kpn_test_connection", () => {
     const client = stubClient({
       testConnection: vi.fn(async () => ({ gateway: { ok: false, error: "ClientId is Invalid" } })),
     });
-    const result = (await handleToolCall(client, "kpn_test_connection", {})) as ToolResult;
+    const result = (await handleLegacyToolCall(client, "kpn_test_connection", {})) as ToolResult;
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("ClientId is Invalid");
   });

@@ -8,6 +8,10 @@ ARG COMMIT_SHA="unknown"
 ARG BUILD_DATE="unknown"
 ARG GITHUB_TOKEN
 
+# git is required while @wyre-ai/node-kpn is pinned to the Grexx branch
+# (WYRE-AI/node-kpn#2). Drop this package once that export is on the registry.
+RUN apk add --no-cache git
+
 WORKDIR /app
 
 # Copy package files
@@ -15,9 +19,16 @@ COPY package*.json ./
 
 # Install dependencies with GitHub Packages auth for @wyre-ai/* scope.
 # --ignore-scripts prevents lifecycle scripts from running before source is copied.
+# --ignore-scripts skips dependency lifecycle scripts, including the git pin's
+# prepare (which is what builds dist/). Install that package's devDependencies
+# and build it explicitly. esbuild's postinstall must run, so the inner install
+# does not pass --ignore-scripts.
 RUN echo "@wyre-ai:registry=https://npm.pkg.github.com" > .npmrc && \
     echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc && \
     npm ci --ignore-scripts && \
+    npm install --prefix node_modules/@wyre-ai/node-kpn --include=dev && \
+    npm --prefix node_modules/@wyre-ai/node-kpn run build && \
+    rm -rf node_modules/@wyre-ai/node-kpn/node_modules && \
     rm -f .npmrc
 
 # Copy source code
@@ -83,7 +94,7 @@ ARG BUILD_DATE="unknown"
 LABEL maintainer="engineering@wyre.ai"
 LABEL version="${VERSION}"
 LABEL org.opencontainers.image.title="kpn-mcp"
-LABEL org.opencontainers.image.description="Model Context Protocol server for KPN (network checks, SIM swap, business mobile)"
+LABEL org.opencontainers.image.description="Model Context Protocol server for KPN Grexx IRMA (OAuth client-credentials, realtime XML)"
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.revision="${COMMIT_SHA}"

@@ -6,7 +6,7 @@
  *   const client = stubClient({
  *     mobile: { contracts: { get: vi.fn(async () => CONTRACT) } },
  *   });
- *   await handleToolCall(client, "kpn_mobile_contracts_get", { id: 1 });
+ *   await handleLegacyToolCall(client, "kpn_mobile_contracts_get", { id: 1 });
  *   expect(client.mobile.contracts.get).toHaveBeenCalledWith(1);
  *
  * The result is typed as both the mock tree and a KpnClient, so it can be
@@ -14,7 +14,7 @@
  * Build it inside each test: vitest.config.ts sets `mockReset: true`.
  */
 import { vi, type Mock } from "vitest";
-import type { KpnClient, QuotaInfo } from "@wyre-ai/node-kpn";
+import type { KpnClient, QuotaInfo } from "@wyre-ai/node-kpn/legacy";
 
 type Methods = Record<string, Mock>;
 

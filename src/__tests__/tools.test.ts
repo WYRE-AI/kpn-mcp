@@ -2,7 +2,10 @@
 import { describe, expect, it } from "vitest";
 import { CONFIRM_ARG } from "../elicitation.js";
 import { listToolsResult } from "../mcp-server.js";
-import { TOOLS, TOOL_NAMES } from "../tools/index.js";
+import { GREXX_TOOLS, LEGACY_TOOLS, TOOLS, TOOL_NAMES } from "../tools/index.js";
+
+const GREXX_ORDER = ["kpn_grexx_test_connection", "kpn_grexx_zipcode_check"];
+const LEGACY_NAMES = LEGACY_TOOLS.map((tool) => tool.name);
 
 /** design.md §4.3 order — the single source of truth for the surface. */
 const EXPECTED_ORDER = [
@@ -48,7 +51,7 @@ const TIER_S: Record<string, string> = {
 const GATED = { ...TIER_D, ...TIER_S };
 
 function tool(name: string) {
-  const found = TOOLS.find((t) => t.name === name);
+  const found = LEGACY_TOOLS.find((t) => t.name === name);
   if (!found) throw new Error(`missing tool ${name}`);
   return found;
 }
@@ -60,14 +63,12 @@ function schemaOf(name: string) {
   };
 }
 
-describe("tool surface", () => {
-  it("has exactly 23 tools in the design.md order", () => {
-    expect(TOOLS).toHaveLength(23);
-    expect(TOOL_NAMES).toEqual(EXPECTED_ORDER);
-  });
-
-  it("every name matches ^kpn_[a-z_]+$", () => {
-    for (const name of TOOL_NAMES) expect(name).toMatch(/^kpn_[a-z_]+$/);
+describe("default Grexx surface", () => {
+  it("serves the phase-1 Grexx tools in order and nothing from developer.kpn.com", () => {
+    expect(TOOLS).toBe(GREXX_TOOLS);
+    expect(TOOL_NAMES).toEqual(GREXX_ORDER);
+    expect(TOOL_NAMES).not.toContain("kpn_disturbances_check");
+    expect(TOOL_NAMES).not.toContain("kpn_mobile_sim_block");
   });
 
   it("returns the same TOOLS reference on each listToolsResult() call", () => {
@@ -75,8 +76,39 @@ describe("tool surface", () => {
     expect(listToolsResult().tools).toBe(listToolsResult().tools);
   });
 
-  it("every tool has a description and an object inputSchema", () => {
-    for (const t of TOOLS) {
+  it("every Grexx tool is a read-only object schema with no destructive warning", () => {
+    for (const t of GREXX_TOOLS) {
+      expect(t.name).toMatch(/^kpn_grexx_[a-z_]+$/);
+      expect(t.description).toBeTruthy();
+      expect(t.inputSchema.type).toBe("object");
+      expect(t.annotations).toMatchObject({ readOnlyHint: true, openWorldHint: true });
+      expect(t.description).not.toContain("⚠");
+      expect(t.description?.toLowerCase()).not.toContain("basic auth is the default");
+    }
+  });
+
+  it("zipcode_check requires the XSD fields the SDK builder knows", () => {
+    const schema = GREXX_TOOLS[1].inputSchema as { required?: string[]; properties?: Record<string, { enum?: string[] }> };
+    expect([...(schema.required ?? [])].sort()).toEqual(
+      ["houseNumber", "isRoomNumberKnown", "portfolio", "zipCode"].sort()
+    );
+    expect(schema.properties?.portfolio?.enum).toEqual(["Business", "SMB", "Teleworker", "All"]);
+  });
+});
+
+describe("legacy developer.kpn.com catalog", () => {
+  it("keeps the 23 design.md tools in order, off the default surface", () => {
+    expect(LEGACY_TOOLS).toHaveLength(23);
+    expect(LEGACY_NAMES).toEqual(EXPECTED_ORDER);
+    expect(TOOLS).not.toBe(LEGACY_TOOLS);
+  });
+
+  it("every legacy name matches ^kpn_[a-z_]+$", () => {
+    for (const name of LEGACY_NAMES) expect(name).toMatch(/^kpn_[a-z_]+$/);
+  });
+
+  it("every legacy tool has a description and an object inputSchema", () => {
+    for (const t of LEGACY_TOOLS) {
       expect(t.description, t.name).toBeTruthy();
       expect(t.inputSchema.type, t.name).toBe("object");
     }

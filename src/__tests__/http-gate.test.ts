@@ -34,17 +34,27 @@ function createGateServer(isGatewayMode: boolean): http.Server {
     }
     if (url.pathname === "/mcp") {
       if (isGatewayMode) {
-        const { error } = resolveGatewayCredentials(
-          (name) => req.headers[name] as string | undefined
-        );
-        if (error) {
+        const resolved = resolveGatewayCredentials((name) => req.headers[name]);
+        if (resolved.rejectedUrl) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              error: { code: -32600, message: resolved.rejectedUrlError },
+              id: null,
+            })
+          );
+          return;
+        }
+        const unauthorized = resolved.grexxError ?? resolved.legacyError;
+        if (unauthorized) {
           res.writeHead(401, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({
               jsonrpc: "2.0",
               error: {
                 code: -32001,
-                message: `Unauthorized: ${error}`,
+                message: `Unauthorized: ${unauthorized}`,
                 data: { required: REQUIRED_GATEWAY_HEADERS },
               },
               id: null,
@@ -103,60 +113,55 @@ describe("gateway-mode HTTP gate", () => {
     expect(JSON.parse(res.body).status).toBe("ok");
   });
 
-  it("missing credential headers → 401 JSON-RPC -32001 naming the required headers", async () => {
+  it("missing credential headers → 401 JSON-RPC -32001 naming the Grexx headers", async () => {
     const res = await request(port, "/mcp", { method: "POST" });
     expect(res.status).toBe(401);
     const body = JSON.parse(res.body);
     expect(body.jsonrpc).toBe("2.0");
     expect(body.error.code).toBe(-32001);
-    expect(body.error.data.required).toEqual(["X-KPN-Client-Id", "X-KPN-Client-Secret"]);
+    expect(body.error.data.required).toEqual(["X-KPN-Grexx-Username", "X-KPN-Grexx-Password"]);
   });
 
-  it("a partial credential set is still 401 (never falls through to env)", async () => {
+  it("a username without a password is still 401 (never falls through to env)", async () => {
     const res = await request(port, "/mcp", {
       method: "POST",
-      headers: { "X-KPN-Client-Id": "id" },
+      headers: { "X-KPN-Grexx-Username": "user" },
     });
     expect(res.status).toBe(401);
   });
 
-  it("a half MSM pair is 401 (never silently falls back to the main pair)", async () => {
-    const halves: Array<Record<string, string>> = [
-      { "X-KPN-MSM-Client-Id": "msm-id" },
-      { "X-KPN-MSM-Client-Secret": "msm-secret" },
-    ];
-    for (const half of halves) {
-      const res = await request(port, "/mcp", {
-        method: "POST",
-        headers: { "X-KPN-Client-Id": "id", "X-KPN-Client-Secret": "secret", ...half },
-      });
-      expect(res.status).toBe(401);
-      expect(JSON.parse(res.body).error.message).toContain("MSM");
-    }
+  it("a base URL header is 400 even with a complete credential pair", async () => {
+    const res = await request(port, "/mcp", {
+      method: "POST",
+      headers: {
+        "X-KPN-Grexx-Username": "user",
+        "X-KPN-Grexx-Password": "secret",
+        "X-KPN-Grexx-Base-Url": "https://attacker.example/realtime",
+      },
+    });
+    expect(res.status).toBe(400);
+    const body = JSON.parse(res.body);
+    expect(body.error.code).toBe(-32600);
+    expect(body.error.message).toContain("KPN_GREXX_BASE_URL");
   });
 
-  it("the required pair reaches the MCP handler", async () => {
+  it("the Grexx username and password reach the MCP handler", async () => {
+    const res = await request(port, "/mcp", {
+      method: "POST",
+      headers: { "X-KPN-Grexx-Username": "user", "X-KPN-Grexx-Password": "secret" },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("legacy developer.kpn.com headers alone do not authenticate the Grexx surface", async () => {
     const res = await request(port, "/mcp", {
       method: "POST",
       headers: { "X-KPN-Client-Id": "id", "X-KPN-Client-Secret": "secret" },
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
   });
 
-  it("the required pair plus a full MSM pair reaches the MCP handler", async () => {
-    const res = await request(port, "/mcp", {
-      method: "POST",
-      headers: {
-        "X-KPN-Client-Id": "id",
-        "X-KPN-Client-Secret": "secret",
-        "X-KPN-MSM-Client-Id": "msm-id",
-        "X-KPN-MSM-Client-Secret": "msm-secret",
-      },
-    });
-    expect(res.status).toBe(200);
-  });
-
-  it("CORS allow-headers include all four X-KPN-* names; OPTIONS answers 204", async () => {
+  it("CORS allow-headers include the Grexx credential names; OPTIONS answers 204", async () => {
     const res = await request(port, "/mcp", { method: "OPTIONS" });
     expect(res.status).toBe(204);
     const allow = String(res.headers["access-control-allow-headers"]);

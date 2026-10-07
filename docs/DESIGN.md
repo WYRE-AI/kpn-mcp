@@ -1,7 +1,10 @@
 # kpn-mcp + @wyre-ai/node-kpn — Design (build contract)
 
-Status: v1 design, 2026-09-25. This document is the contract that parallel implementation agents follow.
-If code and this document disagree, fix one of them in the same PR. Do not let them drift.
+Status: v1 design, 2026-09-25, for the **developer.kpn.com** tools.
+The default server surface is Grexx/IRMA. See `docs/GREXX.md`.
+Those v1 tools stay in the repo and are served only when `KPN_LEGACY_DEVELOPER_API=1`.
+If code and this document disagree on the legacy surface, fix one of them in the same PR.
+The Grexx surface is specified in `docs/GREXX.md`, not here.
 
 - SDK repo: `/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/node-kpn` (package `@wyre-ai/node-kpn`)
 - Server repo: `/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/kpn-mcp` (package `@wyre-ai/kpn-mcp`)

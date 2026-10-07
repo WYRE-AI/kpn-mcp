@@ -1,8 +1,25 @@
 # kpn-mcp
 
-MCP server for KPN's developer APIs (Disturbance Check, Speed Check, SIM Swap,
-Mobile Services Management v11). SDK: `@wyre-ai/node-kpn` (WYRE-AI/node-kpn).
-Build contract and scope decisions: `docs/DESIGN.md`.
+MCP server for KPN IRMA on Grexx (OAuth client-credentials, realtime XML).
+SDK: `@wyre-ai/node-kpn` package root (`GrexxClient`), not `/legacy`.
+Grexx contract: `docs/GREXX.md`. The developer.kpn.com catalog is
+`docs/DESIGN.md` and is off unless `KPN_LEGACY_DEVELOPER_API=1`.
+
+## Learnings - 2026-10-07
+
+- **Acceptatie auth is OAuth client_credentials, then Bearer.** Grexx #4029
+  (2026-10-07) rejects Basic Auth on `/realtime` (`403 Auth method Basic not
+  allowed`). Do not document Basic as the default. Token mint and cache live
+  in node-kpn; this server passes username, password, and env URLs only.
+- **URL headers are rejected.** `KPN_GREXX_BASE_URL` and `KPN_GREXX_TOKEN_URL`
+  are env-only. Gateway headers are `X-KPN-Grexx-Username` and
+  `X-KPN-Grexx-Password`.
+- **Phase-1 tools follow SDK builders.** `kpn_grexx_test_connection` and
+  `kpn_grexx_zipcode_check` only. Do not invent XSD fields for the other
+  realtime calls until node-kpn ships those builders.
+- **node-kpn#2 is the Grexx export** (`cursor/grexx-oauth-client-66e0`).
+  Until it is published, kpn-mcp pins that commit. After publish, depend on
+  the semver range of the package root.
 
 ## Learnings - 2026-09-25
 

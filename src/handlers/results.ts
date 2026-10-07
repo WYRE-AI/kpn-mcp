@@ -1,6 +1,6 @@
 /** Shared tool-result helpers, the handler signature, and argument validation. */
 import type { InputRequiredResult } from "@modelcontextprotocol/server";
-import type { KpnClient } from "@wyre-ai/node-kpn";
+import type { KpnClient } from "@wyre-ai/node-kpn/legacy";
 import type { ElicitationContext } from "../elicitation.js";
 
 export type ToolContent =
@@ -75,6 +75,26 @@ export function optionalNumber(args: Record<string, unknown>, key: string): numb
     throw new ToolInputError(`Argument "${key}" must be a number.`);
   }
   return num;
+}
+
+export function requireBoolean(args: Record<string, unknown>, key: string): boolean {
+  const value = args[key];
+  if (typeof value !== "boolean") {
+    throw new ToolInputError(`Argument "${key}" is required and must be a boolean.`);
+  }
+  return value;
+}
+
+export function requireEnum<T extends string>(
+  args: Record<string, unknown>,
+  key: string,
+  allowed: readonly T[]
+): T {
+  const value = args[key];
+  if (typeof value !== "string" || !(allowed as readonly string[]).includes(value)) {
+    throw new ToolInputError(`Argument "${key}" is required and must be one of: ${allowed.join(", ")}.`);
+  }
+  return value as T;
 }
 
 export function optionalBoolean(args: Record<string, unknown>, key: string): boolean | undefined {

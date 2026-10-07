@@ -1,5 +1,5 @@
 /** kpn_test_connection: mint the OAuth tokens and report what they say. */
-import type { KpnClient } from "@wyre-ai/node-kpn";
+import type { KpnClient } from "@wyre-ai/node-kpn/legacy";
 import { errorResult, jsonResult, optionalBoolean, type ToolHandler, type ToolResult } from "./results.js";
 
 const ENTITLEMENT_NOTE =
