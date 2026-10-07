@@ -14,6 +14,7 @@ import {
   GrexxError,
   GrexxForbiddenError,
   GrexxRateLimitError,
+  GrexxValidationError,
   type GrexxClient,
 } from "@wyre-ai/node-kpn";
 import {
@@ -99,8 +100,17 @@ export function describeKpnError(error: KpnError, toolName = ""): string {
   return text;
 }
 
-/** Grexx / IRMA failure text. Does not include request bodies or credentials. */
-export function describeGrexxError(error: GrexxError): string {
+/**
+ * Grexx / IRMA failure text. Does not include request bodies or credentials.
+ *
+ * Local SDK validation (status 0: invalid_zipcode, invalid_house_number, …)
+ * is an argument error. A Grexx HTTP validation response stays a Grexx error.
+ */
+export function describeGrexxError(error: GrexxError, toolName = ""): string {
+  if (error instanceof GrexxValidationError && error.statusCode === 0) {
+    const target = toolName ? ` for ${toolName}` : "";
+    return `Invalid arguments${target}: ${error.message}`;
+  }
   const code = error.code ? `, ${error.code}` : "";
   let text = `Grexx error (HTTP ${error.statusCode}${code}): ${error.message}`;
   if (error.requestId) text += ` (x-request-id: ${error.requestId})`;
@@ -108,8 +118,11 @@ export function describeGrexxError(error: GrexxError): string {
     text += ` Rate limited (108 Too Many Requests); retry after ${error.retryAfter}s.`;
   }
   if (error instanceof GrexxAuthenticationError) {
-    text +=
-      " Check KPN_GREXX_USERNAME and KPN_GREXX_PASSWORD. Auth is OAuth client_credentials; Basic Auth is not accepted.";
+    const where =
+      process.env.AUTH_MODE === "gateway"
+        ? "X-KPN-Grexx-Username and X-KPN-Grexx-Password"
+        : "KPN_GREXX_USERNAME and KPN_GREXX_PASSWORD";
+    text += ` Check ${where}. Auth is OAuth client_credentials; Basic Auth is not accepted.`;
   }
   if (error instanceof GrexxForbiddenError && error.code === "102") {
     text += " Grexx rejected the caller IP (code 102).";
@@ -174,7 +187,7 @@ export async function handleGrexxToolCall(
     return errorResult(`Unknown tool: ${name}`);
   }
   return runHandler(GREXX_HANDLERS[name], client, name, args, NO_ELICITATION, (error) =>
-    describeGrexxError(error as GrexxError)
+    describeGrexxError(error as GrexxError, name)
   );
 }
 

@@ -67,7 +67,7 @@ Import the Grexx client from `@wyre-ai/node-kpn` (package root), not `/legacy`.
 package pins commit `d2ed68dc66d6fe5e377254bedfa19c98a2605046` on
 `cursor/grexx-oauth-client-66e0`. After that pull request merges and the breaking major
 is on GitHub Packages, replace the git pin with the published range (expected `^2.0.0`)
-and drop the Dockerfile git-build step. `/legacy` remains the developer.kpn.com client
+and drop the Dockerfile `git` package (only needed to clone this pin). `/legacy` remains the developer.kpn.com client
 for `KPN_LEGACY_DEVELOPER_API=1` only.
 
 ## Running

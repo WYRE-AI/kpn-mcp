@@ -27,7 +27,7 @@ Phase-1 tools import the Grexx client from the package root (`GrexxClient`, `zip
 git+https://github.com/WYRE-AI/node-kpn.git#d2ed68dc66d6fe5e377254bedfa19c98a2605046
 ```
 
-After #2 merges and semantic-release publishes the breaking major, replace the git pin with that published range (expected `^2.0.0`) and remove the Dockerfile `git` install plus the explicit `npm --prefix node_modules/@wyre-ai/node-kpn run build` step. The import path stays `@wyre-ai/node-kpn`, not `/legacy`.
+After #2 merges and semantic-release publishes the breaking major, replace the git pin with that published range (expected `^2.0.0`) and remove the Dockerfile `git` install (only needed to clone this pin). `npm ci --ignore-scripts` already receives the built package. The import path stays `@wyre-ai/node-kpn`, not `/legacy`.
 
 ## Tools (2)
 

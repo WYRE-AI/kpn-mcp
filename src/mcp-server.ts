@@ -14,6 +14,9 @@
  * developer.kpn.com credentials are resolved only when
  * `KPN_LEGACY_DEVELOPER_API=1`.
  */
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/server";
 import type { McpServerFactory } from "@modelcontextprotocol/server";
 import { GrexxClient, GrexxConfigError } from "@wyre-ai/node-kpn";
@@ -24,7 +27,18 @@ import { LEGACY_DEVELOPER_API_ENABLED, TOOLS } from "./tools/index.js";
 import { logger } from "./utils/logger.js";
 
 export const SERVER_NAME = "kpn-mcp";
+/** Protocol identity for MCP initialize. `/health` reports {@link packageVersion} instead. */
 export const SERVER_VERSION = "1.0.0";
+
+/** `package.json` version, read from the package root next to `src/` or `dist/`. */
+export function packageVersion(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const parsed = JSON.parse(readFileSync(join(here, "..", "package.json"), "utf8")) as {
+    version?: unknown;
+  };
+  if (typeof parsed.version === "string" && parsed.version.length > 0) return parsed.version;
+  return SERVER_VERSION;
+}
 
 export { LEGACY_DEVELOPER_API_ENABLED };
 

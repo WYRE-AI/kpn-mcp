@@ -19,16 +19,9 @@ COPY package*.json ./
 
 # Install dependencies with GitHub Packages auth for @wyre-ai/* scope.
 # --ignore-scripts prevents lifecycle scripts from running before source is copied.
-# --ignore-scripts skips dependency lifecycle scripts, including the git pin's
-# prepare (which is what builds dist/). Install that package's devDependencies
-# and build it explicitly. esbuild's postinstall must run, so the inner install
-# does not pass --ignore-scripts.
 RUN echo "@wyre-ai:registry=https://npm.pkg.github.com" > .npmrc && \
     echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc && \
     npm ci --ignore-scripts && \
-    npm install --prefix node_modules/@wyre-ai/node-kpn --include=dev && \
-    npm --prefix node_modules/@wyre-ai/node-kpn run build && \
-    rm -rf node_modules/@wyre-ai/node-kpn/node_modules && \
     rm -f .npmrc
 
 # Copy source code

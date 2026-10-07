@@ -26,8 +26,8 @@ import {
   GATEWAY_HEADERS,
   LEGACY_DEVELOPER_API_ENABLED,
   REQUIRED_GATEWAY_HEADERS,
-  SERVER_VERSION,
   createMcpServer,
+  packageVersion,
   makeMcpServerFactory,
   resolveEnvCredentials,
   resolveGatewayCredentials,
@@ -91,7 +91,7 @@ async function startHttpTransport(): Promise<void> {
       res.end(
         JSON.stringify({
           status: "ok",
-          version: SERVER_VERSION,
+          version: packageVersion(),
           mcpTransport: "http",
           authMode: isGatewayMode ? "gateway" : "env",
           legacyDeveloperApi: LEGACY_DEVELOPER_API_ENABLED,

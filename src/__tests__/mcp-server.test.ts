@@ -1,12 +1,16 @@
 /** Credential resolution + stateless tool-list invariants. */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   GREXX_GATEWAY_HEADERS,
   REQUIRED_GATEWAY_HEADERS,
+  SERVER_VERSION,
   buildLegacyCredentials,
   createMcpServer,
   listToolsResult,
   makeMcpServerFactory,
+  packageVersion,
   resolveEnvCredentials,
   resolveGatewayCredentials,
 } from "../mcp-server.js";
@@ -272,5 +276,15 @@ describe("required gateway headers", () => {
       "X-KPN-Grexx-Username",
       "X-KPN-Grexx-Password",
     ]);
+  });
+});
+
+describe("packageVersion", () => {
+  it("reports the package.json version rather than the MCP protocol identity", () => {
+    const pkg = JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf8")) as {
+      version: string;
+    };
+    expect(packageVersion()).toBe(pkg.version);
+    expect(packageVersion()).not.toBe(SERVER_VERSION);
   });
 });

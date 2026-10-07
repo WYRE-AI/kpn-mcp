@@ -14,7 +14,7 @@
 //   node scripts/smoke-dual-era.mjs
 
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -243,7 +243,10 @@ async function main() {
 
   try {
     const health = await waitForHealth();
+    const pkgVersion = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).version;
     check('health probe ok', health?.status === 'ok', `version=${health?.version}`);
+    check('health reports the package.json version', health?.version === pkgVersion,
+      `health=${health?.version} package=${pkgVersion}`);
 
     const legacyTools = await legacyLeg();
     const modernTools = await modernLeg();

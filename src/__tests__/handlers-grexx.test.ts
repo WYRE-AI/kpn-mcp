@@ -64,11 +64,39 @@ describe("kpn_grexx_test_connection", () => {
         );
       })
     );
-    const result = (await handleGrexxToolCall(client, "kpn_grexx_test_connection", {})) as ToolResult;
-    expect(result.isError).toBe(true);
-    expect(text(result)).toContain("invalid_client");
-    expect(text(result)).toContain("Basic Auth is not accepted");
-    expect(text(result)).toContain("3a1575f5-b483-46ec-a7df-cdea9c0da51b");
+    const previous = process.env.AUTH_MODE;
+    delete process.env.AUTH_MODE;
+    try {
+      const result = (await handleGrexxToolCall(client, "kpn_grexx_test_connection", {})) as ToolResult;
+      expect(result.isError).toBe(true);
+      expect(text(result)).toContain("invalid_client");
+      expect(text(result)).toContain("KPN_GREXX_USERNAME and KPN_GREXX_PASSWORD");
+      expect(text(result)).not.toContain("X-KPN-Grexx-Username");
+      expect(text(result)).toContain("Basic Auth is not accepted");
+      expect(text(result)).toContain("3a1575f5-b483-46ec-a7df-cdea9c0da51b");
+    } finally {
+      if (previous === undefined) delete process.env.AUTH_MODE;
+      else process.env.AUTH_MODE = previous;
+    }
+  });
+
+  it("names the gateway credential headers when AUTH_MODE is gateway", async () => {
+    const previous = process.env.AUTH_MODE;
+    process.env.AUTH_MODE = "gateway";
+    try {
+      const client = stub(
+        vi.fn(async () => {
+          throw new GrexxAuthenticationError("invalid_client", 401, undefined, "invalid_client");
+        })
+      );
+      const result = (await handleGrexxToolCall(client, "kpn_grexx_test_connection", {})) as ToolResult;
+      expect(text(result)).toContain("X-KPN-Grexx-Username and X-KPN-Grexx-Password");
+      expect(text(result)).not.toContain("KPN_GREXX_USERNAME");
+      expect(text(result)).toContain("OAuth client_credentials");
+    } finally {
+      if (previous === undefined) delete process.env.AUTH_MODE;
+      else process.env.AUTH_MODE = previous;
+    }
   });
 });
 
@@ -138,7 +166,32 @@ describe("kpn_grexx_zipcode_check", () => {
       zipCode: "nope",
     })) as ToolResult;
     expect(invalidResult.isError).toBe(true);
-    expect(text(invalidResult)).toContain("invalid_zipcode");
+    expect(text(invalidResult)).toBe(
+      "Invalid arguments for kpn_grexx_zipcode_check: ZipCode must be a Dutch postcode, for example 1012JS."
+    );
+    expect(text(invalidResult)).not.toContain("Grexx error (HTTP 0");
+
+    const house = stub(
+      vi.fn(async () => {
+        throw new GrexxValidationError("HouseNumber must be a positive integer.", 0, undefined, "invalid_house_number");
+      })
+    );
+    const houseResult = (await handleGrexxToolCall(house, "kpn_grexx_zipcode_check", {
+      ...args,
+      houseNumber: 0,
+    })) as ToolResult;
+    expect(text(houseResult)).toContain("Invalid arguments for kpn_grexx_zipcode_check:");
+    expect(text(houseResult)).toContain("HouseNumber must be a positive integer.");
+    expect(text(houseResult)).not.toContain("Grexx error (HTTP 0");
+
+    const remote = stub(
+      vi.fn(async () => {
+        throw new GrexxValidationError("Request failed validation.", 400, undefined, "400");
+      })
+    );
+    const remoteResult = (await handleGrexxToolCall(remote, "kpn_grexx_zipcode_check", args)) as ToolResult;
+    expect(text(remoteResult)).toContain("Grexx error (HTTP 400, 400): Request failed validation.");
+    expect(text(remoteResult)).not.toContain("Invalid arguments");
 
     const limited = new GrexxRateLimitError("Grexx rate limit exceeded (108 Too Many Requests)", 429, undefined, "108");
     limited.retryAfter = 8;
