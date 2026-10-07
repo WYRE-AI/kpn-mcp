@@ -24,12 +24,14 @@ const SAMPLE: ZipCodeCheckResult = {
   httpStatus: 200,
 };
 
+/** Extract the first text content item from a handler result for assertions. */
 function text(result: unknown): string {
   return (result as ToolResult).content[0].type === "text"
     ? ((result as ToolResult).content[0] as { text: string }).text
     : "";
 }
 
+/** Create a network-free Grexx client with an overridable zipcode-check mock. */
 function stub(zipCodeCheck = vi.fn(async () => SAMPLE)): GrexxClient & { zipCodeCheck: ReturnType<typeof vi.fn> } {
   return { zipCodeCheck } as unknown as GrexxClient & { zipCodeCheck: ReturnType<typeof vi.fn> };
 }

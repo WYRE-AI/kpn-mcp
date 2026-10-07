@@ -14,6 +14,7 @@ import {
   resolveGatewayCredentials,
 } from "../mcp-server.js";
 
+/** Create a test HTTP router that exercises the real credential resolver before a dummy MCP endpoint. */
 function createGateServer(isGatewayMode: boolean): http.Server {
   return http.createServer((req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");

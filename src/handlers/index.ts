@@ -122,6 +122,7 @@ export interface ToolClients {
   legacy?: KpnClient;
 }
 
+/** Invoke a handler and convert input, configuration, SDK, and unexpected failures to tool errors. */
 async function runHandler(
   handler: ToolHandler | GrexxToolHandler,
   client: KpnClient | GrexxClient,

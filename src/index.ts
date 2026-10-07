@@ -54,6 +54,7 @@ function startStdioTransport(): void {
   logger.info("KPN MCP server running on stdio");
 }
 
+/** Start dual-era HTTP serving with health routing, gateway credential gates, and graceful shutdown. */
 async function startHttpTransport(): Promise<void> {
   const port = parseInt(process.env.MCP_HTTP_PORT || "8080", 10);
   const host = process.env.MCP_HTTP_HOST || "0.0.0.0";

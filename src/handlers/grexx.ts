@@ -38,6 +38,7 @@ export type GrexxToolHandler = (
   args: Record<string, unknown>
 ) => Promise<ToolResult>;
 
+/** Probe the public reference address through the SDK and summarize OAuth/realtime success. */
 async function testConnection(client: GrexxClient): Promise<ToolResult> {
   const result = await client.zipCodeCheck(GREXX_CONNECTION_PROBE);
   return jsonResult({
@@ -64,6 +65,7 @@ async function testConnection(client: GrexxClient): Promise<ToolResult> {
   });
 }
 
+/** Validate tool arguments for the SDK request; throw ToolInputError for invalid types or suppliers. */
 function readZipCodeInput(args: Record<string, unknown>): ZipCodeCheckInput {
   const portfolio = requireEnum(args, "portfolio", ZIP_CODE_PORTFOLIOS) as ZipCodePortfolio;
   const zipCode = requireString(args, "zipCode");
@@ -94,6 +96,7 @@ function readZipCodeInput(args: Record<string, unknown>): ZipCodeCheckInput {
   };
 }
 
+/** Look up address availability and return parsed Grexx results without the raw XML. */
 async function zipcodeCheck(
   client: GrexxClient,
   args: Record<string, unknown>
@@ -109,6 +112,7 @@ async function zipcodeCheck(
 }
 
 export const GREXX_HANDLERS: Record<string, GrexxToolHandler> = {
+  /** Run the fixed connection probe without accepting caller-supplied address arguments. */
   kpn_grexx_test_connection: (client) => testConnection(client),
   kpn_grexx_zipcode_check: zipcodeCheck,
 };

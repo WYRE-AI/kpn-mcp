@@ -50,6 +50,7 @@ const TIER_S: Record<string, string> = {
 
 const GATED = { ...TIER_D, ...TIER_S };
 
+/** Find a legacy tool definition for schema assertions, failing when the name is absent. */
 function tool(name: string) {
   const found = LEGACY_TOOLS.find((t) => t.name === name);
   if (!found) throw new Error(`missing tool ${name}`);

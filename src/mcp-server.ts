@@ -106,17 +106,20 @@ export interface ResolveOptions {
   env?: Record<string, string | undefined>;
 }
 
+/** Trim a credential or URL value, treating missing and whitespace-only values as absent. */
 function blankToUndefined(value: string | undefined): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+/** Normalize a header value, using only the first value when Node supplies an array. */
 function headerText(value: string | string[] | undefined | null): string | undefined {
   const raw = Array.isArray(value) ? value[0] : value ?? undefined;
   return blankToUndefined(raw ?? undefined);
 }
 
+/** Return the first forbidden URL header with a non-empty value, if any. */
 function rejectedUrl(getHeader: HeaderLookup): string | undefined {
   for (const name of REJECTED_URL_HEADERS) {
     if (headerText(getHeader(name))) return name;
@@ -124,6 +127,7 @@ function rejectedUrl(getHeader: HeaderLookup): string | undefined {
   return undefined;
 }
 
+/** Build a credential-resolution failure that instructs callers to configure URLs in the environment. */
 function urlRejection(headerName: string): ResolvedCredentials {
   return {
     rejectedUrl: true,
@@ -178,6 +182,7 @@ export function buildLegacyCredentials(
 /** @deprecated Use {@link buildLegacyCredentials}. Kept for the legacy pair's call shape. */
 export const buildCredentials = buildLegacyCredentials;
 
+/** Combine the supplied OAuth credentials with optional URLs read only from the environment. */
 function attachGrexxUrls(
   username: string,
   password: string,
@@ -191,6 +196,7 @@ function attachGrexxUrls(
   return creds;
 }
 
+/** Describe missing gateway credentials and name their env-mode equivalents. */
 function missingGrexxHeaders(missing: string[]): string {
   return (
     `Missing credentials: ${missing.join(", ")} ` +
@@ -198,10 +204,12 @@ function missingGrexxHeaders(missing: string[]): string {
   );
 }
 
+/** Describe the missing Grexx environment credential variables. */
 function missingGrexxEnv(missing: string[]): string {
   return `Missing Grexx credentials: ${missing.join(" and ")} are required.`;
 }
 
+/** Validate optional legacy credentials and attach the configured base URL when credentials exist. */
 function resolveLegacy(
   clientId: string | undefined,
   clientSecret: string | undefined,
@@ -301,10 +309,12 @@ export function makeMcpServerFactory(options: { gatewayMode: boolean }): McpServ
   };
 }
 
+/** Return the active tool catalog by reference, preserving its fixed order for every caller. */
 export function listToolsResult(): { tools: typeof TOOLS } {
   return { tools: TOOLS };
 }
 
+/** Construct the OAuth client, rejecting missing base URLs before delegating validation to the SDK. */
 function grexxClient(creds: GrexxCredentials): GrexxClient {
   if (!creds.baseUrl) {
     throw new GrexxConfigError(

@@ -160,6 +160,7 @@ async function gatewayLeg(expectedToolCount) {
   }
 }
 
+/** Verify the classic initialize handshake and the ordered Grexx tool catalog; return the listed tools. */
 async function legacyLeg() {
   console.log('\nLEGACY leg (2025-era classic JSON-RPC handshake):');
   const initRes = await legacyPost({
@@ -193,6 +194,7 @@ async function legacyLeg() {
   return tools;
 }
 
+/** Verify modern protocol negotiation and the ordered Grexx catalog; close the client and return its tools. */
 async function modernLeg() {
   console.log('\nMODERN leg (@modelcontextprotocol/client v2, 2026-07-28 era):');
   const { Client, StreamableHTTPClientTransport } = await import('@modelcontextprotocol/client');
@@ -216,6 +218,7 @@ async function modernLeg() {
   return tools;
 }
 
+/** Run both protocol legs and the gateway gate checks, then stop the server and exit with the result. */
 async function main() {
   if (!existsSync(serverEntry)) {
     console.error(`Missing ${serverEntry} — run 'npm run build' first.`);

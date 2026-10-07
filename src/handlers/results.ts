@@ -77,6 +77,7 @@ export function optionalNumber(args: Record<string, unknown>, key: string): numb
   return num;
 }
 
+/** Return a required boolean argument, or throw ToolInputError without coercing other types. */
 export function requireBoolean(args: Record<string, unknown>, key: string): boolean {
   const value = args[key];
   if (typeof value !== "boolean") {
@@ -85,6 +86,7 @@ export function requireBoolean(args: Record<string, unknown>, key: string): bool
   return value;
 }
 
+/** Return a required allowed string value, or throw ToolInputError for invalid or absent input. */
 export function requireEnum<T extends string>(
   args: Record<string, unknown>,
   key: string,
