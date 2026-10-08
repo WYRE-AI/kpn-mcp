@@ -17,9 +17,9 @@ Grexx contract: `docs/GREXX.md`. The developer.kpn.com catalog is
 - **Phase-1 tools follow SDK builders.** `kpn_grexx_test_connection` and
   `kpn_grexx_zipcode_check` only. Do not invent XSD fields for the other
   realtime calls until node-kpn ships those builders.
-- **node-kpn#2 is the Grexx export** (`cursor/grexx-oauth-client-66e0`).
-  Until it is published, kpn-mcp pins that commit. After publish, depend on
-  the semver range of the package root.
+- **node-kpn 2.0.0 is the Grexx export** (`55aafd3c` on `main`, GitHub Packages).
+  Depend on `^2.0.0` from the package root. Legacy tools import
+  `@wyre-ai/node-kpn/legacy`.
 
 ## Learnings - 2026-09-25
 

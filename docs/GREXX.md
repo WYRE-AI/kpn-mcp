@@ -17,17 +17,13 @@ Gateway mode never reads the username or password from the environment, and neve
 
 A request missing either Grexx credential header is HTTP 401 JSON-RPC `-32001`. It does not fall through to env credentials.
 
-## SDK pin
+## SDK
 
 Phase-1 tools import the Grexx client from the package root (`GrexxClient`, `zipCodeCheck`, `ZIP_CODE_PORTFOLIOS`, `ZIP_CODE_SUPPLIERS`). They do not import `@wyre-ai/node-kpn/legacy`.
 
-`WYRE-AI/node-kpn` pull request [#2](https://github.com/WYRE-AI/node-kpn/pull/2) (`cursor/grexx-oauth-client-66e0`, commit `d2ed68dc66d6fe5e377254bedfa19c98a2605046`) is the Grexx export. It is not on the registry yet (latest release is still v1.0.1, the developer.kpn.com client). This repo pins that commit:
-
-```
-git+https://github.com/WYRE-AI/node-kpn.git#d2ed68dc66d6fe5e377254bedfa19c98a2605046
-```
-
-After #2 merges and semantic-release publishes the breaking major, replace the git pin with that published range (expected `^2.0.0`) and remove the Dockerfile `git` install (only needed to clone this pin). `npm ci --ignore-scripts` already receives the built package. The import path stays `@wyre-ai/node-kpn`, not `/legacy`.
+The dependency is `"@wyre-ai/node-kpn": "^2.0.0"`, published from
+[node-kpn#2](https://github.com/WYRE-AI/node-kpn/pull/2) (`55aafd3c` on `main`).
+Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
 ## Tools (2)
 

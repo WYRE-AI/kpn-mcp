@@ -41,8 +41,8 @@ Releases are cut by semantic-release from Conventional Commits.
   `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`, with no environment credential
   fallback. Grexx base and token URLs are environment-only; caller-supplied URL
   headers are rejected with HTTP 400.
-- Pin `@wyre-ai/node-kpn` to commit `d2ed68dc66d6fe5e377254bedfa19c98a2605046`
-  for the Grexx export pending its package release; legacy tools use the `/legacy` export.
+- Depend on published `@wyre-ai/node-kpn` `^2.0.0` for the Grexx export.
+  Legacy tools use the `/legacy` export.
 
 ### Notes
 

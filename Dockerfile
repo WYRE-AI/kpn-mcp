@@ -8,10 +8,6 @@ ARG COMMIT_SHA="unknown"
 ARG BUILD_DATE="unknown"
 ARG GITHUB_TOKEN
 
-# git is required while @wyre-ai/node-kpn is pinned to the Grexx branch
-# (WYRE-AI/node-kpn#2). Drop this package once that export is on the registry.
-RUN apk add --no-cache git
-
 WORKDIR /app
 
 # Copy package files

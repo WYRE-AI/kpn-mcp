@@ -63,17 +63,14 @@ When `CONDUIT_S2S_SECRET` is set, every request except `/health` must also carry
 
 Import the Grexx client from `@wyre-ai/node-kpn` (package root), not `/legacy`.
 
-[node-kpn#2](https://github.com/WYRE-AI/node-kpn/pull/2) is not published yet. This
-package pins commit `d2ed68dc66d6fe5e377254bedfa19c98a2605046` on
-`cursor/grexx-oauth-client-66e0`. After that pull request merges and the breaking major
-is on GitHub Packages, replace the git pin with the published range (expected `^2.0.0`)
-and drop the Dockerfile `git` package (only needed to clone this pin). `/legacy` remains the developer.kpn.com client
-for `KPN_LEGACY_DEVELOPER_API=1` only.
+The dependency is the published range `^2.0.0` (Grexx export from
+[node-kpn#2](https://github.com/WYRE-AI/node-kpn/pull/2), `55aafd3c`). `/legacy`
+remains the developer.kpn.com client for `KPN_LEGACY_DEVELOPER_API=1` only.
 
 ## Running
 
 ```bash
-export NODE_AUTH_TOKEN=$(gh auth token)   # GitHub Packages auth for @wyre-ai/* once the SDK is published
+export NODE_AUTH_TOKEN=$(gh auth token)   # GitHub Packages auth for @wyre-ai/*
 npm install
 npm run build
 node dist/index.js                        # stdio (default)
