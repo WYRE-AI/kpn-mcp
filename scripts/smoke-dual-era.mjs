@@ -14,7 +14,7 @@
 //   node scripts/smoke-dual-era.mjs
 
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,16 +25,14 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const GATEWAY_PORT = PORT + 300;
 const GATEWAY_BASE = `http://127.0.0.1:${GATEWAY_PORT}`;
 
-/** The gateway-injected credential headers, per the conduit vendor-config headerMapping. */
+/** Gateway credential headers. Base URL and token URL are env-only, not headers. */
 const CRED_HEADERS = {
-  'X-KPN-Client-Id': 'gateway-client-id',
-  'X-KPN-Client-Secret': 'gateway-client-secret',
+  'X-KPN-Grexx-Username': 'gateway-grexx-user',
+  'X-KPN-Grexx-Password': 'gateway-grexx-password',
 };
-/** The optional MSM pair; sending only half of it must be rejected too. */
-const MSM_HEADERS = {
-  'X-KPN-MSM-Client-Id': 'gateway-msm-client-id',
-  'X-KPN-MSM-Client-Secret': 'gateway-msm-client-secret',
-};
+
+/** Phase-1 Grexx tools. Other realtime calls wait on XSD builders in node-kpn. */
+const EXPECTED_TOOLS = ['kpn_grexx_test_connection', 'kpn_grexx_zipcode_check'];
 
 const failures = [];
 function check(label, ok, detail = '') {
@@ -86,9 +84,16 @@ async function waitForHealth(base = BASE, timeoutMs = 15000) {
  * this asserts against.
  */
 async function gatewayLeg(expectedToolCount) {
-  console.log('\nGATEWAY leg (AUTH_MODE=gateway, no env credentials):');
-  const { KPN_CLIENT_ID, KPN_CLIENT_SECRET, KPN_MSM_CLIENT_ID, KPN_MSM_CLIENT_SECRET, ...cleanEnv } =
-    process.env;
+  console.log('\nGATEWAY leg (AUTH_MODE=gateway, Grexx username/password not in env):');
+  const {
+    KPN_GREXX_USERNAME,
+    KPN_GREXX_PASSWORD,
+    KPN_CLIENT_ID,
+    KPN_CLIENT_SECRET,
+    KPN_MSM_CLIENT_ID,
+    KPN_MSM_CLIENT_SECRET,
+    ...cleanEnv
+  } = process.env;
   const child = spawn(process.execPath, [serverEntry], {
     cwd: root,
     env: {
@@ -98,6 +103,8 @@ async function gatewayLeg(expectedToolCount) {
       MCP_HTTP_PORT: String(GATEWAY_PORT),
       MCP_HTTP_HOST: '127.0.0.1',
       LOG_LEVEL: 'error',
+      // Operator-configured interface root. Username and password stay header-only.
+      KPN_GREXX_BASE_URL: 'https://grexx.test.invalid/interfaces/kpn/example/',
     },
     stdio: ['ignore', 'inherit', 'inherit'],
   });
@@ -116,19 +123,32 @@ async function gatewayLeg(expectedToolCount) {
     const none = await post({}, toolsList);
     check('no credential headers → 401', none.status === 401, `status=${none.status}`);
     const body = await none.json().catch(() => null);
-    check('401 body is a JSON-RPC error naming the required headers',
-      body?.error?.code === -32001 && Array.isArray(body?.error?.data?.required),
+    check('401 body is a JSON-RPC error naming the Grexx headers',
+      body?.error?.code === -32001 &&
+        Array.isArray(body?.error?.data?.required) &&
+        body.error.data.required.includes('X-KPN-Grexx-Username') &&
+        body.error.data.required.includes('X-KPN-Grexx-Password'),
       `code=${body?.error?.code} required=${(body?.error?.data?.required ?? []).join(',')}`);
 
-    const { 'X-KPN-Client-Secret': _omitted, ...partial } = CRED_HEADERS;
+    const { 'X-KPN-Grexx-Password': _omitted, ...partial } = CRED_HEADERS;
     const partialRes = await post(partial, toolsList);
     check('partial credential headers → 401 (no partial bind)', partialRes.status === 401, `status=${partialRes.status}`);
 
-    const halfMsm = await post({ ...CRED_HEADERS, 'X-KPN-MSM-Client-Id': MSM_HEADERS['X-KPN-MSM-Client-Id'] }, toolsList);
-    check('half MSM pair → 401 (no silent fallback to the main pair)', halfMsm.status === 401, `status=${halfMsm.status}`);
+    const poisoned = await post(
+      { ...CRED_HEADERS, 'X-KPN-Grexx-Base-Url': 'https://attacker.example/realtime' },
+      toolsList
+    );
+    check('base URL header rejected', poisoned.status === 400, `status=${poisoned.status}`);
+    const poisonedBody = await poisoned.json().catch(() => null);
+    check('base URL rejection names KPN_GREXX_BASE_URL',
+      typeof poisonedBody?.error?.message === 'string' && poisonedBody.error.message.includes('KPN_GREXX_BASE_URL'),
+      poisonedBody?.error?.message ?? '');
 
-    const withMsm = await post({ ...CRED_HEADERS, ...MSM_HEADERS }, toolsList);
-    check('required pair + full MSM pair → 200', withMsm.status === 200, `status=${withMsm.status}`);
+    const tokenHeader = await post(
+      { ...CRED_HEADERS, 'X-KPN-Grexx-Token-Url': 'https://attacker.example/oauth/access_token' },
+      toolsList
+    );
+    check('token URL header rejected', tokenHeader.status === 400, `status=${tokenHeader.status}`);
 
     const full = await post(CRED_HEADERS, toolsList);
     check('complete credential headers → 200', full.status === 200, `status=${full.status}`);
@@ -140,6 +160,7 @@ async function gatewayLeg(expectedToolCount) {
   }
 }
 
+/** Verify the classic initialize handshake and the ordered Grexx tool catalog; return the listed tools. */
 async function legacyLeg() {
   console.log('\nLEGACY leg (2025-era classic JSON-RPC handshake):');
   const initRes = await legacyPost({
@@ -167,10 +188,13 @@ async function legacyLeg() {
   const toolsRes = await legacyPost({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
   check('tools/list HTTP 200', toolsRes.status === 200, `status=${toolsRes.status}`);
   const tools = (await mcpBody(toolsRes))?.result?.tools ?? [];
-  check('tools/list returns >0 tools', tools.length > 0, `count=${tools.length}`);
+  check('tools/list returns the phase-1 Grexx tools',
+    tools.length === EXPECTED_TOOLS.length && EXPECTED_TOOLS.every((name, index) => tools[index]?.name === name),
+    `count=${tools.length} names=${tools.map((tool) => tool.name).join(',')}`);
   return tools;
 }
 
+/** Verify modern protocol negotiation and the ordered Grexx catalog; close the client and return its tools. */
 async function modernLeg() {
   console.log('\nMODERN leg (@modelcontextprotocol/client v2, 2026-07-28 era):');
   const { Client, StreamableHTTPClientTransport } = await import('@modelcontextprotocol/client');
@@ -187,11 +211,14 @@ async function modernLeg() {
   check('client negotiated the 2026-07-28 era', negotiated === '2026-07-28', `negotiated=${negotiated}`);
 
   const { tools } = await client.listTools();
-  check('tools/list returns >0 tools', tools.length > 0, `count=${tools.length}`);
+  check('tools/list returns the phase-1 Grexx tools',
+    tools.length === EXPECTED_TOOLS.length && EXPECTED_TOOLS.every((name, index) => tools[index]?.name === name),
+    `count=${tools.length} names=${tools.map((tool) => tool.name).join(',')}`);
   await client.close();
   return tools;
 }
 
+/** Run both protocol legs and the gateway gate checks, then stop the server and exit with the result. */
 async function main() {
   if (!existsSync(serverEntry)) {
     console.error(`Missing ${serverEntry} — run 'npm run build' first.`);
@@ -206,8 +233,9 @@ async function main() {
       MCP_HTTP_PORT: String(PORT),
       MCP_HTTP_HOST: '127.0.0.1',
       // env-mode dummy credentials — tools/list never touches the vendor API
-      KPN_CLIENT_ID: 'dummy-client-id',
-      KPN_CLIENT_SECRET: 'dummy-client-secret',
+      KPN_GREXX_USERNAME: 'dummy-user',
+      KPN_GREXX_PASSWORD: 'dummy-password',
+      KPN_GREXX_BASE_URL: 'https://grexx.test.invalid/interfaces/kpn/example/',
       LOG_LEVEL: 'error',
     },
     stdio: ['ignore', 'inherit', 'inherit'],
@@ -215,7 +243,10 @@ async function main() {
 
   try {
     const health = await waitForHealth();
+    const pkgVersion = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).version;
     check('health probe ok', health?.status === 'ok', `version=${health?.version}`);
+    check('health reports the package.json version', health?.version === pkgVersion,
+      `health=${health?.version} package=${pkgVersion}`);
 
     const legacyTools = await legacyLeg();
     const modernTools = await modernLeg();

@@ -10,6 +10,9 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Added
 
+- `kpn_grexx_test_connection`: verify OAuth and realtime access with a zipcode probe
+  of public reference address 1012JS 1.
+- `kpn_grexx_zipcode_check`: look up address technology and speeds through Grexx IRMA.
 - Initial KPN MCP server: flat 23-tool surface over `@wyre-ai/node-kpn` covering
   Disturbance Check, Internet Speed Check, SIM Swap and Mobile Services Management (MSM v11).
 - Dual-era serving on the v2 SDK (`^2.0.0-beta.5`): one shared `McpServerFactory` via
@@ -28,6 +31,18 @@ Releases are cut by semantic-release from Conventional Commits.
 - GHCR container (node:22-alpine multi-stage, non-root, linux/amd64), MCP Registry
   `server.json`, fleet CI via the centralized reusable release workflow. No deploy job:
   KPN is a conduit-only vendor.
+
+### Changed
+
+- The default tool catalog now contains the two Grexx tools. Set
+  `KPN_LEGACY_DEVELOPER_API=1` to append the existing 23 developer.kpn.com tools.
+- Grexx uses OAuth 2.0 client credentials and Bearer authentication, with token minting,
+  caching, and the 401 remint handled by `@wyre-ai/node-kpn`. Gateway mode requires
+  `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`, with no environment credential
+  fallback. Grexx base and token URLs are environment-only; caller-supplied URL
+  headers are rejected with HTTP 400.
+- Depend on published `@wyre-ai/node-kpn` `^2.0.0` for the Grexx export.
+  Legacy tools use the `/legacy` export.
 
 ### Notes
 

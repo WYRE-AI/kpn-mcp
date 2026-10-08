@@ -1,7 +1,7 @@
 {
   "name": "@wyre-ai/kpn-mcp",
   "version": "0.0.0-semantically-released",
-  "description": "KPN MCP server for Claude: network disturbances, address availability, SIM swap and business mobile (MSM)",
+  "description": "KPN MCP server for Grexx IRMA (OAuth client-credentials, realtime XML). Legacy developer.kpn.com tools are opt-in.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -33,7 +33,7 @@
   "dependencies": {
     "@modelcontextprotocol/node": "^2.0.0-beta.5",
     "@modelcontextprotocol/server": "^2.0.0-beta.5",
-    "@wyre-ai/node-kpn": "^1.0.1"
+    "@wyre-ai/node-kpn": "^2.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

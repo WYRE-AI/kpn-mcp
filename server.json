@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.WYRE-AI/kpn-mcp",
-  "title": "KPN",
-  "description": "MCP server for KPN: outage checks, address availability, SIM swap and business mobile (MSM).",
+  "title": "KPN Grexx",
+  "description": "MCP server for KPN IRMA on Grexx: OAuth client-credentials and realtime XML (connection check, zip-code technology and speeds). Legacy developer.kpn.com tools stay off unless KPN_LEGACY_DEVELOPER_API=1.",
   "repository": {
     "url": "https://github.com/WYRE-AI/kpn-mcp",
     "source": "github"
@@ -18,34 +18,66 @@
       },
       "environmentVariables": [
         {
-          "name": "KPN_CLIENT_ID",
-          "description": "KPN API Store project client ID (developer.kpn.com → Dashboard → Projects)",
+          "name": "KPN_GREXX_USERNAME",
+          "description": "Grexx API username. Sent as the OAuth client_credentials client_id (portal: API Gegevens). Not Basic Auth.",
           "isRequired": true,
           "format": "string"
         },
         {
-          "name": "KPN_CLIENT_SECRET",
-          "description": "KPN API Store project client secret",
+          "name": "KPN_GREXX_PASSWORD",
+          "description": "Grexx API password. Sent as the OAuth client_secret with scope=all.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"
         },
         {
+          "name": "KPN_GREXX_BASE_URL",
+          "description": "Grexx interface root, without /realtime. Env only — never a gateway header. No default; acceptatie and production differ.",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "KPN_GREXX_TOKEN_URL",
+          "description": "OAuth token endpoint. Env only — never a gateway header. Production will differ from acceptatie.",
+          "isRequired": false,
+          "default": "https://service-accept.grexx.today/oauth/access_token",
+          "format": "string"
+        },
+        {
+          "name": "KPN_LEGACY_DEVELOPER_API",
+          "description": "Set to 1 to also register the developer.kpn.com tools (disturbances, availability, SIM swap, MSM). Default is Grexx only.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "KPN_CLIENT_ID",
+          "description": "Legacy developer.kpn.com project client ID. Used only when KPN_LEGACY_DEVELOPER_API=1.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "KPN_CLIENT_SECRET",
+          "description": "Legacy developer.kpn.com project client secret. Used only when KPN_LEGACY_DEVELOPER_API=1, together with KPN_CLIENT_ID.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
           "name": "KPN_MSM_CLIENT_ID",
-          "description": "Optional customer GRIP-bound Mobile Services Management app ID (falls back to KPN_CLIENT_ID)",
+          "description": "Optional legacy MSM app ID. Used only when KPN_LEGACY_DEVELOPER_API=1. Must be paired with KPN_MSM_CLIENT_SECRET.",
           "isRequired": false,
           "format": "string"
         },
         {
           "name": "KPN_MSM_CLIENT_SECRET",
-          "description": "Optional MSM app secret; must be set together with KPN_MSM_CLIENT_ID",
+          "description": "Optional legacy MSM app secret. Used only when KPN_LEGACY_DEVELOPER_API=1, together with KPN_MSM_CLIENT_ID.",
           "isRequired": false,
           "isSecret": true,
           "format": "string"
         },
         {
           "name": "KPN_BASE_URL",
-          "description": "KPN API base URL (env mode only)",
+          "description": "Legacy developer.kpn.com base URL. Env only. Used only when KPN_LEGACY_DEVELOPER_API=1.",
           "isRequired": false,
           "default": "https://api-prd.kpn.com",
           "format": "string"
@@ -59,7 +91,7 @@
         },
         {
           "name": "AUTH_MODE",
-          "description": "Credential source: 'env' reads vars locally, 'gateway' expects header injection from the WYRE MCP Gateway.",
+          "description": "Credential source: 'env' reads KPN_GREXX_* locally, 'gateway' expects X-KPN-Grexx-Username and X-KPN-Grexx-Password. Base URL and token URL stay env-only.",
           "isRequired": false,
           "default": "env",
           "format": "string"

@@ -25,9 +25,14 @@ if code and design disagree, fix one of them in the same PR.
 - **Stateless tool surface**: `tools/list` must return the same tools in the same order for
   every caller. No sessions, no per-user variance, no runtime sorting/filtering.
 - **Never `legacy: 'reject'`** on `createMcpHandler`: it turns away every 2025-era client.
-- **401 gate before the handler** in gateway mode; never fall through to env credentials,
-  and reject a half MSM pair.
-- **No base URL from headers.** `KPN_BASE_URL` is env-mode only.
+- **401 gate before the handler** in gateway mode; never fall through to env credentials.
+  Required headers are `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`. When
+  `KPN_LEGACY_DEVELOPER_API=1`, a half MSM pair is still rejected.
+- **No base URL or token URL from headers.** `KPN_GREXX_BASE_URL` and
+  `KPN_GREXX_TOKEN_URL` are env-only. A URL header is HTTP 400.
+- **Grexx-first tool list.** Default `tools/list` is the `kpn_grexx_*` phase-1
+  tools. Do not add a realtime tool whose fields are not in an `@wyre-ai/node-kpn`
+  builder. Legacy `kpn_*` tools stay behind `KPN_LEGACY_DEVELOPER_API=1`.
 - **MRTR safety**: every read and elicitation happens before the single mutating KPN call.
 - **No retries on MSM order POSTs**; the SDK enforces this, handlers must not add their own.
 - **PIN/PUK masked** in every contract or order result except `kpn_mobile_contracts_get_puk`.

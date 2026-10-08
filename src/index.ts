@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * KPN MCP server — flat 23-tool surface.
+ * KPN MCP server — Grexx IRMA realtime tools, legacy developer.kpn.com opt-in.
  *
  * Transports:
  * - stdio (default): local Claude Desktop / CLI usage. `serveStdio` owns the
@@ -11,12 +11,12 @@
  *   modern envelope traffic natively. NEVER `legacy: 'reject'`.
  *
  * Credentials via environment variables (env mode):
- * - KPN_CLIENT_ID / KPN_CLIENT_SECRET (required)
- * - KPN_MSM_CLIENT_ID / KPN_MSM_CLIENT_SECRET (optional pair)
- * - KPN_BASE_URL (optional; env mode only)
- * Or via gateway headers (AUTH_MODE=gateway):
- * - X-KPN-Client-Id / X-KPN-Client-Secret (required)
- * - X-KPN-MSM-Client-Id / X-KPN-MSM-Client-Secret (optional pair)
+ * - KPN_GREXX_USERNAME / KPN_GREXX_PASSWORD / KPN_GREXX_BASE_URL (required)
+ * - KPN_GREXX_TOKEN_URL (optional; acceptatie default inside node-kpn)
+ * Gateway headers (AUTH_MODE=gateway) supply username and password only:
+ * - X-KPN-Grexx-Username / X-KPN-Grexx-Password
+ * Base URL and token URL are never read from headers.
+ * Set KPN_LEGACY_DEVELOPER_API=1 to also serve developer.kpn.com tools.
  */
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { createMcpHandler } from "@modelcontextprotocol/server";
@@ -24,9 +24,10 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import {
   GATEWAY_HEADERS,
+  LEGACY_DEVELOPER_API_ENABLED,
   REQUIRED_GATEWAY_HEADERS,
-  SERVER_VERSION,
   createMcpServer,
+  packageVersion,
   makeMcpServerFactory,
   resolveEnvCredentials,
   resolveGatewayCredentials,
@@ -47,12 +48,13 @@ const CORS_ALLOW_HEADERS = [
 
 /** stdio (default). Fresh server per process; env-mode credentials. */
 function startStdioTransport(): void {
-  serveStdio(() => createMcpServer(resolveEnvCredentials().creds), {
+  serveStdio(() => createMcpServer(resolveEnvCredentials()), {
     onerror: (error) => logger.error("stdio serving error", { error: error.message }),
   });
   logger.info("KPN MCP server running on stdio");
 }
 
+/** Start dual-era HTTP serving with health routing, gateway credential gates, and graceful shutdown. */
 async function startHttpTransport(): Promise<void> {
   const port = parseInt(process.env.MCP_HTTP_PORT || "8080", 10);
   const host = process.env.MCP_HTTP_HOST || "0.0.0.0";
@@ -89,9 +91,10 @@ async function startHttpTransport(): Promise<void> {
       res.end(
         JSON.stringify({
           status: "ok",
-          version: SERVER_VERSION,
+          version: packageVersion(),
           mcpTransport: "http",
           authMode: isGatewayMode ? "gateway" : "env",
+          legacyDeveloperApi: LEGACY_DEVELOPER_API_ENABLED,
           timestamp: new Date().toISOString(),
         })
       );
@@ -114,17 +117,27 @@ async function startHttpTransport(): Promise<void> {
       // operator's tenant data to whoever asked (cross-tenant leak). A half
       // MSM pair is rejected too, rather than silently using the main pair.
       if (isGatewayMode) {
-        const { error } = resolveGatewayCredentials(
-          (name) => req.headers[name] as string | undefined
-        );
-        if (error) {
+        const resolved = resolveGatewayCredentials((name) => req.headers[name]);
+        if (resolved.rejectedUrl) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              error: { code: -32600, message: resolved.rejectedUrlError },
+              id: null,
+            })
+          );
+          return;
+        }
+        const unauthorized = resolved.grexxError ?? resolved.legacyError;
+        if (unauthorized) {
           res.writeHead(401, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({
               jsonrpc: "2.0",
               error: {
                 code: -32001,
-                message: `Unauthorized: ${error}`,
+                message: `Unauthorized: ${unauthorized}`,
                 data: { required: REQUIRED_GATEWAY_HEADERS },
               },
               id: null,

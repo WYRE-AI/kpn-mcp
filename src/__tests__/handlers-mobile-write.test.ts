@@ -9,9 +9,9 @@
  */
 import { describe, expect, it, vi, type Mock } from "vitest";
 import type { InputRequiredResult } from "@modelcontextprotocol/server";
-import { NotFoundError, ServerError, ValidationError } from "@wyre-ai/node-kpn";
+import { NotFoundError, ServerError, ValidationError } from "@wyre-ai/node-kpn/legacy";
 import { CONFIRM_ARG, type ElicitationContext } from "../elicitation.js";
-import { handleToolCall } from "../handlers/index.js";
+import { handleLegacyToolCall } from "../handlers/index.js";
 import type { ToolResult } from "../handlers/results.js";
 import { stubClient, type StubClient, type StubTree } from "./stub-client.js";
 
@@ -162,14 +162,14 @@ describe.each(CASES)("$name", ({ name, args, mutation, lookup, target }) => {
   describe("confirmation gate (all four outcomes)", () => {
     it("form-capable caller, no response → input_required naming the target; no mutation", async () => {
       const client = readyClient();
-      const result = await handleToolCall(client, name, args, FORM_CAPABLE);
+      const result = await handleLegacyToolCall(client, name, args, FORM_CAPABLE);
       expect(askMessage(result)).toContain(target);
       expect(mutation(client)).not.toHaveBeenCalled();
     });
 
     it("accepted → the mutation fires exactly once", async () => {
       const client = readyClient();
-      const result = asTool(await handleToolCall(client, name, args, answered(true)));
+      const result = asTool(await handleLegacyToolCall(client, name, args, answered(true)));
       expect(result.isError).toBeUndefined();
       expect(mutation(client)).toHaveBeenCalledTimes(1);
       expect(text(result)).toContain("kpn_mobile_orders_get");
@@ -177,14 +177,14 @@ describe.each(CASES)("$name", ({ name, args, mutation, lookup, target }) => {
 
     it("declined → cancelled, no mutation", async () => {
       const client = readyClient();
-      const result = await handleToolCall(client, name, args, answered(false));
+      const result = await handleLegacyToolCall(client, name, args, answered(false));
       expect(text(result)).toBe("Cancelled; nothing was changed.");
       expect(mutation(client)).not.toHaveBeenCalled();
     });
 
     it("no elicitation and no CONFIRM_ARG → blocked, no mutation", async () => {
       const client = readyClient();
-      const result = asTool(await handleToolCall(client, name, args));
+      const result = asTool(await handleLegacyToolCall(client, name, args));
       expect(result.isError).toBe(true);
       expect(text(result)).toContain(CONFIRM_ARG);
       expect(text(result)).toContain(target);
@@ -193,7 +193,7 @@ describe.each(CASES)("$name", ({ name, args, mutation, lookup, target }) => {
 
     it("no elicitation but CONFIRM_ARG: true → proceeds once", async () => {
       const client = readyClient();
-      const result = asTool(await handleToolCall(client, name, { ...args, [CONFIRM_ARG]: true }));
+      const result = asTool(await handleLegacyToolCall(client, name, { ...args, [CONFIRM_ARG]: true }));
       expect(result.isError).toBeUndefined();
       expect(mutation(client)).toHaveBeenCalledTimes(1);
     });
@@ -202,7 +202,7 @@ describe.each(CASES)("$name", ({ name, args, mutation, lookup, target }) => {
   it("invalid argument → isError, nothing called", async () => {
     const client = readyClient();
     const idKey = "contractId" in args ? "contractId" : "orderId";
-    const result = asTool(await handleToolCall(client, name, { ...args, [idKey]: "abc" }));
+    const result = asTool(await handleLegacyToolCall(client, name, { ...args, [idKey]: "abc" }));
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("Invalid arguments");
     expect(lookup(client)).not.toHaveBeenCalled();
@@ -212,7 +212,7 @@ describe.each(CASES)("$name", ({ name, args, mutation, lookup, target }) => {
   it("empty lookup result → isError 'no … found', no mutation", async () => {
     const client = readyClient();
     lookup(client).mockResolvedValue({});
-    const result = asTool(await handleToolCall(client, name, { ...args, [CONFIRM_ARG]: true }));
+    const result = asTool(await handleLegacyToolCall(client, name, { ...args, [CONFIRM_ARG]: true }));
     expect(result.isError).toBe(true);
     expect(text(result)).toMatch(/No KPN mobile (contract|order) found/);
     expect(mutation(client)).not.toHaveBeenCalled();
@@ -221,7 +221,7 @@ describe.each(CASES)("$name", ({ name, args, mutation, lookup, target }) => {
   it("SDK error on a pre-condition read → isError, no mutation", async () => {
     const client = readyClient();
     lookup(client).mockRejectedValue(new NotFoundError("Not found", 404, {}));
-    const result = asTool(await handleToolCall(client, name, { ...args, [CONFIRM_ARG]: true }));
+    const result = asTool(await handleLegacyToolCall(client, name, { ...args, [CONFIRM_ARG]: true }));
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("KPN error (HTTP 404");
     expect(mutation(client)).not.toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe.each(CASES)("$name", ({ name, args, mutation, lookup, target }) => {
   it("SDK 5xx on the mutation → isError with the check-before-retry hint", async () => {
     const client = readyClient();
     mutation(client).mockRejectedValue(new ServerError("Bad gateway", 502, {}));
-    const result = asTool(await handleToolCall(client, name, { ...args, [CONFIRM_ARG]: true }));
+    const result = asTool(await handleLegacyToolCall(client, name, { ...args, [CONFIRM_ARG]: true }));
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("kpn_mobile_orders_list before retrying");
     expect(mutation(client)).toHaveBeenCalledTimes(1);
@@ -252,7 +252,7 @@ describe("SIM tools: pre-conditions and payloads", () => {
       },
     });
     const args = { contractId: CONTRACT_ID, esim: true, email: "it@example.test", [CONFIRM_ARG]: true };
-    const result = asTool(await handleToolCall(client, name, args));
+    const result = asTool(await handleLegacyToolCall(client, name, args));
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("not currently allowed");
     expect(text(result)).toContain("#555 (KPN-REF-1, IN_PROGRESS)");
@@ -263,7 +263,7 @@ describe("SIM tools: pre-conditions and payloads", () => {
     const client = readyClient();
     mocks(client).contracts.getOperations.mockResolvedValue({ contractId: CONTRACT_ID });
     const result = asTool(
-      await handleToolCall(client, "kpn_mobile_sim_block", { contractId: CONTRACT_ID, [CONFIRM_ARG]: true })
+      await handleLegacyToolCall(client, "kpn_mobile_sim_block", { contractId: CONTRACT_ID, [CONFIRM_ARG]: true })
     );
     expect(result.isError).toBe(true);
     expect(mocks(client).contracts.blockSim).not.toHaveBeenCalled();
@@ -271,7 +271,7 @@ describe("SIM tools: pre-conditions and payloads", () => {
 
   it("block sends the contract id and a default WYRE reference number", async () => {
     const client = readyClient();
-    const result = await handleToolCall(client, "kpn_mobile_sim_block", {
+    const result = await handleLegacyToolCall(client, "kpn_mobile_sim_block", {
       contractId: CONTRACT_ID,
       [CONFIRM_ARG]: true,
     });
@@ -286,7 +286,7 @@ describe("SIM tools: pre-conditions and payloads", () => {
 
   it("a caller-supplied reference number is passed through; > 25 chars is rejected", async () => {
     const client = readyClient();
-    await handleToolCall(client, "kpn_mobile_sim_unblock", {
+    await handleLegacyToolCall(client, "kpn_mobile_sim_unblock", {
       contractId: CONTRACT_ID,
       referenceNumber: "TICKET-42",
       [CONFIRM_ARG]: true,
@@ -297,7 +297,7 @@ describe("SIM tools: pre-conditions and payloads", () => {
     });
 
     const tooLong = asTool(
-      await handleToolCall(client, "kpn_mobile_sim_unblock", {
+      await handleLegacyToolCall(client, "kpn_mobile_sim_unblock", {
         contractId: CONTRACT_ID,
         referenceNumber: "X".repeat(26),
         [CONFIRM_ARG]: true,
@@ -310,7 +310,7 @@ describe("SIM tools: pre-conditions and payloads", () => {
   it("the confirmation never contains the contract's PIN or PUK", async () => {
     const client = readyClient();
     const message = askMessage(
-      await handleToolCall(client, "kpn_mobile_sim_block", { contractId: CONTRACT_ID }, FORM_CAPABLE)
+      await handleLegacyToolCall(client, "kpn_mobile_sim_block", { contractId: CONTRACT_ID }, FORM_CAPABLE)
     );
     expect(message).not.toContain(CONTRACT.pin);
     expect(message).not.toContain(CONTRACT.puk);
@@ -327,7 +327,7 @@ describe("kpn_mobile_sim_replace", () => {
       new ValidationError("SIM card number is invalid", 400, {}, "INVALID_SIM_CARD_NUMBER")
     );
     const result = asTool(
-      await handleToolCall(client, "kpn_mobile_sim_replace", { ...PHYSICAL, [CONFIRM_ARG]: true })
+      await handleLegacyToolCall(client, "kpn_mobile_sim_replace", { ...PHYSICAL, [CONFIRM_ARG]: true })
     );
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("INVALID_SIM_CARD_NUMBER");
@@ -337,7 +337,7 @@ describe("kpn_mobile_sim_replace", () => {
 
   it("physical SIM: validates the ICCID before the gate and sends it", async () => {
     const client = readyClient();
-    await handleToolCall(client, "kpn_mobile_sim_replace", {
+    await handleLegacyToolCall(client, "kpn_mobile_sim_replace", {
       ...PHYSICAL,
       wishDate: "2026-10-01",
       [CONFIRM_ARG]: true,
@@ -358,7 +358,7 @@ describe("kpn_mobile_sim_replace", () => {
 
   it("eSIM: skips the ICCID validator and sends the email", async () => {
     const client = readyClient();
-    const ask = await handleToolCall(
+    const ask = await handleLegacyToolCall(
       client,
       "kpn_mobile_sim_replace",
       { contractId: CONTRACT_ID, esim: true, email: "it@example.test" },
@@ -366,7 +366,7 @@ describe("kpn_mobile_sim_replace", () => {
     );
     expect(askMessage(ask)).toContain("it@example.test");
 
-    await handleToolCall(
+    await handleLegacyToolCall(
       client,
       "kpn_mobile_sim_replace",
       { contractId: CONTRACT_ID, esim: true, email: "it@example.test" },
@@ -387,7 +387,7 @@ describe("kpn_mobile_sim_replace", () => {
   ])("rejects %o (bad %s) before any KPN call", async (args, key) => {
     const client = readyClient();
     const result = asTool(
-      await handleToolCall(client, "kpn_mobile_sim_replace", { ...args, [CONFIRM_ARG]: true })
+      await handleLegacyToolCall(client, "kpn_mobile_sim_replace", { ...args, [CONFIRM_ARG]: true })
     );
     expect(result.isError).toBe(true);
     expect(text(result)).toContain(key);
@@ -403,7 +403,7 @@ describe("kpn_mobile_orders_authorize", () => {
       const client = readyClient();
       mocks(client).orders.get.mockResolvedValue({ ...UNAUTHORIZED_ORDER, status });
       const result = asTool(
-        await handleToolCall(client, "kpn_mobile_orders_authorize", {
+        await handleLegacyToolCall(client, "kpn_mobile_orders_authorize", {
           orderId: ORDER_ID,
           [CONFIRM_ARG]: true,
         })
@@ -417,7 +417,7 @@ describe("kpn_mobile_orders_authorize", () => {
   it("confirmation names the type, the recipient and both costs in euros", async () => {
     const client = readyClient();
     const message = askMessage(
-      await handleToolCall(client, "kpn_mobile_orders_authorize", { orderId: ORDER_ID }, FORM_CAPABLE)
+      await handleLegacyToolCall(client, "kpn_mobile_orders_authorize", { orderId: ORDER_ID }, FORM_CAPABLE)
     );
     expect(message).toContain("New mobile line");
     expect(message).toContain("Piet Pietersen");
@@ -427,7 +427,7 @@ describe("kpn_mobile_orders_authorize", () => {
 
   it("authorizes by order id", async () => {
     const client = readyClient();
-    await handleToolCall(client, "kpn_mobile_orders_authorize", { orderId: ORDER_ID }, answered(true));
+    await handleLegacyToolCall(client, "kpn_mobile_orders_authorize", { orderId: ORDER_ID }, answered(true));
     expect(mocks(client).orders.authorize).toHaveBeenCalledWith(ORDER_ID);
   });
 });
@@ -440,7 +440,7 @@ describe("kpn_mobile_orders_cancel", () => {
       cancelOrder: { enabled: false, visible: true },
     });
     const result = asTool(
-      await handleToolCall(client, "kpn_mobile_orders_cancel", {
+      await handleLegacyToolCall(client, "kpn_mobile_orders_cancel", {
         orderId: ORDER_ID,
         [CONFIRM_ARG]: true,
       })
@@ -454,7 +454,7 @@ describe("kpn_mobile_orders_cancel", () => {
     const client = readyClient();
     mocks(client).orders.get.mockResolvedValue({ id: ORDER_ID, status: "NEW" });
     const result = asTool(
-      await handleToolCall(client, "kpn_mobile_orders_cancel", {
+      await handleLegacyToolCall(client, "kpn_mobile_orders_cancel", {
         orderId: ORDER_ID,
         [CONFIRM_ARG]: true,
       })
@@ -465,7 +465,7 @@ describe("kpn_mobile_orders_cancel", () => {
 
   it("passes the note through and reports the cancellation", async () => {
     const client = readyClient();
-    const result = await handleToolCall(client, "kpn_mobile_orders_cancel", {
+    const result = await handleLegacyToolCall(client, "kpn_mobile_orders_cancel", {
       orderId: CANCEL_ORDER_ID,
       note: "Ordered by mistake",
       [CONFIRM_ARG]: true,

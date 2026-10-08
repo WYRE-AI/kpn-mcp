@@ -33,8 +33,8 @@ const { contractsApi } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@wyre-ai/node-kpn", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@wyre-ai/node-kpn")>();
+vi.mock("@wyre-ai/node-kpn/legacy", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@wyre-ai/node-kpn/legacy")>();
   return {
     ...actual,
     KpnClient: class {
@@ -43,7 +43,11 @@ vi.mock("@wyre-ai/node-kpn", async (importOriginal) => {
   };
 });
 
+// Captured when mcp-server loads. This file is the only suite that needs the
+// developer.kpn.com tools; the default surface is Grexx-only.
+process.env.KPN_LEGACY_DEVELOPER_API = "1";
 const { makeMcpServerFactory } = await import("../mcp-server.js");
+delete process.env.KPN_LEGACY_DEVELOPER_API;
 
 const ENV_KEYS = ["KPN_CLIENT_ID", "KPN_CLIENT_SECRET"] as const;
 
