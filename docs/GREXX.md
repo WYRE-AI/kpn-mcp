@@ -70,7 +70,7 @@ Results are JSON: `request`, `response`, `code`, `messages`, `requestId`, `httpS
 
 - **`NinaResponse`, HTTP 200.** `<NinaResponse><IsSuccess>false</IsSuccess><ErrorCode>…</ErrorCode>…`: seen for 105 (unknown message type), 107 (message type not allowed), 109 (XSD validation) and 68 (unknown error). It has no `Status`, so node-kpn 2.1.0 returns it as success; the handler maps it with `parseGrexxError` (102 forbidden, 108 rate limit). A builder tool reports it as an unexpected root; `describeGrexxError` decodes it.
 - **`Status/Code` `ValidationError` or `UnknownError`** on the normal response root: node-kpn throws a typed `GrexxError`.
-- **Root `ErrorMessage`** on responses without `Status` (CustomerData, CarrierInfo, Prequalification, RadiusCheck, RasCheck, GetMobileSettings): `isError` with the message and the data.
+- **Root `ErrorMessage`** on responses without `Status` (CustomerData, CarrierInfo, Prequalification, RadiusCheck, RasCheck, GetMobileSettings): `isError` with the message, request, response root, code and request id. The response data is left out, since error text can end up in gateway logs.
 
 Error text never includes a raw response body: node-kpn uses the body as the message when Grexx sends an error without one, and that body can hold SIM codes.
 

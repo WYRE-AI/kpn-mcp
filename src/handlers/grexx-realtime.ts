@@ -188,11 +188,11 @@ export async function callRealtime(
     data: masked,
   };
   // Responses without a Status block report failure only through ErrorMessage.
+  // Error text can land in gateway logs, so it carries no response data.
   const errorMessage = text(root.ErrorMessage);
   if (errorMessage) {
-    return errorResult(
-      `Grexx ${result.rootElement} reported an error: ${errorMessage}\n${JSON.stringify(output, null, 2)}`
-    );
+    const meta = { request: output.request, response: output.response, code: output.code, requestId: output.requestId };
+    return errorResult(`Grexx ${result.rootElement} reported an error: ${errorMessage}\n${JSON.stringify(meta, null, 2)}`);
   }
   return jsonResult(output);
 }

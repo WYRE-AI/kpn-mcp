@@ -259,13 +259,16 @@ describe("responses", () => {
     expect(text(result)).not.toContain("maintenance");
   });
 
-  it("treats a root ErrorMessage as an error and still returns the data", async () => {
+  it("treats a root ErrorMessage as an error without echoing the response data", async () => {
     const xml =
-      "<RadiusCheckResponse_V1><ErrorMessage>Radius check niet beschikbaar voor dit product</ErrorMessage><ResponseItems /></RadiusCheckResponse_V1>";
+      "<RadiusCheckResponse_V1><ErrorMessage>Radius check niet beschikbaar voor dit product</ErrorMessage>" +
+      "<ResponseItems><ResponseItem><Username>jan@example.nl</Username></ResponseItem></ResponseItems></RadiusCheckResponse_V1>";
     const result = (await handleGrexxToolCall(stub(xml).client, "kpn_grexx_radius_check", { orderId: 1 })) as ToolResult;
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("Radius check niet beschikbaar voor dit product");
     expect(text(result)).toContain('"response": "RadiusCheckResponse_V1"');
+    expect(text(result)).not.toContain('"data"');
+    expect(text(result)).not.toContain("jan@example.nl");
   });
 });
 
