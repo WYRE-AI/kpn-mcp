@@ -48,7 +48,8 @@ describe("kpn_grexx_test_connection", () => {
     expect(body.code).toBe("Success");
     expect(body.supplierNames).toEqual(["KPN", "KPNWEAS", "Tele2Fiber"]);
     expect(body.requestId).toBe(SAMPLE.requestId);
-    expect(body.note).toContain("Basic Auth is not used");
+    expect(body.note).toContain("The SDK minted the token with HTTP Basic");
+    expect(body.note).toContain("Basic Auth is not sent on POST /realtime");
     expect(text(result)).not.toContain(SAMPLE.rawXml);
   });
 

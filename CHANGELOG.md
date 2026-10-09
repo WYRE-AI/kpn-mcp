@@ -34,6 +34,11 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Changed
 
+- Depend on `@wyre-ai/node-kpn` `^2.0.1` (tag `v2.0.1`). Grexx token minting stays
+  in the SDK, which sends the client credentials as HTTP Basic to the token
+  endpoint. This server still only passes the username, password, and env URLs
+  into `GrexxClient`. It does not mint the token and does not post `client_id`
+  or `client_secret` in a form body. `POST /realtime` still uses the Bearer token.
 - The default tool catalog now contains the two Grexx tools. Set
   `KPN_LEGACY_DEVELOPER_API=1` to append the existing 23 developer.kpn.com tools.
 - Grexx uses OAuth 2.0 client credentials and Bearer authentication, with token minting,
@@ -41,8 +46,7 @@ Releases are cut by semantic-release from Conventional Commits.
   `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`, with no environment credential
   fallback. Grexx base and token URLs are environment-only; caller-supplied URL
   headers are rejected with HTTP 400.
-- Depend on published `@wyre-ai/node-kpn` `^2.0.0` for the Grexx export.
-  Legacy tools use the `/legacy` export.
+- Legacy tools use the `@wyre-ai/node-kpn/legacy` export.
 
 ### Notes
 

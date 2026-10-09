@@ -1,6 +1,6 @@
 # kpn-mcp
 
-MCP server for KPN IRMA APIs hosted by Grexx (acceptatie: `service-accept.grexx.today`), aimed at MSP helpdesks. The default surface is realtime XML over OAuth 2.0 client credentials. Basic Auth is not used.
+MCP server for KPN IRMA APIs hosted by Grexx (acceptatie: `service-accept.grexx.today`), aimed at MSP helpdesks. The default surface is realtime XML over OAuth 2.0 client credentials. The SDK sends HTTP Basic to the token endpoint. `POST /realtime` uses the Bearer token.
 
 Built on the MCP **2026-07-28** spec via the split v2 SDK
 (`@modelcontextprotocol/server` / `/node` / `/client` `^2.0.0-beta.5`) with **dual-era
@@ -12,7 +12,7 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
 
 ## Tools (2, flat)
 
-- `kpn_grexx_test_connection`: mint an OAuth client-credentials token and post a
+- `kpn_grexx_test_connection`: the SDK mints an OAuth client-credentials token and posts a
   `ZipCodeCheckRequest_V6` probe for the public reference address 1012JS 1 (portfolio All).
   Success means the token endpoint and `POST /realtime` accepted the Bearer token.
 - `kpn_grexx_zipcode_check`: technology and speeds at a Dutch address
@@ -63,9 +63,10 @@ When `CONDUIT_S2S_SECRET` is set, every request except `/health` must also carry
 
 Import the Grexx client from `@wyre-ai/node-kpn` (package root), not `/legacy`.
 
-The dependency is the published range `^2.0.0` (Grexx export from
-[node-kpn#2](https://github.com/WYRE-AI/node-kpn/pull/2), `55aafd3c`). `/legacy`
+The dependency is the published range `^2.0.1` (Grexx token HTTP Basic from
+[node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4), tag `v2.0.1`). `/legacy`
 remains the developer.kpn.com client for `KPN_LEGACY_DEVELOPER_API=1` only.
+This server does not mint the Grexx token.
 
 ## Running
 
@@ -103,8 +104,9 @@ be prompted).
 
 ## Vendor quirks encoded here
 
-- OAuth client_credentials, `scope=all`, Bearer on `POST /realtime`, `Content-Type: text/xml`.
-  Plain XML, no SOAP envelope. Basic Auth is not sent.
+- OAuth client_credentials, `scope=all`. The SDK sends HTTP Basic to the token endpoint, then Bearer on `POST /realtime` (`Content-Type: text/xml`).
+  Plain XML, no SOAP envelope. Basic Auth is not sent on `POST /realtime`.
+- This server does not mint the token and does not post `client_id` or `client_secret` in a form body.
 - The token endpoint is not retried into a Bearer-less call. HTTP 401 remints once inside the SDK.
 - IRMA code `108` and HTTP 429 are rate limits. Code `102` is an IP allowlist rejection.
 - Success codes include `Success` (what acceptatie returned for ZipCodeCheck).

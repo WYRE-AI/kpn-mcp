@@ -19,13 +19,13 @@
       "environmentVariables": [
         {
           "name": "KPN_GREXX_USERNAME",
-          "description": "Grexx API username. Sent as the OAuth client_credentials client_id (portal: API Gegevens). Not Basic Auth.",
+          "description": "Grexx API username. Passed to the SDK as the OAuth client_id (portal: API Gegevens). The SDK sends it with HTTP Basic on the token endpoint. This server does not mint the token.",
           "isRequired": true,
           "format": "string"
         },
         {
           "name": "KPN_GREXX_PASSWORD",
-          "description": "Grexx API password. Sent as the OAuth client_secret with scope=all.",
+          "description": "Grexx API password. Passed to the SDK as the OAuth client_secret (scope=all). The SDK sends it with HTTP Basic on the token endpoint.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"
