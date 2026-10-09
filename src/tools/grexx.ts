@@ -3,11 +3,18 @@
  *
  * Names are `kpn_grexx_*` so they cannot be confused with the developer.kpn.com
  * `kpn_*` tools. Every tool here is a realtime read. Field lists come from the
- * `@wyre-ai/node-kpn` builders (today: ZipCodeCheckRequest_V6 only). Tools
- * whose XSD is not in the SDK are not registered — see docs/GREXX.md.
+ * `@wyre-ai/node-kpn` builders (ZipCodeCheckRequest_V6, PrequalificationRequest_V2,
+ * OrderDataRequest_V1). Tools whose XSD is not in the SDK are not registered —
+ * see docs/GREXX.md.
  */
 import type { Tool } from "@modelcontextprotocol/server";
-import { ZIP_CODE_PORTFOLIOS, ZIP_CODE_SUPPLIERS } from "@wyre-ai/node-kpn";
+import {
+  PREQUALIFICATION_AVAILABILITIES,
+  PREQUALIFICATION_PRODUCT_TYPES,
+  PREQUALIFICATION_SUPPLIERS,
+  ZIP_CODE_PORTFOLIOS,
+  ZIP_CODE_SUPPLIERS,
+} from "@wyre-ai/node-kpn";
 
 export const GREXX_TOOLS: Tool[] = [
   {
@@ -69,6 +76,99 @@ export const GREXX_TOOLS: Tool[] = [
         },
       },
       required: ["portfolio", "zipCode", "houseNumber", "isRoomNumberKnown"],
+    },
+    annotations: { readOnlyHint: true, openWorldHint: true, idempotentHint: true },
+  },
+  {
+    name: "kpn_grexx_prequalification",
+    description:
+      "Address and product-type availability per supplier via Grexx PrequalificationRequest_V2 " +
+      "(POST /realtime, OAuth Bearer). Returns PrequalificationResponse_V1 address fields and products " +
+      `(availability ${PREQUALIFICATION_AVAILABILITIES.join(", ")}). ` +
+      "When hasBroadband is true, serviceId or referencePhoneNumber is required. " +
+      "Omit suppliers to check every supplier. Read-only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        zipCode: {
+          type: "string",
+          description: 'XSD ZipCode. Dutch postcode, for example "1012JS" or "9999ZZ".',
+        },
+        houseNumber: {
+          type: "integer",
+          description: "XSD HouseNr. xs:int.",
+        },
+        houseNumberExtension: {
+          type: "string",
+          description: "XSD HouseNrExtension. Optional.",
+        },
+        roomNumber: {
+          type: "string",
+          description: "XSD RoomNumber. Optional.",
+        },
+        hasBroadband: {
+          type: "boolean",
+          description:
+            "XSD HasBroadband. Required. When true, serviceId or referencePhoneNumber is required.",
+        },
+        hasPhone: {
+          type: "boolean",
+          description: "XSD HasPhone. Required.",
+        },
+        orderId: {
+          type: "string",
+          description: "XSD OrderId. Optional. Pattern OID followed by digits.",
+        },
+        phoneNumber: {
+          type: "string",
+          description: "XSD PhoneNumber. Optional.",
+        },
+        productTypeCode: {
+          type: "string",
+          enum: [...PREQUALIFICATION_PRODUCT_TYPES],
+          description: "XSD ProductTypeCode.",
+        },
+        referencePhoneNumber: {
+          type: "string",
+          description: "XSD ReferencePhoneNumber. Optional. Satisfies the HasBroadband rule.",
+        },
+        serviceId: {
+          type: "string",
+          description: "XSD ServiceId. Optional. Satisfies the HasBroadband rule.",
+        },
+        suppliers: {
+          type: "array",
+          description:
+            "XSD Suppliers. Omit or pass an empty list to check every supplier. Tokens differ from ZipCodeCheck (Kpn, not KPN).",
+          items: { type: "string", enum: [...PREQUALIFICATION_SUPPLIERS] },
+        },
+        israSpecs: {
+          type: "string",
+          description: "XSD IsraSpecs. Optional.",
+        },
+        isComplexAddress: {
+          type: "boolean",
+          description: "XSD IsComplexAddress. Optional.",
+        },
+      },
+      required: ["zipCode", "houseNumber", "hasBroadband", "hasPhone", "productTypeCode"],
+    },
+    annotations: { readOnlyHint: true, openWorldHint: true, idempotentHint: true },
+  },
+  {
+    name: "kpn_grexx_order_data",
+    description:
+      "Customer id, product code, and quantity for an IRMA order via Grexx OrderDataRequest_V1 " +
+      "(POST /realtime, OAuth Bearer). Returns OrderDataResponse_V1. Read-only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        orderId: {
+          type: "integer",
+          description: "XSD OrderId. xs:int.",
+        },
+      },
+      required: ["orderId"],
     },
     annotations: { readOnlyHint: true, openWorldHint: true, idempotentHint: true },
   },

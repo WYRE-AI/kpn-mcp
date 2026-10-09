@@ -7,8 +7,16 @@ Grexx contract: `docs/GREXX.md`. The developer.kpn.com catalog is
 
 ## Learnings - 2026-10-09
 
+- **node-kpn 2.1.0 adds Prequalification_V2 and OrderData_V1.** Tag `v2.1.0`
+  (`ca0db33d`, [node-kpn#5](https://github.com/WYRE-AI/node-kpn/pull/5)). Depend
+  on `^2.1.0`. Registered reads are `kpn_grexx_prequalification` (address and
+  product-type availability per supplier; `hasBroadband` true requires
+  `serviceId` or `referencePhoneNumber`) and `kpn_grexx_order_data` (`orderId`
+  to customer id, product code, and quantity). Schemas use the SDK enums
+  (`PREQUALIFICATION_PRODUCT_TYPES`, `PREQUALIFICATION_SUPPLIERS`). Results
+  omit raw XML.
 - **node-kpn 2.0.1 sends Grexx client credentials as HTTP Basic first.** Tag
- `v2.0.1` (`9067bbe`). Depend on `^2.0.1`. kpn-mcp hands token minting to
+ `v2.0.1` (`9067bbe`). kpn-mcp hands token minting to
  `GrexxClient`, which sends HTTP Basic first and may fall back to form-body
  `client_id` / `client_secret` after HTTP 400/401 `invalid_client`. `POST
  /realtime` still uses the Bearer token; Basic Auth there is still rejected.
@@ -23,11 +31,12 @@ Grexx contract: `docs/GREXX.md`. The developer.kpn.com catalog is
 - **URL headers are rejected.** `KPN_GREXX_BASE_URL` and `KPN_GREXX_TOKEN_URL`
   are env-only. Gateway headers are `X-KPN-Grexx-Username` and
   `X-KPN-Grexx-Password`.
-- **Phase-1 tools follow SDK builders.** `kpn_grexx_test_connection` and
-  `kpn_grexx_zipcode_check` only. Do not invent XSD fields for the other
-  realtime calls until node-kpn ships those builders.
-- **node-kpn 2.0.1 is the Grexx export** (tag `v2.0.1`, GitHub Packages).
-  Depend on `^2.0.1` from the package root. Legacy tools import
+- **Phase-1 tools follow SDK builders.** Registered reads are
+  `kpn_grexx_test_connection`, `kpn_grexx_zipcode_check`,
+  `kpn_grexx_prequalification`, and `kpn_grexx_order_data`. Do not invent XSD
+  fields for the other realtime calls until node-kpn ships those builders.
+- **node-kpn 2.1.0 is the Grexx export** (tag `v2.1.0`, GitHub Packages).
+  Depend on `^2.1.0` from the package root. Legacy tools import
   `@wyre-ai/node-kpn/legacy`.
 
 ## Learnings - 2026-09-25

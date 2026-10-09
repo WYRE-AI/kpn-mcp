@@ -32,7 +32,12 @@ const CRED_HEADERS = {
 };
 
 /** Phase-1 Grexx tools. Other realtime calls wait on XSD builders in node-kpn. */
-const EXPECTED_TOOLS = ['kpn_grexx_test_connection', 'kpn_grexx_zipcode_check'];
+const EXPECTED_TOOLS = [
+  'kpn_grexx_test_connection',
+  'kpn_grexx_zipcode_check',
+  'kpn_grexx_prequalification',
+  'kpn_grexx_order_data',
+];
 
 const failures = [];
 function check(label, ok, detail = '') {

@@ -1,10 +1,16 @@
 /** Tool-surface contract tests: count, names, order, schemas, warnings, annotations. */
+import { PREQUALIFICATION_PRODUCT_TYPES, PREQUALIFICATION_SUPPLIERS } from "@wyre-ai/node-kpn";
 import { describe, expect, it } from "vitest";
 import { CONFIRM_ARG } from "../elicitation.js";
 import { listToolsResult } from "../mcp-server.js";
 import { GREXX_TOOLS, LEGACY_TOOLS, TOOLS, TOOL_NAMES } from "../tools/index.js";
 
-const GREXX_ORDER = ["kpn_grexx_test_connection", "kpn_grexx_zipcode_check"];
+const GREXX_ORDER = [
+  "kpn_grexx_test_connection",
+  "kpn_grexx_zipcode_check",
+  "kpn_grexx_prequalification",
+  "kpn_grexx_order_data",
+];
 const LEGACY_NAMES = LEGACY_TOOLS.map((tool) => tool.name);
 
 /** design.md §4.3 order — the single source of truth for the surface. */
@@ -94,6 +100,32 @@ describe("default Grexx surface", () => {
       ["houseNumber", "isRoomNumberKnown", "portfolio", "zipCode"].sort()
     );
     expect(schema.properties?.portfolio?.enum).toEqual(["Business", "SMB", "Teleworker", "All"]);
+  });
+
+  it("prequalification uses the SDK product-type and supplier enums", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_prequalification");
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { enum?: readonly string[]; items?: { enum?: readonly string[] } }>;
+    };
+    expect([...(schema.required ?? [])].sort()).toEqual(
+      ["hasBroadband", "hasPhone", "houseNumber", "productTypeCode", "zipCode"].sort()
+    );
+    expect(schema.properties?.productTypeCode?.enum).toEqual([...PREQUALIFICATION_PRODUCT_TYPES]);
+    expect(schema.properties?.suppliers?.items?.enum).toEqual([...PREQUALIFICATION_SUPPLIERS]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("order_data requires the SDK order id", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_order_data");
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string }>;
+    };
+    expect(schema.required).toEqual(["orderId"]);
+    expect(schema.properties?.orderId?.type).toBe("integer");
+    expect(Object.keys(schema.properties ?? {})).toEqual(["orderId"]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 });
 

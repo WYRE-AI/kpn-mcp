@@ -3,15 +3,22 @@
  * This module only checks JSON types and maps SDK results and errors.
  */
 import {
+  PREQUALIFICATION_PRODUCT_TYPES,
+  PREQUALIFICATION_SUPPLIERS,
   ZIP_CODE_PORTFOLIOS,
   ZIP_CODE_SUPPLIERS,
   type GrexxClient,
+  type OrderDataInput,
+  type PrequalificationInput,
+  type PrequalificationProductType,
+  type PrequalificationSupplier,
   type ZipCodeCheckInput,
   type ZipCodePortfolio,
   type ZipCodeSupplier,
 } from "@wyre-ai/node-kpn";
 import {
   jsonResult,
+  optionalBoolean,
   optionalString,
   optionalStringArray,
   requireBoolean,
@@ -113,8 +120,90 @@ async function zipcodeCheck(
   });
 }
 
+/** Drop the realtime document. Tool results stay on the parsed fields. */
+function withoutRawXml<T extends { rawXml: string }>(result: T): Omit<T, "rawXml"> {
+  const { rawXml, ...body } = result;
+  void rawXml;
+  return body;
+}
+
+/** Validate prequalification arguments, including the HasBroadband reference rule. */
+function readPrequalificationInput(args: Record<string, unknown>): PrequalificationInput {
+  const zipCode = requireString(args, "zipCode");
+  const houseNumber = requireInteger(args, "houseNumber");
+  const hasBroadband = requireBoolean(args, "hasBroadband");
+  const hasPhone = requireBoolean(args, "hasPhone");
+  const productTypeCode = requireEnum(
+    args,
+    "productTypeCode",
+    PREQUALIFICATION_PRODUCT_TYPES
+  ) as PrequalificationProductType;
+  const houseNumberExtension = optionalString(args, "houseNumberExtension");
+  const roomNumber = optionalString(args, "roomNumber");
+  const orderId = optionalString(args, "orderId");
+  const phoneNumber = optionalString(args, "phoneNumber");
+  const referencePhoneNumber = optionalString(args, "referencePhoneNumber");
+  const serviceId = optionalString(args, "serviceId");
+  const israSpecs = optionalString(args, "israSpecs");
+  const isComplexAddress = optionalBoolean(args, "isComplexAddress");
+  const suppliers = optionalStringArray(args, "suppliers");
+  if (suppliers) {
+    for (const supplier of suppliers) {
+      if (!(PREQUALIFICATION_SUPPLIERS as readonly string[]).includes(supplier)) {
+        throw new ToolInputError(
+          `Argument "suppliers" must only contain: ${PREQUALIFICATION_SUPPLIERS.join(", ")}.`
+        );
+      }
+    }
+  }
+  const broadbandReference =
+    (serviceId !== undefined && serviceId.trim() !== "") ||
+    (referencePhoneNumber !== undefined && referencePhoneNumber.trim() !== "");
+  if (hasBroadband && !broadbandReference) {
+    throw new ToolInputError("HasBroadband requires ServiceId or ReferencePhoneNumber.");
+  }
+  return {
+    zipCode,
+    houseNumber,
+    hasBroadband,
+    hasPhone,
+    productTypeCode,
+    ...(houseNumberExtension ? { houseNumberExtension } : {}),
+    ...(roomNumber ? { roomNumber } : {}),
+    ...(orderId ? { orderId } : {}),
+    ...(phoneNumber ? { phoneNumber } : {}),
+    ...(referencePhoneNumber ? { referencePhoneNumber } : {}),
+    ...(serviceId ? { serviceId } : {}),
+    ...(israSpecs ? { israSpecs } : {}),
+    ...(isComplexAddress !== undefined ? { isComplexAddress } : {}),
+    ...(suppliers ? { suppliers: suppliers as PrequalificationSupplier[] } : {}),
+  };
+}
+
+/** Look up address and product availability. The result does not include raw XML. */
+async function prequalification(
+  client: GrexxClient,
+  args: Record<string, unknown>
+): Promise<ToolResult> {
+  const result = await client.prequalification(readPrequalificationInput(args));
+  return jsonResult(withoutRawXml(result));
+}
+
+/** Validate the OrderData order id before the SDK builds OrderDataRequest_V1. */
+function readOrderDataInput(args: Record<string, unknown>): OrderDataInput {
+  return { orderId: requireInteger(args, "orderId") };
+}
+
+/** Look up an order. The result is status plus customer id, product code, and quantity. */
+async function orderData(client: GrexxClient, args: Record<string, unknown>): Promise<ToolResult> {
+  const result = await client.orderData(readOrderDataInput(args));
+  return jsonResult(withoutRawXml(result));
+}
+
 export const GREXX_HANDLERS: Record<string, GrexxToolHandler> = {
   /** Run the fixed connection probe without accepting caller-supplied address arguments. */
   kpn_grexx_test_connection: (client) => testConnection(client),
   kpn_grexx_zipcode_check: zipcodeCheck,
+  kpn_grexx_prequalification: prequalification,
+  kpn_grexx_order_data: orderData,
 };

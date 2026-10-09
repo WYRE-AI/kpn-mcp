@@ -10,17 +10,22 @@ with the same tool list for every caller. Ships as a GHCR container only (no MCP
 The client is [`@wyre-ai/node-kpn`](https://github.com/WYRE-AI/node-kpn) (Grexx export).
 Contract: [`docs/GREXX.md`](docs/GREXX.md).
 
-## Tools (2, flat)
+## Tools (4, flat)
 
 - `kpn_grexx_test_connection`: the SDK mints an OAuth client-credentials token and posts a
   `ZipCodeCheckRequest_V6` probe for the public reference address 1012JS 1 (portfolio All).
   Success means the token endpoint and `POST /realtime` accepted the Bearer token.
 - `kpn_grexx_zipcode_check`: technology and speeds at a Dutch address
   (`ZipCodeCheckRequest_V6` → `ZipCodeCheckResponse_V5`).
+- `kpn_grexx_prequalification`: address and product-type availability per supplier
+  (`PrequalificationRequest_V2` → `PrequalificationResponse_V1`). When `hasBroadband`
+  is true, `serviceId` or `referencePhoneNumber` is required.
+- `kpn_grexx_order_data`: customer id, product code, and quantity for an order id
+  (`OrderDataRequest_V1` → `OrderDataResponse_V1`).
 
-Further realtime tools (prequalification, carrier info, line diagnose, customer and order
-reads, mobile reads) wait until `@wyre-ai/node-kpn` ships their XSD builders. This server
-does not invent those fields. Queued writes and Proxymodule notifications are not exposed.
+Further realtime tools (carrier info, line diagnose, customer reads, mobile reads) wait
+until `@wyre-ai/node-kpn` ships their XSD builders. This server does not invent those
+fields. Queued writes and Proxymodule notifications are not exposed.
 
 Set `KPN_LEGACY_DEVELOPER_API=1` to also serve the previous 23 developer.kpn.com tools
 (disturbances, availability, SIM swap, MSM). They are absent from the default list.
@@ -63,8 +68,10 @@ When `CONDUIT_S2S_SECRET` is set, every request except `/health` must also carry
 
 Import the Grexx client from `@wyre-ai/node-kpn` (package root), not `/legacy`.
 
-The dependency is the published range `^2.0.1` (Grexx token HTTP Basic from
-[node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4), tag `v2.0.1`). `/legacy`
+The dependency is the published range `^2.1.0` (Prequalification and OrderData from
+[node-kpn#5](https://github.com/WYRE-AI/node-kpn/pull/5), tag `v2.1.0`). Token minting
+is the HTTP Basic behavior from
+[node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4). `/legacy`
 remains the developer.kpn.com client for `KPN_LEGACY_DEVELOPER_API=1` only.
 This server does not mint the Grexx token.
 
