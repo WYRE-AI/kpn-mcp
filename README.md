@@ -106,7 +106,7 @@ be prompted).
 
 - OAuth client_credentials, `scope=all`. The SDK sends HTTP Basic to the token endpoint, then Bearer on `POST /realtime` (`Content-Type: text/xml`).
   Plain XML, no SOAP envelope. Basic Auth is not sent on `POST /realtime`.
-- This server does not mint the token and does not post `client_id` or `client_secret` in a form body.
+- This server hands token minting to `GrexxClient`, which sends HTTP Basic first and may fall back to form-body `client_id` / `client_secret` after HTTP 400/401 `invalid_client`.
 - The token endpoint is not retried into a Bearer-less call. HTTP 401 remints once inside the SDK.
 - IRMA code `108` and HTTP 429 are rate limits. Code `102` is an IP allowlist rejection.
 - Success codes include `Success` (what acceptatie returned for ZipCodeCheck).

@@ -8,8 +8,9 @@ Grexx contract: `docs/GREXX.md`. The developer.kpn.com catalog is
 ## Learnings - 2026-10-09
 
 - **node-kpn 2.0.1 sends Grexx client credentials as HTTP Basic first.** Tag
- `v2.0.1` (`9067bbe`). Depend on `^2.0.1`. This server does not mint the Grexx
- token and does not post `client_id` / `client_secret` in a form body. `POST
+ `v2.0.1` (`9067bbe`). Depend on `^2.0.1`. kpn-mcp hands token minting to
+ `GrexxClient`, which sends HTTP Basic first and may fall back to form-body
+ `client_id` / `client_secret` after HTTP 400/401 `invalid_client`. `POST
  /realtime` still uses the Bearer token; Basic Auth there is still rejected.
 
 ## Learnings - 2026-10-07

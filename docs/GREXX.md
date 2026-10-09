@@ -4,7 +4,7 @@ Default tool surface as of 2026-10-07. The developer.kpn.com design in `DESIGN.m
 
 ## Auth
 
-Acceptatie (Grexx #4029, confirmed live 2026-10-07) is **OAuth 2.0 client credentials**, then `Authorization: Bearer` on `POST /realtime`. Basic Auth on `POST /realtime` returns `403 Auth method Basic not allowed` and is not a fallback for that call. The token endpoint requires HTTP Basic. Minting (HTTP Basic first), caching (until 60 seconds before `expires_in`), and the single 401 remint live in `@wyre-ai/node-kpn` `^2.0.1`. This server only passes the username, password, and env URLs into `GrexxClient`. It does not mint the token and does not post `client_id` or `client_secret` in a form body.
+Acceptatie (Grexx #4029, confirmed live 2026-10-07) is **OAuth 2.0 client credentials**, then `Authorization: Bearer` on `POST /realtime`. Basic Auth on `POST /realtime` returns `403 Auth method Basic not allowed` and is not a fallback for that call. Caching (until 60 seconds before `expires_in`) and the single 401 remint live in `@wyre-ai/node-kpn` `^2.0.1`. This server hands token minting to `GrexxClient`, which sends HTTP Basic first and may fall back to form-body `client_id` / `client_secret` after HTTP 400/401 `invalid_client`. kpn-mcp only passes the username, password, and env URLs into that client.
 
 | Env (env mode) | Gateway header (`AUTH_MODE=gateway`) | Required |
 |---|---|---|
