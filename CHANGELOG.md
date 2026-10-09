@@ -8,6 +8,12 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ## [Unreleased]
 
+### Fixed
+
+- MCP Registry publishing: the `server.json` description is now under the registry's
+  100-character limit. Releases since 2.0.0 failed the "Validate server.json" step
+  with 422, so the registry listing stopped updating. A test now enforces the limit.
+
 ### Added
 
 - 11 Grexx IRMA realtime tools built from the portal request XSDs: `kpn_grexx_carrier_info`,
