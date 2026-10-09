@@ -122,7 +122,7 @@ export function describeGrexxError(error: GrexxError, toolName = ""): string {
       process.env.AUTH_MODE === "gateway"
         ? "X-KPN-Grexx-Username and X-KPN-Grexx-Password"
         : "KPN_GREXX_USERNAME and KPN_GREXX_PASSWORD";
-    text += ` Check ${where}. Auth is OAuth client_credentials; Basic Auth is not accepted.`;
+    text += ` Check ${where}. GrexxClient mints the OAuth client_credentials token with HTTP Basic first, and may fall back to form-body client_id/client_secret after HTTP 400/401 invalid_client. POST /realtime requires that Bearer token; Basic Auth is not accepted there.`;
   }
   if (error instanceof GrexxForbiddenError && error.code === "102") {
     text += " Grexx rejected the caller IP (code 102).";

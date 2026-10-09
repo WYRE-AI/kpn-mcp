@@ -48,7 +48,11 @@ describe("kpn_grexx_test_connection", () => {
     expect(body.code).toBe("Success");
     expect(body.supplierNames).toEqual(["KPN", "KPNWEAS", "Tele2Fiber"]);
     expect(body.requestId).toBe(SAMPLE.requestId);
-    expect(body.note).toContain("Basic Auth is not used");
+    expect(body.note).toContain("HTTP Basic first");
+    expect(body.note).toContain(
+      "may fall back to form-body client_id/client_secret after HTTP 400/401 invalid_client"
+    );
+    expect(body.note).toContain("Basic Auth is not sent on POST /realtime");
     expect(text(result)).not.toContain(SAMPLE.rawXml);
   });
 

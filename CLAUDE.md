@@ -5,20 +5,29 @@ SDK: `@wyre-ai/node-kpn` package root (`GrexxClient`), not `/legacy`.
 Grexx contract: `docs/GREXX.md`. The developer.kpn.com catalog is
 `docs/DESIGN.md` and is off unless `KPN_LEGACY_DEVELOPER_API=1`.
 
+## Learnings - 2026-10-09
+
+- **node-kpn 2.0.1 sends Grexx client credentials as HTTP Basic first.** Tag
+ `v2.0.1` (`9067bbe`). Depend on `^2.0.1`. kpn-mcp hands token minting to
+ `GrexxClient`, which sends HTTP Basic first and may fall back to form-body
+ `client_id` / `client_secret` after HTTP 400/401 `invalid_client`. `POST
+ /realtime` still uses the Bearer token; Basic Auth there is still rejected.
+
 ## Learnings - 2026-10-07
 
 - **Acceptatie auth is OAuth client_credentials, then Bearer.** Grexx #4029
-  (2026-10-07) rejects Basic Auth on `/realtime` (`403 Auth method Basic not
-  allowed`). Do not document Basic as the default. Token mint and cache live
-  in node-kpn; this server passes username, password, and env URLs only.
+ (2026-10-07) rejects Basic Auth on `/realtime` (`403 Auth method Basic not
+ allowed`). Do not document Basic as the default for `/realtime`. Token mint
+ and cache live in node-kpn; this server passes username, password, and env
+ URLs only.
 - **URL headers are rejected.** `KPN_GREXX_BASE_URL` and `KPN_GREXX_TOKEN_URL`
   are env-only. Gateway headers are `X-KPN-Grexx-Username` and
   `X-KPN-Grexx-Password`.
 - **Phase-1 tools follow SDK builders.** `kpn_grexx_test_connection` and
   `kpn_grexx_zipcode_check` only. Do not invent XSD fields for the other
   realtime calls until node-kpn ships those builders.
-- **node-kpn 2.0.0 is the Grexx export** (`55aafd3c` on `main`, GitHub Packages).
-  Depend on `^2.0.0` from the package root. Legacy tools import
+- **node-kpn 2.0.1 is the Grexx export** (tag `v2.0.1`, GitHub Packages).
+  Depend on `^2.0.1` from the package root. Legacy tools import
   `@wyre-ai/node-kpn/legacy`.
 
 ## Learnings - 2026-09-25

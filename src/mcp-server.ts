@@ -355,7 +355,11 @@ export function createMcpServer(credentials?: ResolvedCredentials): Server {
 
   // Built lazily on the first tools/call. The SDK caches OAuth tokens
   // process-wide, so a fresh GrexxClient per HTTP request does not mint a
-  // token per tool call. Basic Auth is never sent.
+  // token per tool call. This server does not mint the Grexx token. Requests
+  // kpn-mcp builds do not post client credentials in a form body. GrexxClient
+  // sends HTTP Basic to the token endpoint first and may fall back to form-body
+  // client_id/client_secret after HTTP 400/401 invalid_client, then Bearer on
+  // POST /realtime.
   let grexx: GrexxClient | undefined;
   let legacy: KpnClient | undefined;
 

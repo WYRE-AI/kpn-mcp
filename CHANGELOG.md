@@ -34,6 +34,10 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Changed
 
+- Depend on `@wyre-ai/node-kpn` `^2.0.1` (tag `v2.0.1`). kpn-mcp hands token
+  minting to `GrexxClient`, which sends HTTP Basic first and may fall back to
+  form-body `client_id` / `client_secret` after HTTP 400/401 `invalid_client`.
+  `POST /realtime` still uses the Bearer token.
 - The default tool catalog now contains the two Grexx tools. Set
   `KPN_LEGACY_DEVELOPER_API=1` to append the existing 23 developer.kpn.com tools.
 - Grexx uses OAuth 2.0 client credentials and Bearer authentication, with token minting,
@@ -41,8 +45,7 @@ Releases are cut by semantic-release from Conventional Commits.
   `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`, with no environment credential
   fallback. Grexx base and token URLs are environment-only; caller-supplied URL
   headers are rejected with HTTP 400.
-- Depend on published `@wyre-ai/node-kpn` `^2.0.0` for the Grexx export.
-  Legacy tools use the `/legacy` export.
+- Legacy tools use the `@wyre-ai/node-kpn/legacy` export.
 
 ### Notes
 

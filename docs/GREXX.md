@@ -4,7 +4,7 @@ Default tool surface as of 2026-10-07. The developer.kpn.com design in `DESIGN.m
 
 ## Auth
 
-Acceptatie (Grexx #4029, confirmed live 2026-10-07) is **OAuth 2.0 client credentials**, then `Authorization: Bearer` on `POST /realtime`. Basic Auth returns `403 Auth method Basic not allowed` and is not a fallback. Minting, caching (until 60 seconds before `expires_in`), and the single 401 remint live in `@wyre-ai/node-kpn`. This server only passes the username, password, and env URLs into `GrexxClient`.
+Acceptatie (Grexx #4029, confirmed live 2026-10-07) is **OAuth 2.0 client credentials**, then `Authorization: Bearer` on `POST /realtime`. Basic Auth on `POST /realtime` returns `403 Auth method Basic not allowed` and is not a fallback for that call. Caching (until 60 seconds before `expires_in`) and the single 401 remint live in `@wyre-ai/node-kpn` `^2.0.1`. This server hands token minting to `GrexxClient`, which sends HTTP Basic first and may fall back to form-body `client_id` / `client_secret` after HTTP 400/401 `invalid_client`. kpn-mcp only passes the username, password, and env URLs into that client.
 
 | Env (env mode) | Gateway header (`AUTH_MODE=gateway`) | Required |
 |---|---|---|
@@ -21,8 +21,8 @@ A request missing either Grexx credential header is HTTP 401 JSON-RPC `-32001`. 
 
 Phase-1 tools import the Grexx client from the package root (`GrexxClient`, `zipCodeCheck`, `ZIP_CODE_PORTFOLIOS`, `ZIP_CODE_SUPPLIERS`). They do not import `@wyre-ai/node-kpn/legacy`.
 
-The dependency is `"@wyre-ai/node-kpn": "^2.0.0"`, published from
-[node-kpn#2](https://github.com/WYRE-AI/node-kpn/pull/2) (`55aafd3c` on `main`).
+The dependency is `"@wyre-ai/node-kpn": "^2.0.1"`, published from
+[node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4) (tag `v2.0.1`).
 Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
 ## Tools (2)

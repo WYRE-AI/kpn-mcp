@@ -13,10 +13,11 @@ export const GREXX_TOOLS: Tool[] = [
   {
     name: "kpn_grexx_test_connection",
     description:
-      "Verify Grexx IRMA credentials. Mints an OAuth 2.0 client_credentials token " +
-      "(scope=all, no Basic Auth) and posts ZipCodeCheckRequest_V6 for the public " +
-      "reference address 1012JS 1, portfolio All. Success means the token endpoint " +
-      "and POST /realtime accepted the Bearer token. The probe does not read a customer record.",
+      "Verify Grexx IRMA credentials. GrexxClient mints an OAuth 2.0 client_credentials token " +
+      "(scope=all): HTTP Basic first, then form-body client_id and client_secret after HTTP 400/401 invalid_client. " +
+      "It posts ZipCodeCheckRequest_V6 for the public reference address 1012JS 1, portfolio All, with the Bearer token. " +
+      "This server does not build the token request. Success means the token endpoint and POST /realtime accepted the call. " +
+      "The probe does not read a customer record.",
     inputSchema: {
       type: "object",
       properties: {},

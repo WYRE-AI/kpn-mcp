@@ -61,7 +61,9 @@ async function testConnection(client: GrexxClient): Promise<ToolResult> {
     requestId: result.requestId ?? null,
     note:
       "OAuth client_credentials (scope=all) was accepted and POST /realtime returned a success code. " +
-      "Basic Auth is not used. The probe checks public reference address 1012JS 1 and does not read a customer record.",
+      "GrexxClient tries HTTP Basic first and may fall back to form-body client_id/client_secret after HTTP 400/401 invalid_client. " +
+      "Basic Auth is not sent on POST /realtime. " +
+      "The probe checks public reference address 1012JS 1 and does not read a customer record.",
   });
 }
 
