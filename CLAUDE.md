@@ -90,3 +90,6 @@ Grexx contract: `docs/GREXX.md`. The developer.kpn.com catalog is
 - **Release pipeline:** the reusable workflow's "Verify registry listing" step can hang
   after a successful publish; check the registry directly
   (`registry.modelcontextprotocol.io/v0/servers?search=io.github.WYRE-AI/kpn-mcp`).
+  "Validate server.json" rejects a top-level `description` over 100 characters (422);
+  that silently stalled the listing from 2.0.0 to 2.2.0 while npm/GHCR still published.
+  `src/__tests__/server-json.test.ts` guards it.
