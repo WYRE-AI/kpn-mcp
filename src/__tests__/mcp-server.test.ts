@@ -243,7 +243,12 @@ describe("stateless tool surface", () => {
     });
     const withCreds = listToolsResult().tools.map((tool) => tool.name);
     expect(withoutCreds).toEqual(withCreds);
-    expect(withoutCreds).toEqual(["kpn_grexx_test_connection", "kpn_grexx_zipcode_check"]);
+    expect(withoutCreds).toEqual([
+      "kpn_grexx_test_connection",
+      "kpn_grexx_zipcode_check",
+      "kpn_grexx_prequalification",
+      "kpn_grexx_order_data",
+    ]);
   });
 });
 

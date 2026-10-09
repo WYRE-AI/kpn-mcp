@@ -10,6 +10,11 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Added
 
+- `kpn_grexx_prequalification`: address and product-type availability per supplier
+  through Grexx `PrequalificationRequest_V2`. When `hasBroadband` is true,
+  `serviceId` or `referencePhoneNumber` is required.
+- `kpn_grexx_order_data`: customer id, product code, and quantity for an IRMA
+  order id through `OrderDataRequest_V1`.
 - `kpn_grexx_test_connection`: verify OAuth and realtime access with a zipcode probe
   of public reference address 1012JS 1.
 - `kpn_grexx_zipcode_check`: look up address technology and speeds through Grexx IRMA.
@@ -34,11 +39,11 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Changed
 
-- Depend on `@wyre-ai/node-kpn` `^2.0.1` (tag `v2.0.1`). kpn-mcp hands token
-  minting to `GrexxClient`, which sends HTTP Basic first and may fall back to
-  form-body `client_id` / `client_secret` after HTTP 400/401 `invalid_client`.
-  `POST /realtime` still uses the Bearer token.
-- The default tool catalog now contains the two Grexx tools. Set
+- Depend on `@wyre-ai/node-kpn` `^2.1.0` (tag `v2.1.0`, node-kpn#5). kpn-mcp
+  hands token minting to `GrexxClient`, which sends HTTP Basic first and may fall
+  back to form-body `client_id` / `client_secret` after HTTP 400/401
+  `invalid_client`. `POST /realtime` still uses the Bearer token.
+- The default tool catalog now contains the four Grexx tools. Set
   `KPN_LEGACY_DEVELOPER_API=1` to append the existing 23 developer.kpn.com tools.
 - Grexx uses OAuth 2.0 client credentials and Bearer authentication, with token minting,
   caching, and the 401 remint handled by `@wyre-ai/node-kpn`. Gateway mode requires

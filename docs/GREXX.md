@@ -4,7 +4,7 @@ Default tool surface as of 2026-10-07. The developer.kpn.com design in `DESIGN.m
 
 ## Auth
 
-Acceptatie (Grexx #4029, confirmed live 2026-10-07) is **OAuth 2.0 client credentials**, then `Authorization: Bearer` on `POST /realtime`. Basic Auth on `POST /realtime` returns `403 Auth method Basic not allowed` and is not a fallback for that call. Caching (until 60 seconds before `expires_in`) and the single 401 remint live in `@wyre-ai/node-kpn` `^2.0.1`. This server hands token minting to `GrexxClient`, which sends HTTP Basic first and may fall back to form-body `client_id` / `client_secret` after HTTP 400/401 `invalid_client`. kpn-mcp only passes the username, password, and env URLs into that client.
+Acceptatie (Grexx #4029, confirmed live 2026-10-07) is **OAuth 2.0 client credentials**, then `Authorization: Bearer` on `POST /realtime`. Basic Auth on `POST /realtime` returns `403 Auth method Basic not allowed` and is not a fallback for that call. Caching (until 60 seconds before `expires_in`) and the single 401 remint live in `@wyre-ai/node-kpn` `^2.1.0`. This server hands token minting to `GrexxClient`, which sends HTTP Basic first and may fall back to form-body `client_id` / `client_secret` after HTTP 400/401 `invalid_client`. kpn-mcp only passes the username, password, and env URLs into that client.
 
 | Env (env mode) | Gateway header (`AUTH_MODE=gateway`) | Required |
 |---|---|---|
@@ -19,30 +19,38 @@ A request missing either Grexx credential header is HTTP 401 JSON-RPC `-32001`. 
 
 ## SDK
 
-Phase-1 tools import the Grexx client from the package root (`GrexxClient`, `zipCodeCheck`, `ZIP_CODE_PORTFOLIOS`, `ZIP_CODE_SUPPLIERS`). They do not import `@wyre-ai/node-kpn/legacy`.
+Phase-1 tools import the Grexx client from the package root (`GrexxClient`, `zipCodeCheck`, `ZIP_CODE_PORTFOLIOS`, `ZIP_CODE_SUPPLIERS`, `prequalification`, `PREQUALIFICATION_PRODUCT_TYPES`, `PREQUALIFICATION_SUPPLIERS`, `orderData`). They do not import `@wyre-ai/node-kpn/legacy`.
 
-The dependency is `"@wyre-ai/node-kpn": "^2.0.1"`, published from
-[node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4) (tag `v2.0.1`).
+The dependency is `"@wyre-ai/node-kpn": "^2.1.0"`, published from
+[node-kpn#5](https://github.com/WYRE-AI/node-kpn/pull/5) (tag `v2.1.0`).
+Token minting is the `^2.0.1` behavior from
+[node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4).
 Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
-## Tools (2)
+## Tools (4)
 
 | Tool | IRMA request | SDK |
 |---|---|---|
 | `kpn_grexx_test_connection` | `ZipCodeCheckRequest_V6` probe, portfolio All, 1012JS / 1, `IsRoomNumberKnown=false` | `GrexxClient.zipCodeCheck` |
 | `kpn_grexx_zipcode_check` | `ZipCodeCheckRequest_V6` | `zipCodeCheck` / `buildZipCodeCheckRequest` |
+| `kpn_grexx_prequalification` | `PrequalificationRequest_V2` | `prequalification` / `buildPrequalificationRequest` |
+| `kpn_grexx_order_data` | `OrderDataRequest_V1` | `orderData` / `buildOrderDataRequest` |
 
 `kpn_grexx_test_connection` proves the token endpoint and `POST /realtime`. The probe address is the public reference used in the acceptatie smoke. It does not read a customer record. The tool result does not include raw XML.
 
 `kpn_grexx_zipcode_check` arguments are the SDK's `ZipCodeCheckInput` (`portfolio`, `zipCode`, `houseNumber`, `houseNumberExtension`, `serviceId`, `roomNumber`, `isRoomNumberKnown`, `suppliers`). Portfolio and supplier enums are the SDK constants, not a second list.
 
-Both tools are reads. Realtime retries (network, HTTP 429 / code 108, 5xx) stay inside the SDK.
+`kpn_grexx_prequalification` arguments are the SDK's `PrequalificationInput` (`zipCode`, `houseNumber`, `houseNumberExtension`, `roomNumber`, `hasBroadband`, `hasPhone`, `orderId`, `phoneNumber`, `productTypeCode`, `referencePhoneNumber`, `serviceId`, `suppliers`, `israSpecs`, `isComplexAddress`). Product-type and supplier enums are `PREQUALIFICATION_PRODUCT_TYPES` and `PREQUALIFICATION_SUPPLIERS`, not a second list. When `hasBroadband` is true, `serviceId` or `referencePhoneNumber` is required. The result is the parsed address plus products and their availability. It does not include raw XML. `ErrorClass` and `ErrorMessage` are returned on that result.
+
+`kpn_grexx_order_data` takes the SDK's `OrderDataInput` (`orderId`, an `xs:int`). The result is `Status` plus, when present, `customerId`, `productCode`, and `quantity`. It does not include raw XML.
+
+All four tools are reads. Realtime retries (network, HTTP 429 / code 108, 5xx) stay inside the SDK.
 
 ## Not registered yet
 
 These Phase-1 names from the tool proposal have **no XSD builder** in node-kpn yet. This server does not invent their fields, and it does not expose a generic XML tool:
 
-`kpn_grexx_prequalification`, `kpn_grexx_carrier_info`, `kpn_grexx_radius_check`, `kpn_grexx_ras_check`, `kpn_grexx_start_line_diagnose`, `kpn_grexx_customer_data`, `kpn_grexx_order_summary`, `kpn_grexx_order_data`, `kpn_grexx_get_sim`, `kpn_grexx_mobile_settings`, `kpn_grexx_mobile_usage`, `kpn_grexx_mobile_orders`, `kpn_grexx_available_portings`.
+`kpn_grexx_carrier_info`, `kpn_grexx_radius_check`, `kpn_grexx_ras_check`, `kpn_grexx_start_line_diagnose`, `kpn_grexx_customer_data`, `kpn_grexx_order_summary`, `kpn_grexx_get_sim`, `kpn_grexx_mobile_settings`, `kpn_grexx_mobile_usage`, `kpn_grexx_mobile_orders`, `kpn_grexx_available_portings`.
 
 Queued calls, OrderModule, and Proxymodule notifications are out of scope. PIN/PUK masking does not apply until a GetSim builder exists.
 
