@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RadiusCheckResponse_V1>
+  <ResponseItems>
+    <RadiusCheckResponseItem_V1>
+      <Status>Success</Status>
+      <Nas>ASD-BNG-01</Nas>
+      <Password>fake-secret-0000</Password>
+      <User>0201234567@irma.test</User>
+      <Action>Login</Action>
+      <DateCreated>2026-10-09T09:15:42+02:00</DateCreated>
+    </RadiusCheckResponseItem_V1>
+    <RadiusCheckResponseItem_V1>
+      <Status>Failed</Status>
+      <Nas>ASD-BNG-02</Nas>
+      <Password>fake-wrong-0001</Password>
+      <User>0201234567@irma.test</User>
+      <Action>Login</Action>
+      <DateCreated>2026-10-09T09:12:07+02:00</DateCreated>
+    </RadiusCheckResponseItem_V1>
+  </ResponseItems>
+</RadiusCheckResponse_V1>

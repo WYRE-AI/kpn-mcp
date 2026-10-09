@@ -248,6 +248,17 @@ describe("stateless tool surface", () => {
       "kpn_grexx_zipcode_check",
       "kpn_grexx_prequalification",
       "kpn_grexx_order_data",
+      "kpn_grexx_carrier_info",
+      "kpn_grexx_radius_check",
+      "kpn_grexx_ras_check",
+      "kpn_grexx_start_line_diagnose",
+      "kpn_grexx_customer_data",
+      "kpn_grexx_order_summary",
+      "kpn_grexx_get_sim",
+      "kpn_grexx_mobile_settings",
+      "kpn_grexx_mobile_usage",
+      "kpn_grexx_mobile_orders",
+      "kpn_grexx_available_portings",
     ]);
   });
 });

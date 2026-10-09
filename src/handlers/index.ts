@@ -28,6 +28,7 @@ import {
 import { NO_ELICITATION, type ElicitationContext } from "../elicitation.js";
 import { LEGACY_DEVELOPER_API_ENABLED, LEGACY_TOOLS, TOOLS } from "../tools/index.js";
 import { GREXX_HANDLERS, type GrexxToolHandler } from "./grexx.js";
+import { ninaErrorFromResponse } from "./grexx-realtime.js";
 import { CORE_HANDLERS } from "./core.js";
 import { MOBILE_READ_HANDLERS } from "./mobile-read.js";
 import { MOBILE_WRITE_HANDLERS } from "./mobile-write.js";
@@ -101,18 +102,30 @@ export function describeKpnError(error: KpnError, toolName = ""): string {
 }
 
 /**
- * Grexx / IRMA failure text. Does not include request bodies or credentials.
+ * node-kpn falls back to the raw response body when Grexx sends an error
+ * without a message. That body can hold SIM secrets (Puc1, eSIM codes) or the
+ * RadiusCheck PPP password, so an XML body never goes into a tool result.
+ */
+function safeGrexxMessage(message: string): string {
+  if (/<\?xml|<\/[A-Za-z]/.test(message)) return "Grexx returned an error response without a message.";
+  return message.length > 500 ? `${message.slice(0, 500)}…` : message;
+}
+
+/**
+ * Grexx / IRMA failure text. Does not include request or response bodies, or credentials.
  *
  * Local SDK validation (status 0: invalid_zipcode, invalid_house_number, …)
  * is an argument error. A Grexx HTTP validation response stays a Grexx error.
+ * A NinaResponse rejected by a node-kpn builder is described by its own code.
  */
-export function describeGrexxError(error: GrexxError, toolName = ""): string {
+export function describeGrexxError(sdkError: GrexxError, toolName = ""): string {
+  const error = ninaErrorFromResponse(sdkError) ?? sdkError;
   if (error instanceof GrexxValidationError && error.statusCode === 0) {
     const target = toolName ? ` for ${toolName}` : "";
     return `Invalid arguments${target}: ${error.message}`;
   }
   const code = error.code ? `, ${error.code}` : "";
-  let text = `Grexx error (HTTP ${error.statusCode}${code}): ${error.message}`;
+  let text = `Grexx error (HTTP ${error.statusCode}${code}): ${safeGrexxMessage(error.message)}`;
   if (error.requestId) text += ` (x-request-id: ${error.requestId})`;
   if (error instanceof GrexxRateLimitError) {
     text += ` Rate limited (108 Too Many Requests); retry after ${error.retryAfter}s.`;

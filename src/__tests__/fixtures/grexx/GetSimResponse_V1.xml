@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetSimResponse_V1>
+  <Status>
+    <Messages>
+      <string>SIM-gegevens opgehaald voor order 123456.</string>
+    </Messages>
+    <Code>Success</Code>
+  </Status>
+  <Sim>
+    <SimType>ESim</SimType>
+    <ICCId>8931000000000000001</ICCId>
+    <Puc1>12345678</Puc1>
+    <SimCard>
+      <Puc1>12345678</Puc1>
+    </SimCard>
+    <ESim>
+      <SmdpAddress>smdp.test.example.nl</SmdpAddress>
+      <ActivationCode>FAKE-0000-0000-0000-0000</ActivationCode>
+      <ConfirmationCode>0000</ConfirmationCode>
+    </ESim>
+  </Sim>
+</GetSimResponse_V1>

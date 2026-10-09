@@ -10,6 +10,17 @@ const GREXX_ORDER = [
   "kpn_grexx_zipcode_check",
   "kpn_grexx_prequalification",
   "kpn_grexx_order_data",
+  "kpn_grexx_carrier_info",
+  "kpn_grexx_radius_check",
+  "kpn_grexx_ras_check",
+  "kpn_grexx_start_line_diagnose",
+  "kpn_grexx_customer_data",
+  "kpn_grexx_order_summary",
+  "kpn_grexx_get_sim",
+  "kpn_grexx_mobile_settings",
+  "kpn_grexx_mobile_usage",
+  "kpn_grexx_mobile_orders",
+  "kpn_grexx_available_portings",
 ];
 const LEGACY_NAMES = LEGACY_TOOLS.map((tool) => tool.name);
 
@@ -83,12 +94,15 @@ describe("default Grexx surface", () => {
     expect(listToolsResult().tools).toBe(listToolsResult().tools);
   });
 
-  it("every Grexx tool is a read-only object schema with no destructive warning", () => {
+  it("every Grexx tool is an object schema with no destructive warning; only start_line_diagnose is not read-only", () => {
     for (const t of GREXX_TOOLS) {
       expect(t.name).toMatch(/^kpn_grexx_[a-z_]+$/);
       expect(t.description).toBeTruthy();
       expect(t.inputSchema.type).toBe("object");
-      expect(t.annotations).toMatchObject({ readOnlyHint: true, openWorldHint: true });
+      expect(t.annotations).toMatchObject({
+        readOnlyHint: t.name !== "kpn_grexx_start_line_diagnose",
+        openWorldHint: true,
+      });
       expect(t.description).not.toContain("⚠");
       expect(t.description?.toLowerCase()).not.toContain("basic auth is the default");
     }

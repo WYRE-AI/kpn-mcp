@@ -10,6 +10,18 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Added
 
+- 11 Grexx IRMA realtime tools built from the portal request XSDs: `kpn_grexx_carrier_info`,
+  `kpn_grexx_radius_check`, `kpn_grexx_ras_check`, `kpn_grexx_start_line_diagnose`,
+  `kpn_grexx_customer_data`, `kpn_grexx_order_summary`, `kpn_grexx_get_sim`,
+  `kpn_grexx_mobile_settings`, `kpn_grexx_mobile_usage`, `kpn_grexx_mobile_orders` and
+  `kpn_grexx_available_portings`. Requests are sent in XSD element order (IRMA rejects any
+  other order with 109). The ten reads passed IRMA XSD validation on acceptatie;
+  `start_line_diagnose` starts a real test, so it was not sent.
+- Grexx `NinaResponse` rejections (HTTP 200, `IsSuccess=false`) and a filled root
+  `ErrorMessage` are tool errors, and `NinaResponse` 102/108 get the usual IP and
+  rate-limit hints. SIM PUK (`Puc1`), eSIM activation/confirmation codes and the
+  RadiusCheck PPP password are masked, and Grexx error text never includes a raw
+  response body.
 - `kpn_grexx_prequalification`: address and product-type availability per supplier
   through Grexx `PrequalificationRequest_V2`. When `hasBroadband` is true,
   `serviceId` or `referencePhoneNumber` is required.

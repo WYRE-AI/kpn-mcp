@@ -27,7 +27,7 @@ Token minting is the `^2.0.1` behavior from
 [node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4).
 Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
-## Tools (4)
+## Tools (15)
 
 | Tool | IRMA request | SDK |
 |---|---|---|
@@ -44,15 +44,43 @@ Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
 `kpn_grexx_order_data` takes the SDK's `OrderDataInput` (`orderId`, an `xs:int`). The result is `Status` plus, when present, `customerId`, `productCode`, and `quantity`. It does not include raw XML.
 
-All four tools are reads. Realtime retries (network, HTTP 429 / code 108, 5xx) stay inside the SDK.
+These four tools are reads. Realtime retries (network, HTTP 429 / code 108, 5xx) stay inside the SDK.
 
-## Not registered yet
+### XSD-spec tools (11)
 
-These Phase-1 names from the tool proposal have **no XSD builder** in node-kpn yet. This server does not invent their fields, and it does not expose a generic XML tool:
+Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: field names, order, types, limits and enums copied from the request XSDs in the portal (API Toolmodule → Webservice Beschrijvingen, export 2026-10-05). One handler (`src/handlers/grexx-realtime.ts`) validates arguments, emits the body in XSD order and posts it with `GrexxClient.postRealtime`. **IRMA enforces `xs:sequence` order**: an element out of place is a 109.
 
-`kpn_grexx_carrier_info`, `kpn_grexx_radius_check`, `kpn_grexx_ras_check`, `kpn_grexx_start_line_diagnose`, `kpn_grexx_customer_data`, `kpn_grexx_order_summary`, `kpn_grexx_get_sim`, `kpn_grexx_mobile_settings`, `kpn_grexx_mobile_usage`, `kpn_grexx_mobile_orders`, `kpn_grexx_available_portings`.
+| Tool | IRMA request | Notes |
+|---|---|---|
+| `kpn_grexx_carrier_info` | `CarrierInfoRequest_V1` | acceptatie stub address 9999ZZ 1 |
+| `kpn_grexx_radius_check` | `RadiusCheckRequest_V1` | PPP `Password` masked |
+| `kpn_grexx_ras_check` | `RasCheckRequest_V1` | |
+| `kpn_grexx_start_line_diagnose` | `StartLineDiagnoseRequest_V1` | starts a test at KPN: not read-only, never retried; GetLatest is not exposed |
+| `kpn_grexx_customer_data` | `CustomerDataRequest_V1` | take ≤ 100 |
+| `kpn_grexx_order_summary` | `OrderSummaryRequest_V1` | take ≤ 2500; dates need a time |
+| `kpn_grexx_get_sim` | `GetSimRequest_V1` | `Puc1`, eSIM `ActivationCode`/`ConfirmationCode` masked |
+| `kpn_grexx_mobile_settings` | `GetMobileSettingsRequest_V1` | |
+| `kpn_grexx_mobile_usage` | `GetMobileSubscriptionUsageRequest_V1` | |
+| `kpn_grexx_mobile_orders` | `GetMobileSubscriptionOrdersRequest_V1` | 1-50 ids; one bad id fails the batch; SIM codes masked |
+| `kpn_grexx_available_portings` | `AvailablePortingsRequest_V1` | exactly one of customerId / hipGroupOrderId |
 
-Queued calls, OrderModule, and Proxymodule notifications are out of scope. PIN/PUK masking does not apply until a GetSim builder exists.
+Results are JSON: `request`, `response`, `code`, `messages`, `requestId`, `httpStatus`, `data` (the response document without `Status`), and `secretsMasked: true` when anything was masked. Lists come back as parsed: one element is an object, several are an array.
+
+### Error shapes (seen live 2026-10-09)
+
+- **`NinaResponse`, HTTP 200.** `<NinaResponse><IsSuccess>false</IsSuccess><ErrorCode>…</ErrorCode>…`: seen for 105 (unknown message type), 107 (message type not allowed), 109 (XSD validation) and 68 (unknown error). It has no `Status`, so node-kpn 2.1.0 returns it as success; the handler maps it with `parseGrexxError` (102 forbidden, 108 rate limit). A builder tool reports it as an unexpected root; `describeGrexxError` decodes it.
+- **`Status/Code` `ValidationError` or `UnknownError`** on the normal response root: node-kpn throws a typed `GrexxError`.
+- **Root `ErrorMessage`** on responses without `Status` (CustomerData, CarrierInfo, Prequalification, RadiusCheck, RasCheck, GetMobileSettings): `isError` with the message and the data.
+
+Error text never includes a raw response body: node-kpn uses the body as the message when Grexx sends an error without one, and that body can hold SIM codes.
+
+### Live acceptatie (2026-10-09)
+
+The ten reads passed IRMA XSD validation. Returned data: customer_data, order_summary, ras_check and radius_check (FTTH order 11640032), mobile_orders, available_portings, carrier_info (9999ZZ 1). IRMA errors from the shared acceptatie data: get_sim (no active SIM on any test order), mobile_settings ("Unexpected error."), mobile_usage (NinaResponse 68). start_line_diagnose was not sent.
+
+## Not registered
+
+Queued calls, OrderModule, and Proxymodule notifications are out of scope: their results arrive asynchronously on a partner-hosted endpoint.
 
 ## Legacy surface
 

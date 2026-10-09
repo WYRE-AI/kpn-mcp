@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetMobileSubscriptionUsageResponse_V1>
+  <Status>
+    <Code>Success</Code>
+    <Messages>
+      <string>Verbruik opgehaald voor order 123456.</string>
+    </Messages>
+  </Status>
+  <OrderId>123456</OrderId>
+  <MobileSubscriptionUsage>
+    <CustomerId>28665</CustomerId>
+    <PhoneNumber>0612345678</PhoneNumber>
+    <DataBundleValue>10240</DataBundleValue>
+    <DataCurrentValue>3456.78</DataCurrentValue>
+    <UomData>MB</UomData>
+    <VoiceBundleValue>500</VoiceBundleValue>
+    <VoiceCurrentValue>123.5</VoiceCurrentValue>
+    <UomVoice>Minutes</UomVoice>
+    <SmsBundleValue>100</SmsBundleValue>
+    <SmsCurrentValue>12</SmsCurrentValue>
+    <UomSms>Events</UomSms>
+    <Amount>2.5</Amount>
+    <UomAmount>Euro</UomAmount>
+  </MobileSubscriptionUsage>
+</GetMobileSubscriptionUsageResponse_V1>

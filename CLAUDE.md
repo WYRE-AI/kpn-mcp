@@ -7,6 +7,31 @@ Grexx contract: `docs/GREXX.md`. The developer.kpn.com catalog is
 
 ## Learnings - 2026-10-09
 
+- **IRMA enforces XSD element order and rejects with HTTP 200.** A request with
+  elements out of `xs:sequence` order returns HTTP 200 `<NinaResponse>` with
+  `IsSuccess=false`, `ErrorCode 109` and the expected element list. 105, 107 and
+  68 arrive the same way. node-kpn 2.1.0 still returns it as success (no
+  `Status`); `ninaError` in `handlers/grexx-realtime.ts` turns it into the SDK's
+  typed error, and `describeGrexxError` decodes it when a builder rejects it as
+  an unexpected root. CustomerData, CarrierInfo, Prequalification, RadiusCheck,
+  RasCheck and GetMobileSettings have no `Status`; a filled root `ErrorMessage`
+  is their only failure signal.
+- **Calls without a node-kpn builder are data.** Add a spec to
+  `src/tools/grexx-realtime.ts` (fields in request-XSD order, from the portal's
+  Webservice Beschrijvingen), a response fixture in
+  `src/__tests__/fixtures/grexx/`, and a `CASES` row (args plus the expected
+  body) in `handlers-grexx-realtime.test.ts`. The portal CSV export
+  (`realtime calls.csv`) embeds every request and response XSD.
+- **Secrets in live responses.** RadiusCheck returns the PPP `Password` in clear
+  text; GetSim and mobile orders return `Puc1` and eSIM codes. They are masked,
+  and `describeGrexxError` never echoes a response body (node-kpn uses the raw
+  body as the error message when Grexx sends an error without one).
+- **Acceptatie test data:** customer 555799, FTTH order 11640032 (radius/ras),
+  mobile orders 11638192/11638193 (`mobile_orders`), HIP group 11638620, carrier
+  info at 9999ZZ 1. No acceptatie mobile order has an active SIM, so get_sim,
+  usage and settings return IRMA errors. Prequalification is
+  `107 Message type not allowed` for the WYRE API account. IRMA accepts
+  `2025-01-01T00:00:00[Z|±hh:mm]` and rejects date-only values with 109.
 - **node-kpn 2.1.0 adds Prequalification_V2 and OrderData_V1.** Tag `v2.1.0`
   (`ca0db33d`, [node-kpn#5](https://github.com/WYRE-AI/node-kpn/pull/5)). Depend
   on `^2.1.0`. Registered reads are `kpn_grexx_prequalification` (address and
@@ -31,10 +56,9 @@ Grexx contract: `docs/GREXX.md`. The developer.kpn.com catalog is
 - **URL headers are rejected.** `KPN_GREXX_BASE_URL` and `KPN_GREXX_TOKEN_URL`
   are env-only. Gateway headers are `X-KPN-Grexx-Username` and
   `X-KPN-Grexx-Password`.
-- **Phase-1 tools follow SDK builders.** Registered reads are
-  `kpn_grexx_test_connection`, `kpn_grexx_zipcode_check`,
-  `kpn_grexx_prequalification`, and `kpn_grexx_order_data`. Do not invent XSD
-  fields for the other realtime calls until node-kpn ships those builders.
+- **Phase-1 tools follow SDK builders or XSD specs.** (Superseded 2026-10-09:
+  calls without a node-kpn builder are specs copied from the request XSDs in
+  `src/tools/grexx-realtime.ts`; nothing is invented.)
 - **node-kpn 2.1.0 is the Grexx export** (tag `v2.1.0`, GitHub Packages).
   Depend on `^2.1.0` from the package root. Legacy tools import
   `@wyre-ai/node-kpn/legacy`.
