@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RasCheckResponse_V1>
+  <ResponseItems>
+    <RasCheckResponseItem_V1>
+      <VrfId>4012</VrfId>
+      <QosEnabled>true</QosEnabled>
+      <HasSession>true</HasSession>
+      <PingSuccessPercent>100</PingSuccessPercent>
+      <IpAddress>10.20.30.40</IpAddress>
+      <PolicyDetails>BUSINESS-100M-QOS</PolicyDetails>
+    </RasCheckResponseItem_V1>
+    <RasCheckResponseItem_V1>
+      <VrfId>4013</VrfId>
+      <QosEnabled>false</QosEnabled>
+      <HasSession>false</HasSession>
+      <PingSuccessPercent>0</PingSuccessPercent>
+      <IpAddress>10.20.31.40</IpAddress>
+      <Error>Geen actieve PPP sessie gevonden voor dit channel.</Error>
+      <PolicyDetails>BUSINESS-50M-BE</PolicyDetails>
+    </RasCheckResponseItem_V1>
+  </ResponseItems>
+</RasCheckResponse_V1>

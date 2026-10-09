@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<StartLineDiagnoseResponse_V1>
+  <Status>
+    <Messages>
+      <string>Lijndiagnose gestart voor order 123456.</string>
+    </Messages>
+    <Code>Success</Code>
+  </Status>
+  <OrderId>123456</OrderId>
+  <StartLineDiagnoseResult>
+    <AnalysisId>3f2b8c1e-5d4a-4e7b-9a01-6c2d8e4f1a23</AnalysisId>
+  </StartLineDiagnoseResult>
+</StartLineDiagnoseResponse_V1>

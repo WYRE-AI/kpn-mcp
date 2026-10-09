@@ -28,6 +28,7 @@ import {
   ToolInputError,
   type ToolResult,
 } from "./results.js";
+import { GREXX_REALTIME_HANDLERS } from "./grexx-realtime.js";
 
 /**
  * Public reference address used in the 2026-10-07 acceptatie smoke
@@ -206,4 +207,5 @@ export const GREXX_HANDLERS: Record<string, GrexxToolHandler> = {
   kpn_grexx_zipcode_check: zipcodeCheck,
   kpn_grexx_prequalification: prequalification,
   kpn_grexx_order_data: orderData,
+  ...GREXX_REALTIME_HANDLERS,
 };

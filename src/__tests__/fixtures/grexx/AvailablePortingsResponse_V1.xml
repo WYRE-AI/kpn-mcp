@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AvailablePortingsResponse_V1>
+  <Status>
+    <Messages>
+      <string>2 beschikbare porteringen gevonden voor klant 28665.</string>
+    </Messages>
+    <Code>Success</Code>
+  </Status>
+  <AvailablePortings>
+    <AvailablePorting_V1>
+      <PortingId>PORT-2026-000123</PortingId>
+      <FirstPossiblePortingDate>2026-10-20T00:00:00+02:00</FirstPossiblePortingDate>
+      <PlannedPortingDate>2026-10-22T08:00:00+02:00</PlannedPortingDate>
+      <Numbers>
+        <AvailablePortingNumber_V1>
+          <OrderId>123456</OrderId>
+          <PhoneNumber>0612345678</PhoneNumber>
+          <LastPhoneNumber>0612345678</LastPhoneNumber>
+        </AvailablePortingNumber_V1>
+        <AvailablePortingNumber_V1>
+          <OrderId>123457</OrderId>
+          <PhoneNumber>0201234500</PhoneNumber>
+          <LastPhoneNumber>0201234509</LastPhoneNumber>
+        </AvailablePortingNumber_V1>
+      </Numbers>
+      <PortingContractType>FirstPossibleDate</PortingContractType>
+    </AvailablePorting_V1>
+    <AvailablePorting_V1>
+      <PortingId>PORT-2026-000124</PortingId>
+      <FirstPossiblePortingDate>2026-11-02T00:00:00+01:00</FirstPossiblePortingDate>
+      <PlannedPortingDate>2026-11-30T08:00:00+01:00</PlannedPortingDate>
+      <Numbers>
+        <AvailablePortingNumber_V1>
+          <OrderId>123458</OrderId>
+          <PhoneNumber>0687654321</PhoneNumber>
+          <LastPhoneNumber>0687654321</LastPhoneNumber>
+        </AvailablePortingNumber_V1>
+        <AvailablePortingNumber_V1>
+          <OrderId>123459</OrderId>
+          <PhoneNumber>08001234567</PhoneNumber>
+          <LastPhoneNumber>08001234567</LastPhoneNumber>
+        </AvailablePortingNumber_V1>
+      </Numbers>
+      <PortingContractType>Continuation</PortingContractType>
+    </AvailablePorting_V1>
+  </AvailablePortings>
+</AvailablePortingsResponse_V1>

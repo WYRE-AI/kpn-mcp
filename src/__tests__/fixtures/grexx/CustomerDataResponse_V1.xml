@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CustomerDataResponse_V1>
+  <PagedResult>
+    <Skip>0</Skip>
+    <Take>10</Take>
+    <TotalNumberOfRecords>2</TotalNumberOfRecords>
+    <Results>
+      <CustomerData_V4>
+        <Id>28665</Id>
+        <Name>Voorbeeld Telecom B.V.</Name>
+        <Street>Dam</Street>
+        <HouseNr>1</HouseNr>
+        <HouseNrExtension>A</HouseNrExtension>
+        <ZipCode>1012JS</ZipCode>
+        <City>Amsterdam</City>
+        <CountryCode>Nld</CountryCode>
+        <Phone1>0201234567</Phone1>
+        <Phone2>0612345678</Phone2>
+        <DateCreated>2016-01-30</DateCreated>
+        <IsActive>true</IsActive>
+        <Fax>0201234568</Fax>
+        <Email>klant@voorbeeld.nl</Email>
+        <Website>www.voorbeeld.nl</Website>
+        <DebitNr>1352</DebitNr>
+        <LegalStatus>BV</LegalStatus>
+        <ExternalId>DB0001</ExternalId>
+        <ChamberOfCommerceNr>12345678</ChamberOfCommerceNr>
+        <IBAN>NL91ABNA0417164300</IBAN>
+        <BIC>ABNANL2A</BIC>
+        <VATNr>NL123456789B01</VATNr>
+        <FirstBillingDate>2016-03-01</FirstBillingDate>
+        <KrnId>1234567</KrnId>
+      </CustomerData_V4>
+      <CustomerData_V4>
+        <Id>28666</Id>
+        <Name>Testbedrijf Amsterdam</Name>
+        <Street>Dam</Street>
+        <HouseNr>1</HouseNr>
+        <HouseNrExtension>B</HouseNrExtension>
+        <ZipCode>1012JS</ZipCode>
+        <City>Amsterdam</City>
+        <CountryCode>Nld</CountryCode>
+        <Phone1>0207654321</Phone1>
+        <Phone2>0687654321</Phone2>
+        <DateCreated>2019-06-15</DateCreated>
+        <IsActive>false</IsActive>
+        <Fax>0207654322</Fax>
+        <Email>info@testbedrijf.nl</Email>
+        <Website>www.testbedrijf.nl</Website>
+        <DebitNr>1353</DebitNr>
+        <LegalStatus>Eenmanszaak</LegalStatus>
+        <ExternalId>DB0002</ExternalId>
+        <ChamberOfCommerceNr>87654321</ChamberOfCommerceNr>
+        <IBAN>NL02ABNA0123456789</IBAN>
+        <BIC>INGBNL2A</BIC>
+        <VATNr>NL987654321B01</VATNr>
+        <FirstBillingDate>2019-07-01</FirstBillingDate>
+        <KrnId>7654321</KrnId>
+      </CustomerData_V4>
+    </Results>
+  </PagedResult>
+</CustomerDataResponse_V1>

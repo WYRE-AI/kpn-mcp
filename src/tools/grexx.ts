@@ -1,13 +1,14 @@
 /**
- * Phase-1 Grexx / IRMA tools.
+ * Grexx / IRMA realtime tools.
  *
  * Names are `kpn_grexx_*` so they cannot be confused with the developer.kpn.com
- * `kpn_*` tools. Every tool here is a realtime read. Field lists come from the
- * `@wyre-ai/node-kpn` builders (ZipCodeCheckRequest_V6, PrequalificationRequest_V2,
- * OrderDataRequest_V1). Tools whose XSD is not in the SDK are not registered —
- * see docs/GREXX.md.
+ * `kpn_*` tools. The tools in this file use `@wyre-ai/node-kpn` builders
+ * (ZipCodeCheckRequest_V6, PrequalificationRequest_V2, OrderDataRequest_V1).
+ * The other realtime calls are XSD specs in grexx-realtime.ts, appended at the
+ * end. See docs/GREXX.md.
  */
 import type { Tool } from "@modelcontextprotocol/server";
+import { GREXX_REALTIME_TOOLS } from "./grexx-realtime.js";
 import {
   PREQUALIFICATION_AVAILABILITIES,
   PREQUALIFICATION_PRODUCT_TYPES,
@@ -172,4 +173,5 @@ export const GREXX_TOOLS: Tool[] = [
     },
     annotations: { readOnlyHint: true, openWorldHint: true, idempotentHint: true },
   },
+  ...GREXX_REALTIME_TOOLS,
 ];

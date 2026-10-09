@@ -10,7 +10,7 @@ with the same tool list for every caller. Ships as a GHCR container only (no MCP
 The client is [`@wyre-ai/node-kpn`](https://github.com/WYRE-AI/node-kpn) (Grexx export).
 Contract: [`docs/GREXX.md`](docs/GREXX.md).
 
-## Tools (4, flat)
+## Tools (15, flat)
 
 - `kpn_grexx_test_connection`: the SDK mints an OAuth client-credentials token and posts a
   `ZipCodeCheckRequest_V6` probe for the public reference address 1012JS 1 (portfolio All).
@@ -23,9 +23,17 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
 - `kpn_grexx_order_data`: customer id, product code, and quantity for an order id
   (`OrderDataRequest_V1` → `OrderDataResponse_V1`).
 
-Further realtime tools (carrier info, line diagnose, customer reads, mobile reads) wait
-until `@wyre-ai/node-kpn` ships their XSD builders. This server does not invent those
-fields. Queued writes and Proxymodule notifications are not exposed.
+- 11 more realtime tools built from the portal request XSDs (see `docs/GREXX.md`):
+  `kpn_grexx_carrier_info`, `kpn_grexx_radius_check`, `kpn_grexx_ras_check`,
+  `kpn_grexx_start_line_diagnose`, `kpn_grexx_customer_data`, `kpn_grexx_order_summary`,
+  `kpn_grexx_get_sim`, `kpn_grexx_mobile_settings`, `kpn_grexx_mobile_usage`,
+  `kpn_grexx_mobile_orders`, `kpn_grexx_available_portings`. `start_line_diagnose` starts
+  a test at KPN, so it is not read-only and is never retried. SIM codes and the
+  RadiusCheck PPP password are masked.
+
+IRMA enforces XSD element order and rejects a bad request with an HTTP 200
+`NinaResponse`; both are handled by the server. Queued writes and Proxymodule
+notifications are not exposed.
 
 Set `KPN_LEGACY_DEVELOPER_API=1` to also serve the previous 23 developer.kpn.com tools
 (disturbances, availability, SIM swap, MSM). They are absent from the default list.

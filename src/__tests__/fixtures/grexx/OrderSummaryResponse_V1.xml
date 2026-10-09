@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<OrderSummaryResponse_V1>
+  <Status>
+    <Messages>
+      <string>2 orders gevonden voor klant 28665.</string>
+    </Messages>
+    <Code>Success</Code>
+  </Status>
+  <PagedResult>
+    <Skip>0</Skip>
+    <Take>25</Take>
+    <TotalNumberOfRecords>2</TotalNumberOfRecords>
+    <Results>
+      <OrderSummary_V1>
+        <OrderId>123456</OrderId>
+        <ReferenceOrderId>123400</ReferenceOrderId>
+        <ParentId>123450</ParentId>
+        <CustomerId>28665</CustomerId>
+        <ProductId>MOB-UNL-5G</ProductId>
+        <ProductName>Zakelijk Mobiel Onbeperkt 5G</ProductName>
+        <ProductGroup>Mobile</ProductGroup>
+        <ProductCommercialTypeName>Abonnement</ProductCommercialTypeName>
+        <DateCreated>2026-09-01T10:15:00+02:00</DateCreated>
+        <DateActive>2026-09-03T08:00:00+02:00</DateActive>
+        <DateModified>2026-10-01T12:00:00+02:00</DateModified>
+        <DateTerminate>2027-09-03T00:00:00+02:00</DateTerminate>
+        <DateTerminated>2027-09-03T00:00:00+02:00</DateTerminated>
+        <Label>Mobiel J. Jansen</Label>
+        <Attribute>0612345678</Attribute>
+        <OrderState>Active</OrderState>
+        <Quantity>1</Quantity>
+        <ServiceLevelAgreement>Nvt</ServiceLevelAgreement>
+      </OrderSummary_V1>
+      <OrderSummary_V1>
+        <OrderId>123457</OrderId>
+        <ReferenceOrderId>123401</ReferenceOrderId>
+        <ParentId>123450</ParentId>
+        <CustomerId>28665</CustomerId>
+        <ProductId>FTTH-1000</ProductId>
+        <ProductName>Glasvezel 1 Gbit/s</ProductName>
+        <ProductGroup>Internet</ProductGroup>
+        <ProductCommercialTypeName>Verbinding</ProductCommercialTypeName>
+        <DateCreated>2023-02-10T09:00:00+01:00</DateCreated>
+        <DateActive>2023-03-01T08:00:00+01:00</DateActive>
+        <DateModified>2026-08-15T14:30:00+02:00</DateModified>
+        <DateTerminate>2026-08-31T00:00:00+02:00</DateTerminate>
+        <DateTerminated>2026-08-31T23:59:00+02:00</DateTerminated>
+        <Label>Dam 1A Amsterdam</Label>
+        <Attribute>1012JS 1 A</Attribute>
+        <OrderState>Terminated</OrderState>
+        <Quantity>1</Quantity>
+        <ServiceLevelAgreement>NextBusinessDay</ServiceLevelAgreement>
+      </OrderSummary_V1>
+    </Results>
+  </PagedResult>
+</OrderSummaryResponse_V1>

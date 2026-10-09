@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<OrderDataResponse_V1>
+  <Status>
+    <Messages>
+      <string>Ordergegevens opgehaald voor order 123456.</string>
+    </Messages>
+    <Code>Success</Code>
+  </Status>
+  <Order>
+    <CustomerId>28665</CustomerId>
+    <ProductCode>MOB-UNL-5G</ProductCode>
+    <Quantity>1</Quantity>
+  </Order>
+</OrderDataResponse_V1>
