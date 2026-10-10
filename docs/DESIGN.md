@@ -571,9 +571,11 @@ The Docker build uses `--platform linux/amd64`.
 
 ## 5. Gateway credential injection
 
-Hosted calls use gateway mode. Conduit injects the stored credential at call time as the headers in §2.4 (`X-KPN-Client-Id`, `X-KPN-Client-Secret`, and the optional MSM pair). This server does not read those values from the environment in gateway mode, and it does not accept a base URL from the caller.
+Hosted calls use gateway mode. Conduit injects the stored credential at call time.
 
-Grexx uses the same pattern. Conduit injects the stored username and password as `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`. The base URL and token URL stay in the environment. See `docs/GREXX.md`.
+Every gateway request needs `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`. This server does not read those values from the environment in gateway mode. The base URL and token URL stay in the environment, and a caller-supplied URL header is rejected. See `docs/GREXX.md`.
+
+When `KPN_LEGACY_DEVELOPER_API=1`, Conduit also injects the legacy developer.kpn.com credential on the headers in §2.4 (`X-KPN-Client-Id`, `X-KPN-Client-Secret`, and the optional MSM pair). With that flag off, those headers are not used. The legacy base URL stays in the environment.
 
 Registering the credential with Conduit, and hosting the container, happen outside this repo.
 
@@ -597,7 +599,7 @@ Each unit owns only the files it lists. Nobody else edits them. Units code again
 | **SRV-NET** | kpn-mcp | `src/tools/network.ts`, `src/handlers/network.ts`, `src/__tests__/handlers-network.test.ts` |
 | **SRV-MOB-READ** | kpn-mcp | `src/tools/mobile-read.ts`, `src/handlers/mobile-read.ts`, `src/__tests__/handlers-mobile-read.test.ts` |
 | **SRV-MOB-WRITE** | kpn-mcp | `src/tools/mobile-write.ts`, `src/handlers/mobile-write.ts`, `src/__tests__/handlers-mobile-write.test.ts` |
-| **GW** | Conduit | Outside this repo. Conduit stores the KPN credential and injects it at call time on the headers in §2.4. |
+| **GW** | Conduit | Outside this repo. Conduit stores the KPN credential and injects it at call time: the Grexx username and password on every gateway request, and the §2.4 legacy headers only when the legacy surface is enabled. |
 | **INTEGRATE** | both | Swap the `file:` dependency for the published version. Then run `npm run build && npm test && npm run lint` in node-kpn, and `npm run build && npm test && npm run lint && node scripts/lint-destructive-warnings.mjs src && npm run smoke` in kpn-mcp. Update both CHANGELOGs (Keep a Changelog) and commit with conventional commits (`feat:`). Handle the deploy and marketplace follow-ups. Nothing is "done" without captured green output. |
 
 Required test coverage per server domain unit:

@@ -69,7 +69,7 @@ In gateway mode a request missing `X-KPN-Grexx-Username` or `X-KPN-Grexx-Passwor
 answered `401` (JSON-RPC error `-32001`) before the MCP handler runs. It never falls
 through to env credentials. The gateway does not send the base URL.
 
-When `CONDUIT_S2S_SECRET` is set, every request except `/health` must also carry a valid
+When `CONDUIT_S2S_SECRET` is set, every request except `/health` and `/healthz` must also carry a valid
 `X-Gateway-S2S` HMAC header, or it is answered `401`. Unset, the check is off.
 
 ## SDK dependency

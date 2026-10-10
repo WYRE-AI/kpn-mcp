@@ -2,7 +2,7 @@
  * Checks the gateway service-to-service header (`X-Gateway-S2S`).
  *
  * When `CONDUIT_S2S_SECRET` is set, the HTTP server requires a valid header
- * on every request except `/health`. Conduit injects that header at call time.
+ * on every request except `/health` and `/healthz`. Conduit injects that header at call time.
  * The value is `t=<unix seconds>,v1=<hex hmac-sha256 of "t=<unix seconds>">`,
  * compared in constant time. A timestamp more than `maxSkewSeconds` from now
  * (default 300) is rejected. The secret is an opaque string.
