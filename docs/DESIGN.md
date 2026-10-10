@@ -6,12 +6,12 @@ Those v1 tools stay in the repo and are served only when `KPN_LEGACY_DEVELOPER_A
 If code and this document disagree on the legacy surface, fix one of them in the same PR.
 The Grexx surface is specified in `docs/GREXX.md`, not here.
 
-- SDK repo: `/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/node-kpn` (package `@wyre-ai/node-kpn`)
-- Server repo: `/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/kpn-mcp` (package `@wyre-ai/kpn-mcp`)
+- SDK: [`@wyre-ai/node-kpn`](https://github.com/WYRE-AI/node-kpn)
+- Server: this repository (`@wyre-ai/kpn-mcp`)
 - Reference repos to mirror (read them before writing code):
   - SDK: `node-connectwise-cpq`. Zero-dep native fetch, error hierarchy, token-bucket rate limiter, `resources/`, `types/`, MSW tests, tsup dual ESM/CJS.
   - Server: `connectwise-cpq-mcp`. SDK v2 split packages, `createMcpHandler({ legacy: 'stateless' })`, `McpServerFactory`, 401 gate, MRTR elicitation, `confirmDestructive`, destructive-warning lint, dual-era smoke script.
-- Research inputs: `…/scratchpad/kpn-research/{portal,service,network,identity,comms}.md` and the original OAS files in `…/kpn-research/raw/kpnrepo/openapi/_original/`.
+- The legacy surface follows KPN's published OpenAPI specs and developer.kpn.com documentation.
 
 ---
 
@@ -569,65 +569,13 @@ The Docker build uses `--platform linux/amd64`.
 
 ---
 
-## 5. Gateway vendor-config entry
+## 5. Gateway credential injection
 
-File: `/Users/asachs/work/wyre/engineering/projects/mcp/mcp-servers/conduit/src/credentials/vendor-config.ts`. Insert the entry alphabetically, after `kaseya-*` and before `liongard`.
+Hosted calls use gateway mode. Conduit injects the stored credential at call time as the headers in §2.4 (`X-KPN-Client-Id`, `X-KPN-Client-Secret`, and the optional MSM pair). This server does not read those values from the environment in gateway mode, and it does not accept a base URL from the caller.
 
-```ts
-  kpn: {
-    name: "KPN",
-    slug: "kpn",
-    category: "network",
-    containerUrl: "http://kpn-mcp",
-    fields: [
-      { key: "clientId", label: "Client ID", required: true,
-        placeholder: "developer.kpn.com → Dashboard → Projects → your project" },
-      { key: "clientSecret", label: "Client Secret", required: true, secret: true },
-      { key: "msmClientId", label: "Mobile Services Management Client ID (optional)", required: false,
-        placeholder: "Only if this customer's KPN Zakelijk MSM app differs from the project above" },
-      { key: "msmClientSecret", label: "Mobile Services Management Client Secret (optional)", required: false, secret: true },
-    ],
-    headerMapping: {
-      clientId: "X-KPN-Client-Id",
-      clientSecret: "X-KPN-Client-Secret",
-      msmClientId: "X-KPN-MSM-Client-Id",
-      msmClientSecret: "X-KPN-MSM-Client-Secret",
-    },
-    docsUrl: "https://developer.kpn.com/",
-    credentialDocsUrl: "https://github.com/WYRE-AI/kpn-mcp#credentials",
-    async validate(creds) {
-      // Minting a client-credentials token is the cheapest authenticated check.
-      // It proves the id/secret pair; it does NOT prove product entitlement.
-      const mint = async (path: string, id: string, secret: string) =>
-        fetch(`https://api-prd.kpn.com${path}?grant_type=client_credentials`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-          body: new URLSearchParams({ client_id: id, client_secret: secret }),
-          signal: AbortSignal.timeout(10_000),
-        });
-      if (Boolean(creds.msmClientId) !== Boolean(creds.msmClientSecret)) {
-        return { valid: false, error: "Provide both MSM Client ID and MSM Client Secret, or neither." };
-      }
-      const res = await mint("/oauth/client_credential/accesstoken", creds.clientId, creds.clientSecret);
-      if (!res.ok) {
-        return { valid: false, error: res.status === 401
-          ? "Invalid KPN client ID or secret."
-          : `KPN token endpoint returned HTTP ${res.status}.` };
-      }
-      if (creds.msmClientId) {
-        const msm = await mint("/oauth/grip/msm/accesstoken", creds.msmClientId, creds.msmClientSecret);
-        if (!msm.ok) {
-          return { valid: false, error: msm.status === 401
-            ? "Invalid KPN Mobile Services Management client ID or secret."
-            : `KPN MSM token endpoint returned HTTP ${msm.status}.` };
-        }
-      }
-      return { valid: true };
-    },
-  },
-```
+Grexx uses the same pattern. Conduit injects the stored username and password as `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`. The base URL and token URL stay in the environment. See `docs/GREXX.md`.
 
-Follow-ups outside these repos, owned by the integration step: the Bicep/Container App for `kpn-mcp`, and msp-claude-plugins marketplace registration, which uses the msp-plugin-development skill checklist.
+Registering the credential with Conduit, and hosting the container, happen outside this repo.
 
 ---
 
@@ -649,7 +597,7 @@ Each unit owns only the files it lists. Nobody else edits them. Units code again
 | **SRV-NET** | kpn-mcp | `src/tools/network.ts`, `src/handlers/network.ts`, `src/__tests__/handlers-network.test.ts` |
 | **SRV-MOB-READ** | kpn-mcp | `src/tools/mobile-read.ts`, `src/handlers/mobile-read.ts`, `src/__tests__/handlers-mobile-read.test.ts` |
 | **SRV-MOB-WRITE** | kpn-mcp | `src/tools/mobile-write.ts`, `src/handlers/mobile-write.ts`, `src/__tests__/handlers-mobile-write.test.ts` |
-| **GW** | conduit | The `kpn` entry in `src/credentials/vendor-config.ts`, and only that entry. The unit must not reformat anything else in the file. It also adds a validate() unit test if a vendor-config test file exists: stub `fetch` and cover the 200, 401 and half-MSM-pair cases. |
+| **GW** | Conduit | Outside this repo. Conduit stores the KPN credential and injects it at call time on the headers in §2.4. |
 | **INTEGRATE** | both | Swap the `file:` dependency for the published version. Then run `npm run build && npm test && npm run lint` in node-kpn, and `npm run build && npm test && npm run lint && node scripts/lint-destructive-warnings.mjs src && npm run smoke` in kpn-mcp. Update both CHANGELOGs (Keep a Changelog) and commit with conventional commits (`feat:`). Handle the deploy and marketplace follow-ups. Nothing is "done" without captured green output. |
 
 Required test coverage per server domain unit:
