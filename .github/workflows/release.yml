@@ -27,11 +27,8 @@ jobs:
       image-name: ghcr.io/wyre-ai/kpn-mcp
     secrets: inherit
 
-# NO `deploy:` job — deliberate. KPN is a CONDUIT-ONLY vendor.
+# NO `deploy:` job — deliberate. KPN is a Conduit-only vendor.
 #
-# The fleet-standard `mcp-server-deploy.yml` deploys to `gwp-<slug>` in the
-# legacy `mcp-gateway-prod` resource group, not conduit. Conduit's sidecars are
-# deployed from `azure/vendor-fleet.conduit-prod.bicepparam` by conduit's own
-# `deploy-vendor-fleet.yml`. There is no `gwp-kpn` Container App, so a deploy
-# job here could only fail. This matches connectwise-cpq-mcp, scalepad-mcp and
-# clio-mcp, the other conduit-only vendors.
+# Conduit hosts this container and injects the stored credential at call time.
+# A deploy job in this repo is not used. This matches connectwise-cpq-mcp,
+# scalepad-mcp and clio-mcp, the other Conduit-only vendors.

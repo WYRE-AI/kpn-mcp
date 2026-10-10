@@ -1,23 +1,14 @@
 /**
- * Verifies the conduit gateway's service-to-service auth header
- * (gateway#377 parity — closes the confused-deputy gap where a compromised
- * sibling sidecar in the shared ACA environment could otherwise impersonate
- * the gateway to this container).
+ * Checks the gateway service-to-service header (`X-Gateway-S2S`).
  *
- * This is a near-verbatim port of conduit's `verifyS2sHeader`
- * (src/proxy/s2s.ts) — intentionally unchanged logic, ported once and kept
- * in sync. `secret` is treated as an opaque value: since gateway#377
- * Finding B, the gateway derives a per-vendor subkey from its master
- * secret and this container is provisioned (via CONDUIT_S2S_SECRET) with
- * only its own derived value, never the raw master — a sibling sidecar
- * holds a DIFFERENT derived value and cannot forge a header that verifies
- * here. This function doesn't need to know that; it just checks whatever
- * secret it's handed.
+ * When `CONDUIT_S2S_SECRET` is set, the HTTP server requires a valid header
+ * on every request except `/health`. Conduit injects that header at call time.
+ * The value is `t=<unix seconds>,v1=<hex hmac-sha256 of "t=<unix seconds>">`,
+ * compared in constant time. A timestamp more than `maxSkewSeconds` from now
+ * (default 300) is rejected. The secret is an opaque string.
  *
- * Empty secret => always returns false. The caller is expected to treat an
- * empty CONDUIT_S2S_SECRET as "S2S enforcement disabled" (dark-by-default,
- * matches the dormant/pre-provisioning state) rather than calling this at
- * all — see the enforcement check in index.ts.
+ * An empty secret always fails this check. The HTTP server treats an unset
+ * `CONDUIT_S2S_SECRET` as the check being off and does not call this function.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 
