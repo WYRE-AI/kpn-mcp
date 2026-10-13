@@ -17,8 +17,15 @@
  * - X-KPN-Grexx-Username / X-KPN-Grexx-Password
  * Base URL and token URL are never read from headers.
  * Set KPN_LEGACY_DEVELOPER_API=1 to also serve developer.kpn.com tools.
+ *
+ * HTTP transport refuses to start unless CONDUIT_S2S_SECRET is a real secret.
+ * Known placeholders are rejected, including when MCP_ALLOW_INSECURE_DEV=1.
+ * That flag is the only bypass for an empty secret: it logs a warning, does
+ * not enforce X-Gateway-S2S, and listens on 127.0.0.1 only. A configured
+ * secret still honors MCP_HTTP_HOST. /health and /healthz stay
+ * unauthenticated. stdio does not use S2S auth.
  */
-import { createServer, IncomingMessage, ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { toNodeHandler } from "@modelcontextprotocol/node";
@@ -35,7 +42,102 @@ import {
 import { logger } from "./utils/logger.js";
 import { verifyS2sHeader, S2S_HEADER } from "./s2s-verify.js";
 
-const S2S_SECRET = process.env.CONDUIT_S2S_SECRET || "";
+/**
+ * Public example values. A copied placeholder must not verify as a real secret,
+ * and MCP_ALLOW_INSECURE_DEV=1 does not accept one.
+ */
+const KNOWN_PLACEHOLDER_SECRETS = new Set([
+  "replace-with-a-real-secret",
+  "your-s2s-secret",
+  "your-secret",
+  "changeme",
+  "change-me",
+  "placeholder",
+  "secret",
+  "example",
+  "replace-me",
+  "s2s-secret",
+]);
+
+const LOOPBACK_HOST = "127.0.0.1";
+
+const MISSING_S2S_SECRET_ERROR =
+  "Refusing to start HTTP transport: CONDUIT_S2S_SECRET is empty. " +
+  "An empty secret would accept unauthenticated /mcp requests (CWE-306). " +
+  "Set CONDUIT_S2S_SECRET to the gateway-provisioned service-to-service secret, " +
+  "or set MCP_ALLOW_INSECURE_DEV=1 for local development only.";
+
+const PLACEHOLDER_S2S_SECRET_ERROR =
+  "Refusing to start HTTP transport: CONDUIT_S2S_SECRET is a known placeholder. " +
+  "Generate a secret with `openssl rand -hex 32` and set CONDUIT_S2S_SECRET to that value. " +
+  "MCP_ALLOW_INSECURE_DEV=1 does not accept a placeholder.";
+
+const INSECURE_DEV_WARNING =
+  "SECURITY WARNING: CONDUIT_S2S_SECRET is empty and MCP_ALLOW_INSECURE_DEV=1. " +
+  "HTTP /mcp is starting WITHOUT service-to-service authentication and listens on 127.0.0.1 only. " +
+  "Do not use MCP_ALLOW_INSECURE_DEV outside local development.";
+
+export interface HttpTransport {
+  server: HttpServer;
+  close: () => Promise<void>;
+}
+
+function refuseStart(message: string): never {
+  logger.error(message);
+  process.exit(1);
+}
+
+/** 127.0.0.1, the rest of 127.0.0.0/8, localhost, and ::1. */
+function isLoopbackBindHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase().replace(/^\[(.+)\]$/, "$1");
+  if (normalized === "localhost" || normalized === "::1") return true;
+  const bare = normalized.startsWith("::ffff:") ? normalized.slice("::ffff:".length) : normalized;
+  const parts = bare.split(".");
+  if (parts.length !== 4) return false;
+  if (parts.some((part) => !/^\d{1,3}$/.test(part) || Number(part) > 255)) return false;
+  return parts[0] === "127";
+}
+
+/**
+ * Fail closed. A known placeholder is never a configured secret, including
+ * when MCP_ALLOW_INSECURE_DEV=1 is also set. Empty is the only case the dev
+ * flag may bypass, and that bypass does not check X-Gateway-S2S.
+ * The secret value is never written to logs.
+ */
+function resolveS2sSecret(env: NodeJS.ProcessEnv = process.env): { secret: string; insecureDev: boolean } {
+  const raw = (env.CONDUIT_S2S_SECRET ?? "").trim();
+  if (raw && KNOWN_PLACEHOLDER_SECRETS.has(raw.toLowerCase())) {
+    refuseStart(PLACEHOLDER_S2S_SECRET_ERROR);
+  }
+  if (raw) return { secret: raw, insecureDev: false };
+  if (env.MCP_ALLOW_INSECURE_DEV === "1") {
+    return { secret: "", insecureDev: true };
+  }
+  refuseStart(MISSING_S2S_SECRET_ERROR);
+}
+
+/**
+ * No real secret: force 127.0.0.1, even when MCP_HTTP_HOST is a wider address
+ * such as 0.0.0.0. A configured secret honors MCP_HTTP_HOST. Unset stays
+ * 0.0.0.0 so a secret-backed container deploy keeps the previous bind.
+ */
+function resolveBindHost(insecureDev: boolean, env: NodeJS.ProcessEnv = process.env): string {
+  const configured = (env.MCP_HTTP_HOST ?? "").trim();
+  if (!insecureDev) return configured || "0.0.0.0";
+  if (configured && !isLoopbackBindHost(configured)) {
+    logger.error(
+      `WARNING: MCP_HTTP_HOST=${configured} is not a loopback address. ` +
+        "MCP_ALLOW_INSECURE_DEV=1 without CONDUIT_S2S_SECRET cannot listen there. " +
+        `Binding ${LOOPBACK_HOST} only.`
+    );
+  }
+  return LOOPBACK_HOST;
+}
+
+function headerValue(value: string | string[] | undefined): string | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : undefined;
+}
 
 const CORS_ALLOW_HEADERS = [
   "Content-Type",
@@ -55,9 +157,17 @@ function startStdioTransport(): void {
 }
 
 /** Start dual-era HTTP serving with health routing, gateway credential gates, and graceful shutdown. */
-async function startHttpTransport(): Promise<void> {
+export async function startHttpTransport(): Promise<HttpTransport> {
+  const { secret: s2sSecret, insecureDev } = resolveS2sSecret();
   const port = parseInt(process.env.MCP_HTTP_PORT || "8080", 10);
-  const host = process.env.MCP_HTTP_HOST || "0.0.0.0";
+  // Loopback unless the operator opts into a wider bind. A wider bind is
+  // honored only when CONDUIT_S2S_SECRET is a real secret. The insecure-dev
+  // bypass always listens on 127.0.0.1, including when the image sets 0.0.0.0.
+  const host = resolveBindHost(insecureDev);
+  if (insecureDev) {
+    // error level so LOG_LEVEL=warn|error cannot hide the bypass.
+    logger.error(INSECURE_DEV_WARNING);
+  }
   const isGatewayMode = process.env.AUTH_MODE === "gateway";
 
   const mcpHandler = createMcpHandler(makeMcpServerFactory({ gatewayMode: isGatewayMode }), {
@@ -101,7 +211,10 @@ async function startHttpTransport(): Promise<void> {
       return;
     }
 
-    if (S2S_SECRET && !verifyS2sHeader(req.headers[S2S_HEADER] as string | undefined, S2S_SECRET)) {
+    // Empty s2sSecret is only reachable when MCP_ALLOW_INSECURE_DEV=1; startup
+    // refuses otherwise. A configured secret is always enforced, before any
+    // credential extraction.
+    if (s2sSecret && !verifyS2sHeader(headerValue(req.headers[S2S_HEADER]), s2sSecret)) {
       res.writeHead(401, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
@@ -157,8 +270,10 @@ async function startHttpTransport(): Promise<void> {
     res.end(JSON.stringify({ error: "Not found", endpoints: ["/mcp", "/health"] }));
   });
 
-  await new Promise<void>((resolve) => {
+  await new Promise<void>((resolve, reject) => {
+    httpServer.once("error", reject);
     httpServer.listen(port, host, () => {
+      httpServer.off("error", reject);
       logger.info(`KPN MCP server listening on http://${host}:${port}/mcp`);
       logger.info(`Health check available at http://${host}:${port}/health`);
       logger.info(`Authentication mode: ${isGatewayMode ? "gateway (header-based)" : "env"}`);
@@ -166,16 +281,16 @@ async function startHttpTransport(): Promise<void> {
     });
   });
 
-  const shutdown = async () => {
-    logger.info("Shutting down KPN MCP server...");
-    await mcpHandler.close();
-    await new Promise<void>((resolve, reject) => {
-      httpServer.close((err) => (err ? reject(err) : resolve()));
-    });
-    process.exit(0);
+  return {
+    server: httpServer,
+    close: async () => {
+      await mcpHandler.close();
+      if (!httpServer.listening) return;
+      await new Promise<void>((resolve, reject) => {
+        httpServer.close((err) => (err ? reject(err) : resolve()));
+      });
+    },
   };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
 }
 
 async function main() {
@@ -186,15 +301,26 @@ async function main() {
   });
 
   if (transportType === "http") {
-    await startHttpTransport();
+    const http = await startHttpTransport();
+    const shutdown = async () => {
+      logger.info("Shutting down KPN MCP server...");
+      await http.close();
+      process.exit(0);
+    };
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
   } else {
     startStdioTransport();
   }
 }
 
-main().catch((error) => {
-  logger.error("Fatal startup error", {
-    error: error instanceof Error ? error.message : String(error),
+// Vitest imports this module to call startHttpTransport. Skip the CLI
+// entrypoint there. `node dist/index.js` still starts stdio or HTTP.
+if (process.env.VITEST !== "true") {
+  main().catch((error) => {
+    logger.error("Fatal startup error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    process.exit(1);
   });
-  process.exit(1);
-});
+}

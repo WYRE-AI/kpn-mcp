@@ -560,7 +560,8 @@ Each domain tools file exports `export const <X>_TOOLS: Tool[]`. Each domain han
 
 Environment variables:
 - `MCP_TRANSPORT` = stdio | http
-- `MCP_HTTP_PORT` (default 8080), `MCP_HTTP_HOST`
+- `MCP_HTTP_PORT` (default 8080), `MCP_HTTP_HOST` (honored when `CONDUIT_S2S_SECRET` is set; the insecure-dev bypass binds `127.0.0.1`)
+- `CONDUIT_S2S_SECRET` (required for HTTP unless `MCP_ALLOW_INSECURE_DEV=1`)
 - `AUTH_MODE` = gateway | env
 - `LOG_LEVEL`
 - the `KPN_*` variables from §2.4
@@ -574,6 +575,8 @@ The Docker build uses `--platform linux/amd64`.
 Hosted calls use gateway mode. Conduit injects the stored credential at call time.
 
 Every gateway request needs `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`. This server does not read those values from the environment in gateway mode. The base URL and token URL stay in the environment, and a caller-supplied URL header is rejected. See `docs/GREXX.md`.
+
+HTTP startup refuses to listen unless `CONDUIT_S2S_SECRET` is set to a real secret. Known placeholders are rejected. `MCP_ALLOW_INSECURE_DEV=1` starts without that secret, logs a warning, skips `X-Gateway-S2S`, and binds `127.0.0.1` only. A configured secret still honors `MCP_HTTP_HOST`. `/health` and `/healthz` stay unauthenticated.
 
 When `KPN_LEGACY_DEVELOPER_API=1`, Conduit also injects the legacy developer.kpn.com credential on the headers in §2.4 (`X-KPN-Client-Id`, `X-KPN-Client-Secret`, and the optional MSM pair). With that flag off, those headers are not used. The legacy base URL stays in the environment.
 

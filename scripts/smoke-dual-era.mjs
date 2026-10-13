@@ -119,6 +119,10 @@ async function gatewayLeg(expectedToolCount) {
       MCP_HTTP_PORT: String(GATEWAY_PORT),
       MCP_HTTP_HOST: '127.0.0.1',
       LOG_LEVEL: 'error',
+      // Loopback smoke does not exercise X-Gateway-S2S. HTTP startup otherwise
+      // refuses an empty secret. A placeholder or a real secret is not used here.
+      CONDUIT_S2S_SECRET: '',
+      MCP_ALLOW_INSECURE_DEV: '1',
       // Operator-configured interface root. Username and password stay header-only.
       KPN_GREXX_BASE_URL: 'https://grexx.test.invalid/interfaces/kpn/example/',
     },
@@ -248,6 +252,10 @@ async function main() {
       MCP_TRANSPORT: 'http',
       MCP_HTTP_PORT: String(PORT),
       MCP_HTTP_HOST: '127.0.0.1',
+      // Loopback smoke does not exercise X-Gateway-S2S. HTTP startup otherwise
+      // refuses an empty secret.
+      CONDUIT_S2S_SECRET: '',
+      MCP_ALLOW_INSECURE_DEV: '1',
       // env-mode dummy credentials — tools/list never touches the vendor API
       KPN_GREXX_USERNAME: 'dummy-user',
       KPN_GREXX_PASSWORD: 'dummy-password',
