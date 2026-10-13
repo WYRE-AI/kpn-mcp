@@ -66,8 +66,8 @@ function captureStderr(): { text: () => string; restore: () => void } {
   };
 }
 
-function exitOnCall(): void {
-  vi.spyOn(process, "exit").mockImplementation((code?: number): never => {
+function exitOnCall(): ReturnType<typeof vi.spyOn> {
+  return vi.spyOn(process, "exit").mockImplementation((code?: string | number | null): never => {
     throw new Error(`process.exit:${code ?? ""}`);
   });
 }
@@ -219,9 +219,7 @@ describe("HTTP S2S startup", () => {
   it("starts with a loud warning when MCP_ALLOW_INSECURE_DEV=1", async () => {
     process.env.MCP_ALLOW_INSECURE_DEV = "1";
     const logs = captureStderr();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number): never => {
-      throw new Error(`process.exit:${code ?? ""}`);
-    });
+    const exitSpy = exitOnCall();
 
     const transport = await startHttpTransport();
     open.push(transport);
@@ -241,9 +239,7 @@ describe("HTTP S2S startup", () => {
     process.env.MCP_ALLOW_INSECURE_DEV = "1";
     process.env.MCP_HTTP_HOST = "0.0.0.0";
     const logs = captureStderr();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number): never => {
-      throw new Error(`process.exit:${code ?? ""}`);
-    });
+    const exitSpy = exitOnCall();
 
     const transport = await startHttpTransport();
     open.push(transport);
