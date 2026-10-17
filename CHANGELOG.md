@@ -10,6 +10,9 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Fixed
 
+- HTTP mode fails closed when `CONDUIT_S2S_SECRET` is empty or a known placeholder
+  (CWE-306). `MCP_ALLOW_INSECURE_DEV=1` is the only bypass and listens on
+  `127.0.0.1`. Gateway mode still rejects requests that omit Grexx credential headers.
 - MCP Registry publishing: the `server.json` description is now under the registry's
   100-character limit. Releases since 2.0.0 failed the "Validate server.json" step
   with 422, so the registry listing stopped updating. A test now enforces the limit.

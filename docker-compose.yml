@@ -1,0 +1,31 @@
+services:
+  # Gateway mode. Username and password arrive per request on
+  # X-KPN-Grexx-Username and X-KPN-Grexx-Password. Do not set
+  # KPN_GREXX_USERNAME, KPN_GREXX_PASSWORD, the legacy KPN_CLIENT_* /
+  # KPN_MSM_CLIENT_* pair, or env_file here — that would put static vendor
+  # credentials in the container. The project env is used only for Compose
+  # interpolation of the S2S secret and the env-only interface root.
+  # For AUTH_MODE=env, pass the Grexx username and password on that process
+  # instead (see the README).
+  kpn-mcp:
+    build:
+      context: .
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      - MCP_TRANSPORT=http
+      - MCP_HTTP_PORT=8080
+      - MCP_HTTP_HOST=0.0.0.0
+      - AUTH_MODE=gateway
+      - CONDUIT_S2S_SECRET=${CONDUIT_S2S_SECRET:?set CONDUIT_S2S_SECRET}
+      - KPN_GREXX_BASE_URL=${KPN_GREXX_BASE_URL:-}
+      - KPN_GREXX_TOKEN_URL=${KPN_GREXX_TOKEN_URL:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
