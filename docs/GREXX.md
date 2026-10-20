@@ -17,6 +17,8 @@ Gateway mode never reads the username or password from the environment, and neve
 
 A request missing either Grexx credential header is HTTP 401 JSON-RPC `-32001`. It does not fall through to env credentials.
 
+HTTP mode also requires `CONDUIT_S2S_SECRET`. An empty value or a known placeholder (`changeme`, `secret`, `replace-me`, and the other example strings) refuses to start. `MCP_ALLOW_INSECURE_DEV=1` is the only bypass, and only for an empty secret: it does not check `X-Gateway-S2S` and listens on `127.0.0.1`. With a real secret, every request except `/health` and `/healthz` must carry `X-Gateway-S2S` (`t=<unix seconds>,v1=<hex hmac-sha256 of t=...>`). A configured secret still honors `MCP_HTTP_HOST`.
+
 ## SDK
 
 Phase-1 tools import the Grexx client from the package root (`GrexxClient`, `zipCodeCheck`, `ZIP_CODE_PORTFOLIOS`, `ZIP_CODE_SUPPLIERS`, `prequalification`, `PREQUALIFICATION_PRODUCT_TYPES`, `PREQUALIFICATION_SUPPLIERS`, `orderData`). They do not import `@wyre-ai/node-kpn/legacy`.

@@ -7,8 +7,11 @@
  * compared in constant time. A timestamp more than `maxSkewSeconds` from now
  * (default 300) is rejected. The secret is an opaque string.
  *
- * An empty secret always fails this check. The HTTP server treats an unset
- * `CONDUIT_S2S_SECRET` as the check being off and does not call this function.
+ * An empty secret always fails this check. HTTP startup refuses to listen when
+ * `CONDUIT_S2S_SECRET` is empty or a known placeholder, unless
+ * `MCP_ALLOW_INSECURE_DEV=1` (empty secret only), in which case the caller
+ * skips this check, logs a warning, and binds 127.0.0.1. Do not treat an
+ * empty secret as a production "enforcement disabled" switch.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 

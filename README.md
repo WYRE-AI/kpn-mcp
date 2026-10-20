@@ -69,8 +69,46 @@ In gateway mode a request missing `X-KPN-Grexx-Username` or `X-KPN-Grexx-Passwor
 answered `401` (JSON-RPC error `-32001`) before the MCP handler runs. It never falls
 through to env credentials. The gateway does not send the base URL.
 
-When `CONDUIT_S2S_SECRET` is set, every request except `/health` and `/healthz` must also carry a valid
-`X-Gateway-S2S` HMAC header, or it is answered `401`. Unset, the check is off.
+### HTTP authentication
+
+`CONDUIT_S2S_SECRET` is required when `MCP_TRANSPORT=http`. If it is empty, the process
+logs an error and exits non-zero. It never prints the secret. Known placeholders
+(`changeme`, `change-me`, `secret`, `placeholder`, `example`, `your-secret`,
+`your-s2s-secret`, `s2s-secret`, `replace-me`, `replace-with-a-real-secret`) are
+rejected the same way, including when `MCP_ALLOW_INSECURE_DEV=1` is set.
+
+`MCP_ALLOW_INSECURE_DEV=1` is local development only. The process logs a warning,
+does not check `X-Gateway-S2S`, and listens on `127.0.0.1` only. A non-loopback
+`MCP_HTTP_HOST` (including `0.0.0.0`) is ignored in that mode and the override is logged.
+
+`MCP_HTTP_HOST` is honored when a real secret is set. Unset, that bind stays `0.0.0.0`.
+Set `127.0.0.1` to keep a secret-backed process on loopback. The container image sets
+`0.0.0.0` and `AUTH_MODE=gateway`.
+
+With a real secret, every request except `/health` and `/healthz` must include:
+
+```
+X-Gateway-S2S: t=<unix seconds>,v1=<hex hmac-sha256>
+```
+
+`v1` is HMAC-SHA256 of the exact string `t=<unix seconds>` (the same `t=` prefix that
+starts the header), keyed with `CONDUIT_S2S_SECRET`, hex-encoded. The timestamp must
+be within 300 seconds of the server clock. A missing or invalid header is `401`.
+`/health` and `/healthz` stay unauthenticated and do not read credentials. The stdio
+transport does not use `CONDUIT_S2S_SECRET`.
+
+```bash
+# sign "t=$NOW" with the gateway-provisioned secret
+NOW=$(date +%s)
+SIG=$(printf 't=%s' "$NOW" | openssl dgst -sha256 -hmac "$CONDUIT_S2S_SECRET" | awk '{print $NF}')
+curl -sS -D- http://127.0.0.1:8080/mcp \
+  -H "X-Gateway-S2S: t=${NOW},v1=${SIG}" \
+  -H "X-KPN-Grexx-Username: ..." \
+  -H "X-KPN-Grexx-Password: ..." \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
 
 ## SDK dependency
 
@@ -90,22 +128,54 @@ export NODE_AUTH_TOKEN=$(gh auth token)   # GitHub Packages auth for @wyre-ai/*
 npm install
 npm run build
 node dist/index.js                        # stdio (default)
-MCP_TRANSPORT=http node dist/index.js     # HTTP on :8080 (/mcp, /health)
+# HTTP refuses to start until CONDUIT_S2S_SECRET is a real secret
+CONDUIT_S2S_SECRET="$CONDUIT_S2S_SECRET" MCP_TRANSPORT=http node dist/index.js
+# Local HTTP only, without a service-to-service secret (always binds 127.0.0.1)
+MCP_ALLOW_INSECURE_DEV=1 MCP_TRANSPORT=http node dist/index.js
 npm run smoke                             # both protocol eras serve the same Grexx tools
 ```
 
-Docker (linux/amd64 per fleet law):
+Docker (linux/amd64 per fleet law). The image listens on `0.0.0.0` inside the
+container and defaults to `AUTH_MODE=gateway`. Publish the port on loopback and
+pass the S2S secret. Grexx username and password arrive on each request as
+headers. `KPN_GREXX_BASE_URL` stays in the environment because a caller-supplied
+URL is rejected.
 
 ```bash
 docker build --platform linux/amd64 --build-arg GITHUB_TOKEN=$(gh auth token) -t kpn-mcp .
-docker run -p 8080:8080 \
-  -e KPN_GREXX_USERNAME=... \
-  -e KPN_GREXX_PASSWORD=... \
-  -e KPN_GREXX_BASE_URL=... \
+docker run \
+  -e CONDUIT_S2S_SECRET="$CONDUIT_S2S_SECRET" \
+  -e KPN_GREXX_BASE_URL="https://service-accept.grexx.today/interfaces/kpn/kpn_partners_acceptatieomgeving/<interface-id>/" \
+  -p 127.0.0.1:8080:8080 \
   kpn-mcp
 ```
 
-`/health` is a shallow liveness probe. It does not call Grexx.
+Compose refuses to start when `CONDUIT_S2S_SECRET` is unset, publishes
+`127.0.0.1:8080:8080`, and does not inject `KPN_GREXX_USERNAME` or
+`KPN_GREXX_PASSWORD`:
+
+```bash
+CONDUIT_S2S_SECRET="$CONDUIT_S2S_SECRET" \
+KPN_GREXX_BASE_URL="https://service-accept.grexx.today/interfaces/kpn/kpn_partners_acceptatieomgeving/<interface-id>/" \
+GITHUB_TOKEN=$(gh auth token) \
+docker compose up --build
+```
+
+Single-tenant HTTP (`AUTH_MODE=env`) still requires the S2S secret, then uses
+`KPN_GREXX_USERNAME` and `KPN_GREXX_PASSWORD`:
+
+```bash
+docker run \
+  -e CONDUIT_S2S_SECRET="$CONDUIT_S2S_SECRET" \
+  -e AUTH_MODE=env \
+  -e KPN_GREXX_USERNAME=... \
+  -e KPN_GREXX_PASSWORD=... \
+  -e KPN_GREXX_BASE_URL=... \
+  -p 127.0.0.1:8080:8080 \
+  kpn-mcp
+```
+
+`/health` is a shallow liveness probe. It does not call Grexx and does not read credentials.
 
 ## Legacy developer.kpn.com tools
 

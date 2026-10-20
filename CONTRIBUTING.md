@@ -28,6 +28,9 @@ if code and design disagree, fix one of them in the same PR.
 - **401 gate before the handler** in gateway mode; never fall through to env credentials.
   Required headers are `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`. When
   `KPN_LEGACY_DEVELOPER_API=1`, a half MSM pair is still rejected.
+- **HTTP fails closed.** An empty or placeholder `CONDUIT_S2S_SECRET` must not
+  start the HTTP listener. `MCP_ALLOW_INSECURE_DEV=1` is loopback-only and is
+  not a production bypass. `/health` stays shallow and unauthenticated.
 - **No base URL or token URL from headers.** `KPN_GREXX_BASE_URL` and
   `KPN_GREXX_TOKEN_URL` are env-only. A URL header is HTTP 400.
 - **Grexx-first tool list.** Default `tools/list` is the `kpn_grexx_*` tools. A realtime
