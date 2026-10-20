@@ -10,7 +10,7 @@ Acceptatie (Grexx #4029, confirmed live 2026-10-07) is **OAuth 2.0 client creden
 |---|---|---|
 | `KPN_GREXX_USERNAME` | `X-KPN-Grexx-Username` | yes |
 | `KPN_GREXX_PASSWORD` | `X-KPN-Grexx-Password` | yes |
-| `KPN_GREXX_BASE_URL` | `X-Grexx-Api-Url` (optional, per connection, with the token header) | yes in env mode. Interface root, no trailing `/realtime`, no default |
+| `KPN_GREXX_BASE_URL` | `X-Grexx-Api-Url` (optional, per connection, with the token header) | yes, unless the request sends `X-Grexx-Api-Url` + `X-Grexx-Token-Url`. Interface root, no trailing `/realtime`, no default |
 | `KPN_GREXX_TOKEN_URL` | `X-Grexx-Token-Url` (optional, per connection, with the API header) | no. Default `https://service-accept.grexx.today/oauth/access_token` |
 
 Gateway mode never reads the username or password from the environment. Per connection it may read `X-Grexx-Api-Url` + `X-Grexx-Token-Url` (both or neither; https, no userinfo, port 443, exact host in `GREXX_ALLOWED_HOSTS`, token path `/oauth/access_token`, API path under `/interfaces/kpn/`; DNS SSRF guard in the SDK on every request). A lone or invalid one is HTTP 400. `X-KPN-Grexx-Base-Url`, `X-KPN-Grexx-Token-Url`, and the older `X-KPN-Base-Url` / `X-KPN-Token-Url` names are still rejected with HTTP 400 before the MCP handler runs.

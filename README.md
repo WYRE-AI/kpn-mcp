@@ -49,7 +49,7 @@ base URL: acceptatie and production differ.
 |---|---|---|
 | `KPN_GREXX_USERNAME` | `X-KPN-Grexx-Username` | yes |
 | `KPN_GREXX_PASSWORD` | `X-KPN-Grexx-Password` | yes |
-| `KPN_GREXX_BASE_URL` | `X-Grexx-Api-Url` (optional, per connection) | yes in env mode. Interface root, without `/realtime` |
+| `KPN_GREXX_BASE_URL` | `X-Grexx-Api-Url` (optional, per connection) | yes, unless the request sends `X-Grexx-Api-Url` + `X-Grexx-Token-Url`. No default. Interface root, without `/realtime` |
 | `KPN_GREXX_TOKEN_URL` | `X-Grexx-Token-Url` (optional, per connection) | no. Default `https://service-accept.grexx.today/oauth/access_token` |
 
 Example (acceptatie shape — replace the interface id from API Gegevens):
@@ -79,8 +79,11 @@ Grexx environment, such as production:
 | `X-Grexx-Api-Url` | Interface root from the portal (API Gegevens), **without** `/realtime` | `https://service.grexx.today/interfaces/kpn/<interface-name>/<interface-id>` |
 | `X-Grexx-Token-Url` | OAuth token endpoint | `https://service.grexx.today/oauth/access_token` |
 
-- **Both or neither.** Both absent or empty uses the environment URLs, `KPN_GREXX_BASE_URL` and
-  `KPN_GREXX_TOKEN_URL` (today acceptatie). Exactly one is HTTP 400.
+- **Both or neither.** When both are absent or empty, the sidecar uses `KPN_GREXX_BASE_URL` and
+  `KPN_GREXX_TOKEN_URL`, also when the credential headers are sent without the URL headers.
+  `KPN_GREXX_BASE_URL` has no default and is then required; `KPN_GREXX_TOKEN_URL` is optional and
+  defaults to the acceptatie token endpoint (`https://service-accept.grexx.today/oauth/access_token`).
+  Exactly one URL header is HTTP 400.
 - Honoured only with `X-KPN-Grexx-Username` / `X-KPN-Grexx-Password`; without them the request is 401.
 - **Scheme and authority:** `https:` only, port 443 only, no userinfo, no query string, no fragment.
 - **Exact-host allowlist** (`GREXX_ALLOWED_HOSTS` in `@wyre-ai/node-kpn`): `service.grexx.today`
