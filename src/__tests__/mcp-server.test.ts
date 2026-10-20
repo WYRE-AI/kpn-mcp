@@ -85,7 +85,9 @@ describe("resolveGatewayCredentials", () => {
     expect(resolved.grexxError).toBeUndefined();
     expect(seen).toEqual([
       ...["x-kpn-grexx-base-url", "x-kpn-grexx-token-url", "x-kpn-grexx-baseurl", "x-kpn-grexx-tokenurl", "x-kpn-base-url", "x-kpn-token-url"],
-      ...GREXX_GATEWAY_HEADERS.map((header) => header.toLowerCase()),
+      "x-grexx-api-url",
+      "x-grexx-token-url",
+      ...GREXX_GATEWAY_HEADERS.slice(0, 2).map((header) => header.toLowerCase()),
     ]);
   });
 

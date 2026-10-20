@@ -146,6 +146,46 @@ describe("gateway-mode HTTP gate", () => {
     expect(body.error.message).toContain("KPN_GREXX_BASE_URL");
   });
 
+  it("a valid X-Grexx-Api-Url + X-Grexx-Token-Url pair reaches the MCP handler", async () => {
+    const res = await request(port, "/mcp", {
+      method: "POST",
+      headers: {
+        "X-KPN-Grexx-Username": "user",
+        "X-KPN-Grexx-Password": "secret",
+        "X-Grexx-Api-Url": "https://service.grexx.today/interfaces/kpn/kpn_partners/abc",
+        "X-Grexx-Token-Url": "https://service.grexx.today/oauth/access_token",
+      },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("a lone X-Grexx-Api-Url is 400", async () => {
+    const res = await request(port, "/mcp", {
+      method: "POST",
+      headers: {
+        "X-KPN-Grexx-Username": "user",
+        "X-KPN-Grexx-Password": "secret",
+        "X-Grexx-Api-Url": "https://service.grexx.today/interfaces/kpn/kpn_partners/abc",
+      },
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.parse(res.body).error.message).toMatch(/provided together/);
+  });
+
+  it("a non-allowlisted X-Grexx-Token-Url is 400", async () => {
+    const res = await request(port, "/mcp", {
+      method: "POST",
+      headers: {
+        "X-KPN-Grexx-Username": "user",
+        "X-KPN-Grexx-Password": "secret",
+        "X-Grexx-Api-Url": "https://service.grexx.today/interfaces/kpn/kpn_partners/abc",
+        "X-Grexx-Token-Url": "https://169.254.169.254/oauth/access_token",
+      },
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.parse(res.body).error.code).toBe(-32600);
+  });
+
   it("the Grexx username and password reach the MCP handler", async () => {
     const res = await request(port, "/mcp", {
       method: "POST",

@@ -49,8 +49,8 @@ base URL: acceptatie and production differ.
 |---|---|---|
 | `KPN_GREXX_USERNAME` | `X-KPN-Grexx-Username` | yes |
 | `KPN_GREXX_PASSWORD` | `X-KPN-Grexx-Password` | yes |
-| `KPN_GREXX_BASE_URL` | none | yes. Interface root, without `/realtime` |
-| `KPN_GREXX_TOKEN_URL` | none | no. Default `https://service-accept.grexx.today/oauth/access_token` |
+| `KPN_GREXX_BASE_URL` | `X-Grexx-Api-Url` (optional, per connection) | yes in env mode. Interface root, without `/realtime` |
+| `KPN_GREXX_TOKEN_URL` | `X-Grexx-Token-Url` (optional, per connection) | no. Default `https://service-accept.grexx.today/oauth/access_token` |
 
 Example (acceptatie shape — replace the interface id from API Gegevens):
 
@@ -62,12 +62,25 @@ export KPN_GREXX_BASE_URL="https://service-accept.grexx.today/interfaces/kpn/kpn
 ```
 
 See [`env.example`](env.example). Token mint, cache, and Bearer retry live in
-`@wyre-ai/node-kpn`. A header-supplied base URL or token URL is rejected (HTTP 400):
-it would send the client secret or Bearer token to a caller-chosen host.
+`@wyre-ai/node-kpn`. Base or token URLs under any other header name (`X-KPN-Grexx-Base-Url`, ...) are
+rejected (HTTP 400).
 
 In gateway mode a request missing `X-KPN-Grexx-Username` or `X-KPN-Grexx-Password` is
 answered `401` (JSON-RPC error `-32001`) before the MCP handler runs. It never falls
-through to env credentials. The gateway does not send the base URL.
+through to env credentials.
+
+### Per-connection Grexx environment (WYREAI-525)
+
+In gateway mode Conduit may send `X-Grexx-Api-Url` (interface root, without `/realtime`) and
+`X-Grexx-Token-Url` on a call to point that connection at another Grexx environment, such as
+production. Both or neither: both absent or empty uses `KPN_GREXX_BASE_URL` / `KPN_GREXX_TOKEN_URL`;
+exactly one is HTTP 400. Each value must be `https:`, have no userinfo, query or fragment, use port
+443, and have a host that is exactly one of `GREXX_ALLOWED_HOSTS` in `@wyre-ai/node-kpn`
+(`service.grexx.today`, `service-accept.grexx.today`). The token URL path must be
+`/oauth/access_token`; the API URL path must start with `/interfaces/kpn/`. Anything else is HTTP 400.
+With header URLs the SDK resolves the host before every request and again at socket connect,
+and refuses private, loopback, link-local, CGNAT, reserved and metadata addresses. Redirects are
+refused. Every other URL header name is still rejected.
 
 When `CONDUIT_S2S_SECRET` is set, every request except `/health` and `/healthz` must also carry a valid
 `X-Gateway-S2S` HMAC header, or it is answered `401`. Unset, the check is off.
@@ -76,7 +89,7 @@ When `CONDUIT_S2S_SECRET` is set, every request except `/health` and `/healthz` 
 
 Import the Grexx client from `@wyre-ai/node-kpn` (package root), not `/legacy`.
 
-The dependency is the published range `^2.1.0` (Prequalification and OrderData from
+The dependency is the published range `^2.2.0` (per-connection URLs + SSRF guard from node-kpn#6; Prequalification and OrderData from
 [node-kpn#5](https://github.com/WYRE-AI/node-kpn/pull/5), tag `v2.1.0`). Token minting
 is the HTTP Basic behavior from
 [node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4). `/legacy`

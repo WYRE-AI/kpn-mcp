@@ -13,9 +13,11 @@
  * Credentials via environment variables (env mode):
  * - KPN_GREXX_USERNAME / KPN_GREXX_PASSWORD / KPN_GREXX_BASE_URL (required)
  * - KPN_GREXX_TOKEN_URL (optional; acceptatie default inside node-kpn)
- * Gateway headers (AUTH_MODE=gateway) supply username and password only:
- * - X-KPN-Grexx-Username / X-KPN-Grexx-Password
- * Base URL and token URL are never read from headers.
+ * Gateway headers (AUTH_MODE=gateway):
+ * - X-KPN-Grexx-Username / X-KPN-Grexx-Password (required)
+ * - X-Grexx-Api-Url + X-Grexx-Token-Url (optional, both or neither; per-connection
+ *   Grexx environment, allowlisted hosts only, SSRF-guarded). Absent: env URLs.
+ * Any other URL header is rejected (400).
  * Set KPN_LEGACY_DEVELOPER_API=1 to also serve developer.kpn.com tools.
  */
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
