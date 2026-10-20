@@ -302,10 +302,18 @@ async function main() {
 
   if (transportType === "http") {
     const http = await startHttpTransport();
+    let shuttingDown = false;
     const shutdown = async () => {
+      if (shuttingDown) return;
+      shuttingDown = true;
       logger.info("Shutting down KPN MCP server...");
-      await http.close();
-      process.exit(0);
+      try {
+        await http.close();
+        process.exit(0);
+      } catch (error) {
+        logger.error("Shutdown error", { error: error instanceof Error ? error.message : String(error) });
+        process.exit(1);
+      }
     };
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
