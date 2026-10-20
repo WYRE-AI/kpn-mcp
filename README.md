@@ -71,16 +71,29 @@ through to env credentials.
 
 ### Per-connection Grexx environment (WYREAI-525)
 
-In gateway mode Conduit may send `X-Grexx-Api-Url` (interface root, without `/realtime`) and
-`X-Grexx-Token-Url` on a call to point that connection at another Grexx environment, such as
-production. Both or neither: both absent or empty uses `KPN_GREXX_BASE_URL` / `KPN_GREXX_TOKEN_URL`;
-exactly one is HTTP 400. Each value must be `https:`, have no userinfo, query or fragment, use port
-443, and have a host that is exactly one of `GREXX_ALLOWED_HOSTS` in `@wyre-ai/node-kpn`
-(`service.grexx.today`, `service-accept.grexx.today`). The token URL path must be
-`/oauth/access_token`; the API URL path must start with `/interfaces/kpn/`. Anything else is HTTP 400.
-With header URLs the SDK resolves the host before every request and again at socket connect,
-and refuses private, loopback, link-local, CGNAT, reserved and metadata addresses. Redirects are
-refused. Every other URL header name is still rejected.
+In gateway mode Conduit may send two headers on every call to point that connection at another
+Grexx environment, such as production:
+
+| Header | Value | Example |
+|---|---|---|
+| `X-Grexx-Api-Url` | Interface root from the portal (API Gegevens), **without** `/realtime` | `https://service.grexx.today/interfaces/kpn/<interface-name>/<interface-id>` |
+| `X-Grexx-Token-Url` | OAuth token endpoint | `https://service.grexx.today/oauth/access_token` |
+
+- **Both or neither.** Both absent or empty uses the environment URLs, `KPN_GREXX_BASE_URL` and
+  `KPN_GREXX_TOKEN_URL` (today acceptatie). Exactly one is HTTP 400.
+- Honoured only with `X-KPN-Grexx-Username` / `X-KPN-Grexx-Password`; without them the request is 401.
+- **Scheme and authority:** `https:` only, port 443 only, no userinfo, no query string, no fragment.
+- **Exact-host allowlist** (`GREXX_ALLOWED_HOSTS` in `@wyre-ai/node-kpn`): `service.grexx.today`
+  and `service-accept.grexx.today`. No `*.grexx.today` wildcard; IP literals never match.
+- **Paths:** token URL path exactly `/oauth/access_token`; API URL path must start with
+  `/interfaces/kpn/` and is the interface root without `/realtime` (the SDK appends it).
+- Any violation is HTTP 400 (JSON-RPC `-32600`), and the message never echoes the URL.
+- **Private-IP blocking:** with header URLs the SDK resolves the host before every token mint and
+  `/realtime` post, and again at socket connect (undici `fetch` with a guarded `Agent`), and refuses
+  private, loopback, link-local (incl. `169.254.169.254`), CGNAT, reserved/benchmark, ULA and
+  metadata addresses.
+- **Redirects are refused:** any 3xx fails the call.
+- Every other URL header name (`X-KPN-Grexx-Base-Url`, ...) is still rejected with HTTP 400.
 
 When `CONDUIT_S2S_SECRET` is set, every request except `/health` and `/healthz` must also carry a valid
 `X-Gateway-S2S` HMAC header, or it is answered `401`. Unset, the check is off.
