@@ -7,9 +7,11 @@
  *
  * Default credentials are Grexx OAuth client_credentials
  * (`KPN_GREXX_USERNAME` / `KPN_GREXX_PASSWORD`). The token mint and Bearer
- * cache live in `@wyre-ai/node-kpn`. Base URL and token URL are env-only.
- * Gateway mode reads `X-KPN-Grexx-Username` / `X-KPN-Grexx-Password` and
- * rejects URL headers.
+ * cache live in `@wyre-ai/node-kpn`. Base URL and token URL come from the
+ * environment, except that gateway mode may send a per-connection pair,
+ * `X-Grexx-Api-Url` + `X-Grexx-Token-Url` (both or neither, WYREAI-525). Those
+ * are checked against the Grexx host allowlist here and SSRF-guarded by the
+ * SDK on every request. Other URL header names are rejected.
  *
  * developer.kpn.com credentials are resolved only when
  * `KPN_LEGACY_DEVELOPER_API=1`.
@@ -19,7 +21,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Server } from "@modelcontextprotocol/server";
 import type { McpServerFactory } from "@modelcontextprotocol/server";
-import { GrexxClient, GrexxConfigError } from "@wyre-ai/node-kpn";
+import { GrexxClient, GrexxConfigError, assertGrexxAllowedUrl } from "@wyre-ai/node-kpn";
 import { KpnClient } from "@wyre-ai/node-kpn/legacy";
 import { handleToolCall, type ToolClients } from "./handlers/index.js";
 import { errorResult } from "./handlers/results.js";
@@ -60,10 +62,15 @@ export interface GrexxCredentials {
   username: string;
   /** OAuth client_secret. `KPN_GREXX_PASSWORD` or `X-KPN-Grexx-Password`. */
   password: string;
-  /** `KPN_GREXX_BASE_URL`. Env only. There is no production default. */
+  /** `X-Grexx-Api-Url` (gateway, per connection) or `KPN_GREXX_BASE_URL`. */
   baseUrl?: string;
-  /** `KPN_GREXX_TOKEN_URL`. Env only. SDK default is the acceptatie token endpoint. */
+  /** `X-Grexx-Token-Url` (gateway, per connection) or `KPN_GREXX_TOKEN_URL`. SDK default is acceptatie. */
   tokenUrl?: string;
+  /**
+   * True when both URLs came from `X-Grexx-Api-Url` / `X-Grexx-Token-Url`.
+   * Turns on the SDK's host allowlist + DNS SSRF guard for every request.
+   */
+  perConnectionUrls?: boolean;
 }
 
 export interface ResolvedCredentials {
@@ -73,13 +80,20 @@ export interface ResolvedCredentials {
   grexxError?: string;
   /** Legacy headers or env vars were sent as an incomplete pair. */
   legacyError?: string;
-  /** Caller supplied a base URL or token URL header. */
+  /** Caller supplied a forbidden URL header, a lone or invalid X-Grexx-*-Url header. */
   rejectedUrl?: boolean;
   rejectedUrlError?: string;
 }
 
-/** Gateway credential headers. URL headers are deliberately absent. */
-export const GREXX_GATEWAY_HEADERS = ["X-KPN-Grexx-Username", "X-KPN-Grexx-Password"] as const;
+/** Per-connection Grexx URL headers (both or neither). */
+export const GREXX_URL_HEADERS = ["X-Grexx-Api-Url", "X-Grexx-Token-Url"] as const;
+
+/** Gateway credential headers, plus the optional per-connection URL pair. */
+export const GREXX_GATEWAY_HEADERS = [
+  "X-KPN-Grexx-Username",
+  "X-KPN-Grexx-Password",
+  ...GREXX_URL_HEADERS,
+] as const;
 
 /** Legacy developer.kpn.com headers. Honoured only when the legacy flag is on. */
 export const LEGACY_GATEWAY_HEADERS = [
@@ -147,8 +161,35 @@ function urlRejection(headerName: string): ResolvedCredentials {
     rejectedUrl: true,
     rejectedUrlError:
       `Refusing caller-supplied Grexx URL from header "${headerName}". ` +
-      "Set KPN_GREXX_BASE_URL and KPN_GREXX_TOKEN_URL in the environment only.",
+      "Use X-Grexx-Api-Url and X-Grexx-Token-Url, or set KPN_GREXX_BASE_URL and KPN_GREXX_TOKEN_URL in the environment.",
   };
+}
+
+/**
+ * Read the optional per-connection URL pair. Both absent/empty: `{}` (env
+ * fallback). Exactly one, or a value that fails the allowlist checks: a 400
+ * rejection whose message never echoes the URL.
+ */
+function perConnectionUrls(
+  getHeader: HeaderLookup
+): { urls?: { baseUrl: string; tokenUrl: string }; rejection?: ResolvedCredentials } {
+  const apiUrl = headerText(getHeader("x-grexx-api-url"));
+  const tokenUrl = headerText(getHeader("x-grexx-token-url"));
+  if (!apiUrl && !tokenUrl) return {};
+  const reject = (message: string) => ({ rejection: { rejectedUrl: true, rejectedUrlError: message } });
+  if (!apiUrl || !tokenUrl) {
+    return reject(
+      "X-Grexx-Api-Url and X-Grexx-Token-Url must be provided together " +
+        "(or both omitted for the environment default)."
+    );
+  }
+  try {
+    assertGrexxAllowedUrl(apiUrl, "X-Grexx-Api-Url", "api");
+    assertGrexxAllowedUrl(tokenUrl, "X-Grexx-Token-Url", "token");
+  } catch (error) {
+    return reject(error instanceof Error ? error.message : "Invalid Grexx URL header.");
+  }
+  return { urls: { baseUrl: apiUrl, tokenUrl } };
 }
 
 /**
@@ -240,8 +281,10 @@ function resolveLegacy(
 
 /**
  * Gateway credentials. Username and password come from headers only — never
- * from the environment. Base URL and token URL come from the environment only.
- * A URL header rejects the whole request.
+ * from the environment. Base URL and token URL come from `X-Grexx-Api-Url` +
+ * `X-Grexx-Token-Url` when both are sent (allowlisted, SSRF-guarded), otherwise
+ * from the environment. A lone URL header, an invalid one, or any other URL
+ * header name rejects the whole request.
  */
 export function resolveGatewayCredentials(
   getHeader: HeaderLookup,
@@ -249,6 +292,8 @@ export function resolveGatewayCredentials(
 ): ResolvedCredentials {
   const blocked = rejectedUrl(getHeader);
   if (blocked) return urlRejection(blocked);
+  const perConnection = perConnectionUrls(getHeader);
+  if (perConnection.rejection) return perConnection.rejection;
 
   const env = options.env ?? process.env;
   const legacyEnabled = options.legacyEnabled ?? LEGACY_DEVELOPER_API_ENABLED;
@@ -260,7 +305,14 @@ export function resolveGatewayCredentials(
 
   const resolved: ResolvedCredentials = {};
   if (missing.length > 0) resolved.grexxError = missingGrexxHeaders(missing);
-  else resolved.grexx = attachGrexxUrls(username as string, password as string, env);
+  else if (perConnection.urls) {
+    resolved.grexx = {
+      username: username as string,
+      password: password as string,
+      ...perConnection.urls,
+      perConnectionUrls: true,
+    };
+  } else resolved.grexx = attachGrexxUrls(username as string, password as string, env);
 
   if (legacyEnabled) {
     const legacy = resolveLegacy(
@@ -332,7 +384,8 @@ export function listToolsResult(): { tools: typeof TOOLS } {
 function grexxClient(creds: GrexxCredentials): GrexxClient {
   if (!creds.baseUrl) {
     throw new GrexxConfigError(
-      "KPN_GREXX_BASE_URL is required and must be a non-empty https URL. It is env-only and has no default."
+      "KPN_GREXX_BASE_URL is required and must be a non-empty https URL " +
+        "(or send X-Grexx-Api-Url and X-Grexx-Token-Url per connection)."
     );
   }
   return new GrexxClient({
@@ -340,6 +393,7 @@ function grexxClient(creds: GrexxCredentials): GrexxClient {
     password: creds.password,
     baseUrl: creds.baseUrl,
     ...(creds.tokenUrl ? { tokenUrl: creds.tokenUrl } : {}),
+    ...(creds.perConnectionUrls ? { ssrfGuard: true } : {}),
   });
 }
 

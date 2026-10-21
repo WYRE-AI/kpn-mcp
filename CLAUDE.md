@@ -53,14 +53,16 @@ Grexx contract: `docs/GREXX.md`. The developer.kpn.com catalog is
  allowed`). Do not document Basic as the default for `/realtime`. Token mint
  and cache live in node-kpn; this server passes username, password, and env
  URLs only.
-- **URL headers are rejected.** `KPN_GREXX_BASE_URL` and `KPN_GREXX_TOKEN_URL`
-  are env-only. Gateway headers are `X-KPN-Grexx-Username` and
-  `X-KPN-Grexx-Password`.
+- **Only the allowlisted URL pair is accepted from headers.** Gateway headers are
+  `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`, plus the optional
+  per-connection `X-Grexx-Api-Url` + `X-Grexx-Token-Url` (both or neither,
+  `GREXX_ALLOWED_HOSTS`, SSRF-guarded in node-kpn). Absent, the URLs come from
+  `KPN_GREXX_BASE_URL` / `KPN_GREXX_TOKEN_URL`. Every other URL header is rejected.
 - **Phase-1 tools follow SDK builders or XSD specs.** (Superseded 2026-10-09:
   calls without a node-kpn builder are specs copied from the request XSDs in
   `src/tools/grexx-realtime.ts`; nothing is invented.)
 - **node-kpn 2.1.0 is the Grexx export** (tag `v2.1.0`, GitHub Packages).
-  Depend on `^2.1.0` from the package root. Legacy tools import
+  Depend on `^2.2.0` from the package root. Legacy tools import
   `@wyre-ai/node-kpn/legacy`.
 
 ## Learnings - 2026-09-25

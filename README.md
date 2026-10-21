@@ -49,8 +49,8 @@ base URL: acceptatie and production differ.
 |---|---|---|
 | `KPN_GREXX_USERNAME` | `X-KPN-Grexx-Username` | yes |
 | `KPN_GREXX_PASSWORD` | `X-KPN-Grexx-Password` | yes |
-| `KPN_GREXX_BASE_URL` | none | yes. Interface root, without `/realtime` |
-| `KPN_GREXX_TOKEN_URL` | none | no. Default `https://service-accept.grexx.today/oauth/access_token` |
+| `KPN_GREXX_BASE_URL` | `X-Grexx-Api-Url` (optional, per connection) | yes, unless the request sends `X-Grexx-Api-Url` + `X-Grexx-Token-Url`. No default. Interface root, without `/realtime` |
+| `KPN_GREXX_TOKEN_URL` | `X-Grexx-Token-Url` (optional, per connection) | no. Default `https://service-accept.grexx.today/oauth/access_token` |
 
 Example (acceptatie shape — replace the interface id from API Gegevens):
 
@@ -62,12 +62,41 @@ export KPN_GREXX_BASE_URL="https://service-accept.grexx.today/interfaces/kpn/kpn
 ```
 
 See [`env.example`](env.example). Token mint, cache, and Bearer retry live in
-`@wyre-ai/node-kpn`. A header-supplied base URL or token URL is rejected (HTTP 400):
-it would send the client secret or Bearer token to a caller-chosen host.
+`@wyre-ai/node-kpn`. Base or token URLs under any other header name (`X-KPN-Grexx-Base-Url`, ...) are
+rejected (HTTP 400).
 
 In gateway mode a request missing `X-KPN-Grexx-Username` or `X-KPN-Grexx-Password` is
 answered `401` (JSON-RPC error `-32001`) before the MCP handler runs. It never falls
-through to env credentials. The gateway does not send the base URL.
+through to env credentials.
+
+### Per-connection Grexx environment (WYREAI-525)
+
+In gateway mode Conduit may send two headers on every call to point that connection at another
+Grexx environment, such as production:
+
+| Header | Value | Example |
+|---|---|---|
+| `X-Grexx-Api-Url` | Interface root from the portal (API Gegevens), **without** `/realtime` | `https://service.grexx.today/interfaces/kpn/<interface-name>/<interface-id>` |
+| `X-Grexx-Token-Url` | OAuth token endpoint | `https://service.grexx.today/oauth/access_token` |
+
+- **Both or neither.** When both are absent or empty, the sidecar uses `KPN_GREXX_BASE_URL` and
+  `KPN_GREXX_TOKEN_URL`, also when the credential headers are sent without the URL headers.
+  `KPN_GREXX_BASE_URL` has no default and is then required; `KPN_GREXX_TOKEN_URL` is optional and
+  defaults to the acceptatie token endpoint (`https://service-accept.grexx.today/oauth/access_token`).
+  Exactly one URL header is HTTP 400.
+- Honoured only with `X-KPN-Grexx-Username` / `X-KPN-Grexx-Password`; without them the request is 401.
+- **Scheme and authority:** `https:` only, port 443 only, no userinfo, no query string, no fragment.
+- **Exact-host allowlist** (`GREXX_ALLOWED_HOSTS` in `@wyre-ai/node-kpn`): `service.grexx.today`
+  and `service-accept.grexx.today`. No `*.grexx.today` wildcard; IP literals never match.
+- **Paths:** token URL path exactly `/oauth/access_token`; API URL path must start with
+  `/interfaces/kpn/` and is the interface root without `/realtime` (the SDK appends it).
+- Any violation is HTTP 400 (JSON-RPC `-32600`), and the message never echoes the URL.
+- **Private-IP blocking:** with header URLs the SDK resolves the host before every token mint and
+  `/realtime` post, and again at socket connect (undici `fetch` with a guarded `Agent`), and refuses
+  private, loopback, link-local (incl. `169.254.169.254`), CGNAT, reserved/benchmark, ULA and
+  metadata addresses.
+- **Redirects are refused:** any 3xx fails the call.
+- Every other URL header name (`X-KPN-Grexx-Base-Url`, ...) is still rejected with HTTP 400.
 
 ### HTTP authentication
 
@@ -114,7 +143,7 @@ curl -sS -D- http://127.0.0.1:8080/mcp \
 
 Import the Grexx client from `@wyre-ai/node-kpn` (package root), not `/legacy`.
 
-The dependency is the published range `^2.1.0` (Prequalification and OrderData from
+The dependency is the published range `^2.2.0` (per-connection URLs + SSRF guard from node-kpn#6; Prequalification and OrderData from
 [node-kpn#5](https://github.com/WYRE-AI/node-kpn/pull/5), tag `v2.1.0`). Token minting
 is the HTTP Basic behavior from
 [node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4). `/legacy`

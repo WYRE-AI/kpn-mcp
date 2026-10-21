@@ -4,16 +4,16 @@ Default tool surface as of 2026-10-07. The developer.kpn.com design in `DESIGN.m
 
 ## Auth
 
-Acceptatie (Grexx #4029, confirmed live 2026-10-07) is **OAuth 2.0 client credentials**, then `Authorization: Bearer` on `POST /realtime`. Basic Auth on `POST /realtime` returns `403 Auth method Basic not allowed` and is not a fallback for that call. Caching (until 60 seconds before `expires_in`) and the single 401 remint live in `@wyre-ai/node-kpn` `^2.1.0`. This server hands token minting to `GrexxClient`, which sends HTTP Basic first and may fall back to form-body `client_id` / `client_secret` after HTTP 400/401 `invalid_client`. kpn-mcp only passes the username, password, and env URLs into that client.
+Acceptatie (Grexx #4029, confirmed live 2026-10-07) is **OAuth 2.0 client credentials**, then `Authorization: Bearer` on `POST /realtime`. Basic Auth on `POST /realtime` returns `403 Auth method Basic not allowed` and is not a fallback for that call. Caching (until 60 seconds before `expires_in`) and the single 401 remint live in `@wyre-ai/node-kpn` `^2.2.0`. This server hands token minting to `GrexxClient`, which sends HTTP Basic first and may fall back to form-body `client_id` / `client_secret` after HTTP 400/401 `invalid_client`. kpn-mcp only passes the username, password, and URLs (env, or the per-connection header pair with `ssrfGuard`) into that client.
 
 | Env (env mode) | Gateway header (`AUTH_MODE=gateway`) | Required |
 |---|---|---|
 | `KPN_GREXX_USERNAME` | `X-KPN-Grexx-Username` | yes |
 | `KPN_GREXX_PASSWORD` | `X-KPN-Grexx-Password` | yes |
-| `KPN_GREXX_BASE_URL` | none | yes. Interface root, no trailing `/realtime`, no default |
-| `KPN_GREXX_TOKEN_URL` | none | no. Default `https://service-accept.grexx.today/oauth/access_token` |
+| `KPN_GREXX_BASE_URL` | `X-Grexx-Api-Url` (optional, per connection, with the token header) | yes, unless the request sends `X-Grexx-Api-Url` + `X-Grexx-Token-Url`. Interface root, no trailing `/realtime`, no default |
+| `KPN_GREXX_TOKEN_URL` | `X-Grexx-Token-Url` (optional, per connection, with the API header) | no. Default `https://service-accept.grexx.today/oauth/access_token` |
 
-Gateway mode never reads the username or password from the environment, and never reads a base URL or token URL from a header. `X-KPN-Grexx-Base-Url`, `X-KPN-Grexx-Token-Url`, and the older `X-KPN-Base-Url` / `X-KPN-Token-Url` names are rejected with HTTP 400 before the MCP handler runs.
+Gateway mode never reads the username or password from the environment. Per connection it may read `X-Grexx-Api-Url` + `X-Grexx-Token-Url` (both or neither; https, no userinfo, port 443, exact host in `GREXX_ALLOWED_HOSTS`, token path `/oauth/access_token`, API path under `/interfaces/kpn/`; DNS SSRF guard in the SDK on every request). A lone or invalid one is HTTP 400. `X-KPN-Grexx-Base-Url`, `X-KPN-Grexx-Token-Url`, and the older `X-KPN-Base-Url` / `X-KPN-Token-Url` names are still rejected with HTTP 400 before the MCP handler runs.
 
 A request missing either Grexx credential header is HTTP 401 JSON-RPC `-32001`. It does not fall through to env credentials.
 
@@ -23,7 +23,7 @@ HTTP mode also requires `CONDUIT_S2S_SECRET`. An empty value or a known placehol
 
 Phase-1 tools import the Grexx client from the package root (`GrexxClient`, `zipCodeCheck`, `ZIP_CODE_PORTFOLIOS`, `ZIP_CODE_SUPPLIERS`, `prequalification`, `PREQUALIFICATION_PRODUCT_TYPES`, `PREQUALIFICATION_SUPPLIERS`, `orderData`). They do not import `@wyre-ai/node-kpn/legacy`.
 
-The dependency is `"@wyre-ai/node-kpn": "^2.1.0"`, published from
+The dependency is `"@wyre-ai/node-kpn": "^2.2.0"`, published from
 [node-kpn#5](https://github.com/WYRE-AI/node-kpn/pull/5) (tag `v2.1.0`).
 Token minting is the `^2.0.1` behavior from
 [node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4).
@@ -90,4 +90,4 @@ Queued calls, OrderModule, and Proxymodule notifications are out of scope: their
 
 ## Serving
 
-Unchanged fleet shape: stdio and HTTP `:8080/mcp`, `createMcpHandler({ legacy: 'stateless' })`, shallow `/health` (no upstream call), optional `X-Gateway-S2S`. CORS allows `X-KPN-Grexx-Username` and `X-KPN-Grexx-Password`. It does not allow URL headers.
+Unchanged fleet shape: stdio and HTTP `:8080/mcp`, `createMcpHandler({ legacy: 'stateless' })`, shallow `/health` (no upstream call), optional `X-Gateway-S2S`. CORS allows `X-KPN-Grexx-Username`, `X-KPN-Grexx-Password`, `X-Grexx-Api-Url` and `X-Grexx-Token-Url`.

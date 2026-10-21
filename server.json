@@ -32,13 +32,13 @@
         },
         {
           "name": "KPN_GREXX_BASE_URL",
-          "description": "Grexx interface root, without /realtime. Env only — never a gateway header. No default; acceptatie and production differ.",
+          "description": "Grexx interface root, without /realtime. No default; acceptatie and production differ. In gateway mode a connection may override it with X-Grexx-Api-Url (together with X-Grexx-Token-Url, allowlisted Grexx hosts only).",
           "isRequired": true,
           "format": "string"
         },
         {
           "name": "KPN_GREXX_TOKEN_URL",
-          "description": "OAuth token endpoint. Env only — never a gateway header. Production will differ from acceptatie.",
+          "description": "OAuth token endpoint. Production differs from acceptatie. In gateway mode a connection may override it with X-Grexx-Token-Url (together with X-Grexx-Api-Url).",
           "isRequired": false,
           "default": "https://service-accept.grexx.today/oauth/access_token",
           "format": "string"
@@ -91,7 +91,7 @@
         },
         {
           "name": "AUTH_MODE",
-          "description": "Credential source: 'env' reads KPN_GREXX_* locally, 'gateway' expects X-KPN-Grexx-Username and X-KPN-Grexx-Password. Base URL and token URL stay env-only.",
+          "description": "Credential source: 'env' reads KPN_GREXX_* locally, 'gateway' expects X-KPN-Grexx-Username and X-KPN-Grexx-Password, plus optional X-Grexx-Api-Url and X-Grexx-Token-Url per connection.",
           "isRequired": false,
           "default": "env",
           "format": "string"
