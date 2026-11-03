@@ -49,6 +49,8 @@ function readInteger(field: GrexxField, value: unknown): number {
 function readString(field: GrexxField, value: unknown): string {
   if (typeof value !== "string" || value.trim() === "") fail(field, "must be a non-empty string.");
   const text = field.postcode ? value.replace(/\s+/g, "").toUpperCase() : value.trim();
+  if (field.min !== undefined && text.length < field.min) fail(field, `must be at least ${field.min} character(s).`);
+  if (field.max !== undefined && text.length > field.max) fail(field, `allows at most ${field.max} character(s).`);
   if (field.enum && !field.enum.includes(text)) fail(field, `must be one of: ${field.enum.join(", ")}.`);
   if (field.pattern && !field.pattern.test(text)) fail(field, `does not match ${field.pattern.source}.`);
   return text;

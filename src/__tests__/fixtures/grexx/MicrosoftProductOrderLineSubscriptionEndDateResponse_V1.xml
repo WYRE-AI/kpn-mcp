@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MicrosoftProductOrderLineSubscriptionEndDateResponse_V1>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+  <IsFound>true</IsFound>
+  <EndDate>2027-12-31</EndDate>
+</MicrosoftProductOrderLineSubscriptionEndDateResponse_V1>

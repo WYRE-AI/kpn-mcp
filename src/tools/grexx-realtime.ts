@@ -283,6 +283,44 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       { arg: "customerId", element: "CustomerId", type: "integer", required: true, description: "IRMA customer ID, e.g. 28665." },
     ],
   },
+  {
+    tool: "kpn_grexx_microsoft_subscription_end_date",
+    request: "MicrosoftProductOrderLineSubscriptionEndDateRequest_V1",
+    response: "MicrosoftProductOrderLineSubscriptionEndDateResponse_V1",
+    readOnly: true,
+    description:
+      "Microsoft 365 product subscription end date for an IRMA customer or order " +
+      "(MicrosoftProductOrderLineSubscriptionEndDateRequest_V1). With an order ID, the specific " +
+      "subscription is returned; without one, the first subscription for the customer and product.",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "productId", element: "ProductId", type: "string", required: true, description: "IRMA product code for the Microsoft Office subscription." },
+      { arg: "orderId", element: "OrderId", type: "integer", required: false, min: 1, max: 2147483647, description: "IRMA order ID of the Microsoft Office licence. Optional; omit to find the first subscription." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_upgrade_info",
+    request: "GetUpgradeInfoRequest_V1",
+    response: "GetUpgradeInfoResponse_V1",
+    readOnly: true,
+    description:
+      "Whether an IRMA order can be upgraded and which target products are available " +
+      "(GetUpgradeInfoRequest_V1).",
+    fields: [orderId("the order")],
+  },
+  {
+    tool: "kpn_grexx_related_products",
+    request: "RelatedProductsRequest_V1",
+    response: "RelatedProductsResponse_V1",
+    readOnly: true,
+    description:
+      "Related products for a customer and product, such as mobile subscription modules " +
+      "(RelatedProductsRequest_V1).",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "productCode", element: "ProductCode", type: "string", required: true, min: 1, max: 13, description: "IRMA product code of the parent order, e.g. a mobile subscription." },
+    ],
+  },
 ];
 
 function fieldSchema(field: GrexxField): Record<string, unknown> {
@@ -292,6 +330,15 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
       return { type: "integer", description, ...(field.min !== undefined ? { minimum: field.min } : {}), ...(field.max !== undefined ? { maximum: field.max } : {}) };
     case "boolean":
       return { type: "boolean", description };
+    case "string":
+      return {
+        type: "string",
+        description,
+        ...(field.min !== undefined ? { minLength: field.min } : {}),
+        ...(field.max !== undefined ? { maxLength: field.max } : {}),
+        ...(field.enum ? { enum: [...field.enum] } : {}),
+        ...(field.pattern ? { pattern: field.pattern.source } : {}),
+      };
     case "dateTime":
       return { type: "string", format: "date-time", description };
     case "integerList":

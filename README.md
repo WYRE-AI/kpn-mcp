@@ -10,7 +10,7 @@ with the same tool list for every caller. Ships as a GHCR container only (no MCP
 The client is [`@wyre-ai/node-kpn`](https://github.com/WYRE-AI/node-kpn) (Grexx export).
 Contract: [`docs/GREXX.md`](docs/GREXX.md).
 
-## Tools (19, flat)
+## Tools (22, flat)
 
 - `kpn_grexx_test_connection`: the SDK mints an OAuth client-credentials token and posts a
   `ZipCodeCheckRequest_V6` probe for the public reference address 1012JS 1 (portfolio All).
@@ -23,12 +23,14 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
 - `kpn_grexx_order_data`: customer id, product code, and quantity for an order id
   (`OrderDataRequest_V1` → `OrderDataResponse_V1`).
 
-- 15 more realtime tools built from the portal request XSDs (see `docs/GREXX.md`):
+- 18 more realtime tools built from the portal request XSDs (see `docs/GREXX.md`):
   `kpn_grexx_carrier_info`, `kpn_grexx_radius_check`, `kpn_grexx_ras_check`,
   `kpn_grexx_start_line_diagnose`, `kpn_grexx_customer_data`, `kpn_grexx_order_summary`,
   `kpn_grexx_get_sim`, `kpn_grexx_mobile_settings`, `kpn_grexx_mobile_usage`,
   `kpn_grexx_mobile_orders`, `kpn_grexx_mobile_total_usage`, `kpn_grexx_voip_usage`,
   `kpn_grexx_voip_total_usage`, `kpn_grexx_available_portings`, `kpn_grexx_invoice_catalog`.
+  `kpn_grexx_microsoft_subscription_end_date`, `kpn_grexx_upgrade_info`, and
+  `kpn_grexx_related_products` close the renewal and upsell reads.
   `start_line_diagnose` starts
   a test at KPN, so it is not read-only and is never retried. SIM codes and the
   RadiusCheck PPP password are masked.
@@ -41,6 +43,13 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   (`GetVoipTotalUsageRequest_V1` → `GetVoipTotalUsageResponse_V1`).
 - `kpn_grexx_invoice_catalog`: invoice catalog per IRMA customer
   (`CustomerInvoiceCatalogRequest_V1` → `CustomerInvoiceCatalogResponse_V1`).
+- `kpn_grexx_microsoft_subscription_end_date`: Microsoft 365 subscription end date
+  (`MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` →
+  `MicrosoftProductOrderLineSubscriptionEndDateResponse_V1`).
+- `kpn_grexx_upgrade_info`: order upgrade options
+  (`GetUpgradeInfoRequest_V1` → `GetUpgradeInfoResponse_V1`).
+- `kpn_grexx_related_products`: related products for a customer and parent product
+  (`RelatedProductsRequest_V1` → `RelatedProductsResponse_V1`).
 
 IRMA enforces XSD element order and rejects a bad request with an HTTP 200
 `NinaResponse`; both are handled by the server. Queued writes and Proxymodule

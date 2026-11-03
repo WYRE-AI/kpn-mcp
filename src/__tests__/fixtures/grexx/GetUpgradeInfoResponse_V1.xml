@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetUpgradeInfoResponse_V1>
+  <IsUpgradeAllowed>true</IsUpgradeAllowed>
+  <ProductUpgrades>
+    <ProductUpgrade_V1>
+      <TargetProductId>UPG-M365-001</TargetProductId>
+      <TargetProductName>Microsoft 365 Business Premium</TargetProductName>
+    </ProductUpgrade_V1>
+  </ProductUpgrades>
+</GetUpgradeInfoResponse_V1>
