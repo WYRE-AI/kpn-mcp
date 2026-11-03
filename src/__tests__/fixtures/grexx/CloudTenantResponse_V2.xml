@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CloudTenantResponse_V2>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+  <CloudTenant>
+    <TenantName>uwdom.onmicrosoft.com</TenantName>
+    <TenantId>12345678-1234-1234-1234-123456789012</TenantId>
+    <FirstName>Jan</FirstName>
+    <LastName>Jansen</LastName>
+    <EmailAddress>jan.jansen@example.com</EmailAddress>
+  </CloudTenant>
+</CloudTenantResponse_V2>

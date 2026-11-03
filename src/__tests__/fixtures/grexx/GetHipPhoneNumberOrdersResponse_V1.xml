@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetHipPhoneNumberOrdersResponse_V1>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+  <Result>
+    <HipPhoneNumberOrderData_V3>
+      <OrderId>123456</OrderId>
+      <ParentOrderId>123455</ParentOrderId>
+      <CustomerId>28665</CustomerId>
+      <FirstName>Jan</FirstName>
+      <LastName>Jansen</LastName>
+      <Street>Dam</Street>
+      <HouseNr>1</HouseNr>
+      <HouseNrExtension>A</HouseNrExtension>
+      <ZipCode>1012JS</ZipCode>
+      <City>Amsterdam</City>
+      <PhoneNumber>0612345678</PhoneNumber>
+      <IsListedInPhoneBook>false</IsListedInPhoneBook>
+      <PhoneNumberCount>1</PhoneNumberCount>
+      <PortingBlockingCode>0</PortingBlockingCode>
+      <PortingBlockingNote>Geen blokkade</PortingBlockingNote>
+      <PortingState>Confirmed</PortingState>
+      <PlannedPortingDate>2026-11-22T08:00:00+01:00</PlannedPortingDate>
+      <FirstPossiblePortingDate>2026-11-20T00:00:00+01:00</FirstPossiblePortingDate>
+      <ContractTerminationDate>2027-11-22</ContractTerminationDate>
+      <ContractTerminationDuration>12</ContractTerminationDuration>
+    </HipPhoneNumberOrderData_V3>
+  </Result>
+</GetHipPhoneNumberOrdersResponse_V1>

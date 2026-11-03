@@ -104,6 +104,15 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
   },
   kpn_grexx_upgrade_info: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
   kpn_grexx_related_products: { args: { customerId: 28665, productCode: "MOB-001" }, body: { CustomerId: 28665, ProductCode: "MOB-001" } },
+  kpn_grexx_hip_number_orders: { args: { orderIds: [123456, 123457] }, body: { OrderIds: { OrderId: [123456, 123457] } } },
+  kpn_grexx_clean_internet_info: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
+  kpn_grexx_cloud_tenant: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
+  kpn_grexx_microsoft_tenant_exists: { args: { tenantName: "uwdomein.onmicrosoft.com" }, body: { TenantName: "uwdomein.onmicrosoft.com" } },
+  kpn_grexx_microsoft_domain_ownership: {
+    args: { customerId: 28665, tenantId: "12345678-1234-1234-1234-123456789012" },
+    body: { CustomerId: 28665, TenantId: "12345678-1234-1234-1234-123456789012" },
+  },
+  kpn_grexx_custom_price: { args: { orderId: 123456, confirmationState: "Accepted" }, body: { OrderId: 123456, ConfirmationState: "Accepted" } },
 };
 
 describe("realtime tool surface", () => {
@@ -116,6 +125,17 @@ describe("realtime tool surface", () => {
       ...GREXX_REALTIME_SPECS.map((s) => s.tool),
     ]);
     expect(Object.keys(CASES).sort()).toEqual(GREXX_REALTIME_SPECS.map((s) => s.tool).sort());
+  });
+
+  it("appends the KPN-B4 WilroffReitsma realtime reads after the existing specs", () => {
+    expect(GREXX_REALTIME_SPECS.slice(-6).map((s) => s.tool)).toEqual([
+      "kpn_grexx_hip_number_orders",
+      "kpn_grexx_clean_internet_info",
+      "kpn_grexx_cloud_tenant",
+      "kpn_grexx_microsoft_tenant_exists",
+      "kpn_grexx_microsoft_domain_ownership",
+      "kpn_grexx_custom_price",
+    ]);
   });
 
   it("exposes each XSD field as a schema property and lists required fields", () => {
@@ -133,6 +153,20 @@ describe("realtime tool surface", () => {
       const readOnly = s.tool !== "kpn_grexx_start_line_diagnose";
       expect(tool.annotations?.readOnlyHint, s.tool).toBe(readOnly);
       expect(tool.annotations?.destructiveHint ?? false, s.tool).toBe(false);
+    }
+  });
+
+  it("marks the KPN-B4 realtime reads as read-only", () => {
+    for (const tool of [
+      "kpn_grexx_hip_number_orders",
+      "kpn_grexx_clean_internet_info",
+      "kpn_grexx_cloud_tenant",
+      "kpn_grexx_microsoft_tenant_exists",
+      "kpn_grexx_microsoft_domain_ownership",
+      "kpn_grexx_custom_price",
+    ]) {
+      const toolDefinition = GREXX_TOOLS.find((item) => item.name === tool)!;
+      expect(toolDefinition.annotations).toMatchObject({ readOnlyHint: true });
     }
   });
 });
@@ -186,6 +220,14 @@ describe("request bodies", () => {
     expect(orders).toContain("<OrderIds><OrderId>1</OrderId><OrderId>2</OrderId></OrderIds>");
   });
 
+  it("emits HIP number orders in XSD order", () => {
+    const xml = renderRealtimeBody(
+      "GetHipPhoneNumberOrdersRequest_V1",
+      buildRealtimeBody(spec("kpn_grexx_hip_number_orders"), { orderIds: [123456, 123457] })
+    );
+    expect(xml).toContain("<GetHipPhoneNumberOrdersRequest_V1><OrderIds><OrderId>123456</OrderId><OrderId>123457</OrderId></OrderIds></GetHipPhoneNumberOrdersRequest_V1>");
+  });
+
   it("omits optional arguments that were not passed", () => {
     expect(buildRealtimeBody(spec("kpn_grexx_customer_data"), {})).toEqual({});
   });
@@ -223,6 +265,13 @@ describe("request bodies", () => {
     ["kpn_grexx_upgrade_info", {}, 'Argument "orderId" is required.'],
     ["kpn_grexx_related_products", { customerId: 28665 }, 'Argument "productCode" is required.'],
     ["kpn_grexx_related_products", { customerId: 28665, productCode: "MOB-0012345678901234" }, "at most 13"],
+    ["kpn_grexx_hip_number_orders", { orderIds: [] }, "at least 1"],
+    ["kpn_grexx_hip_number_orders", { orderIds: Array.from({ length: 51 }, (_, index) => index + 1) }, "at most 50"],
+    ["kpn_grexx_clean_internet_info", {}, 'Argument "orderId" is required.'],
+    ["kpn_grexx_cloud_tenant", {}, 'Argument "customerId" is required.'],
+    ["kpn_grexx_microsoft_tenant_exists", { tenantName: "uwdomein.example.com" }, "does not match"],
+    ["kpn_grexx_microsoft_domain_ownership", { customerId: 28665, tenantId: "not-a-uuid" }, "does not match"],
+    ["kpn_grexx_custom_price", { orderId: 123456 }, 'Argument "confirmationState" is required.'],
   ])("%s rejects %j without calling Grexx", async (tool, args, message) => {
     const { client, postRealtime } = stub(fixture("OrderDataResponse_V1"));
     const result = (await handleGrexxToolCall(client, tool, args)) as ToolResult;

@@ -29,7 +29,7 @@ Token minting is the `^2.0.1` behavior from
 [node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4).
 Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
-## Tools (26)
+## Tools (32)
 
 | Tool | IRMA request | SDK |
 |---|---|---|
@@ -48,7 +48,7 @@ Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
 These four tools are reads. Realtime retries (network, HTTP 429 / code 108, 5xx) stay inside the SDK.
 
-### XSD-spec tools (22)
+### XSD-spec tools (28)
 
 Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: field names, order, types, limits and enums copied from the request XSDs in the portal (API Toolmodule → Webservice Beschrijvingen, export 2026-10-05). One handler (`src/handlers/grexx-realtime.ts`) validates arguments, emits the body in XSD order and posts it with `GrexxClient.postRealtime`. **IRMA enforces `xs:sequence` order**: an element out of place is a 109.
 
@@ -76,6 +76,12 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_mobile_preferences` | `GetMobilePreferencesRequest_V1` | mobile call-preference settings |
 | `kpn_grexx_mobile_module` | `GetMobileModuleRequest_V1` | mobile module enablement status |
 | `kpn_grexx_planned_line` | `PlannedLineRequest_V3` | planned fibre/copper line details |
+| `kpn_grexx_hip_number_orders` | `GetHipPhoneNumberOrdersRequest_V1` | up to 50 HIP order IDs |
+| `kpn_grexx_clean_internet_info` | `GetCleanInternetInfoRequest_V1` | Extra Safe Internet active state |
+| `kpn_grexx_cloud_tenant` | `CloudTenantRequest_V2` | Microsoft cloud tenant for an IRMA customer |
+| `kpn_grexx_microsoft_tenant_exists` | `MicrosoftTenantExistsCheckRequest_V1` | Microsoft tenant existence |
+| `kpn_grexx_microsoft_domain_ownership` | `MicrosoftTenantDomainOwnershipCheckRequest_V1` | delegated access and onboarding readiness |
+| `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | accepted or rejected custom pricing |
 
 The tools added for the mobile line-troubleshooting and renewal/upsell batches are all reads. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
 

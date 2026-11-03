@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MicrosoftTenantDomainOwnershipCheckResponse_V1>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+  <IsDelegatedAccessAllowed>true</IsDelegatedAccessAllowed>
+  <IsAcceptanceMcaRequired>false</IsAcceptanceMcaRequired>
+  <IsOnboardingReady>true</IsOnboardingReady>
+  <DnsBoardingRecordName>_dmarc</DnsBoardingRecordName>
+  <DnsBoardingRecordValue>v=spf1 include:spf.protection.outlook.com -all</DnsBoardingRecordValue>
+</MicrosoftTenantDomainOwnershipCheckResponse_V1>

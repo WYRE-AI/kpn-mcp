@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetCleanInternetInfoResponse_V1>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+  <IsActive>false</IsActive>
+</GetCleanInternetInfoResponse_V1>

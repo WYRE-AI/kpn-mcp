@@ -11,7 +11,7 @@
  */
 import type { Tool } from "@modelcontextprotocol/server";
 
-export type GrexxFieldType = "string" | "integer" | "boolean" | "dateTime" | "integerList";
+export type GrexxFieldType = "string" | "integer" | "boolean" | "dateTime" | "integerList" | "decimal";
 
 export interface GrexxField {
   /** Tool argument name. */
@@ -31,6 +31,8 @@ export interface GrexxField {
   max?: number;
   /** integerList: XSD item element name (`OrderId`). */
   item?: string;
+    /** decimal: XSD decimal value. */
+    decimal?: boolean;
 }
 
 export interface GrexxRealtimeSpec {
@@ -367,6 +369,79 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       { arg: "isRoomNumberKnown", element: "IsRoomNumberKnown", type: "boolean", required: true, description: "XSD IsRoomNumberKnown. Required. False when the room number is not known." },
     ],
   },
+  {
+    tool: "kpn_grexx_hip_number_orders",
+    request: "GetHipPhoneNumberOrdersRequest_V1",
+    response: "GetHipPhoneNumberOrdersResponse_V1",
+    readOnly: true,
+    description:
+      "Order information for one or more HIP phone numbers on an IRMA customer card " +
+      "(GetHipPhoneNumberOrdersRequest_V1). Up to 50 order IDs per call.",
+    fields: [
+      { arg: "orderIds", element: "OrderIds", type: "integerList", item: "OrderId", required: true, min: 1, max: 50, description: "IRMA order IDs of the HIP phone numbers (1-50)." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_clean_internet_info",
+    request: "GetCleanInternetInfoRequest_V1",
+    response: "GetCleanInternetInfoResponse_V1",
+    readOnly: true,
+    description:
+      "Whether Extra Safe Internet is active for an IRMA order (GetCleanInternetInfoRequest_V1).",
+    fields: [orderId("the Extra Safe Internet order")],
+  },
+  {
+    tool: "kpn_grexx_cloud_tenant",
+    request: "CloudTenantRequest_V2",
+    response: "CloudTenantResponse_V2",
+    readOnly: true,
+    description:
+      "Microsoft cloud tenant information for an IRMA customer (CloudTenantRequest_V2). " +
+      "The tenant is created once when the first cloud license order is placed.",
+    fields: [{ arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." }],
+  },
+  {
+    tool: "kpn_grexx_microsoft_tenant_exists",
+    request: "MicrosoftTenantExistsCheckRequest_V1",
+    response: "MicrosoftTenantExistsCheckResponse_V1",
+    readOnly: true,
+    description:
+      "Whether a Microsoft tenant exists (MicrosoftTenantExistsCheckRequest_V1). " +
+      "Tenant names use the `tenant.onmicrosoft.com` form.",
+    fields: [
+      { arg: "tenantName", element: "TenantName", type: "string", required: true, pattern: /^[a-zA-Z0-9._-]{1,27}\.onmicrosoft\.com$/, description: "Microsoft tenant name, e.g. \"uwdomein.onmicrosoft.com\"." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_microsoft_domain_ownership",
+    request: "MicrosoftTenantDomainOwnershipCheckRequest_V1",
+    response: "MicrosoftTenantDomainOwnershipCheckResponse_V1",
+    readOnly: true,
+    description:
+      "Whether an IRMA customer has delegated access to a Microsoft tenant and whether the tenant is ready for onboarding " +
+      "(MicrosoftTenantDomainOwnershipCheckRequest_V1).",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "tenantId", element: "TenantId", type: "string", required: true, pattern: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, description: "Microsoft tenant ID (UUID)." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_custom_price",
+    request: "CustomPriceRequest_V1",
+    response: "CustomPriceResponse_V1",
+    readOnly: true,
+    description:
+      "Accepted or rejected custom (maatwerk) pricing for an IRMA order (CustomPriceRequest_V1). " +
+      "This is a pricing lookup; it does not submit the pricing decision.",
+    fields: [
+      { arg: "orderId", element: "OrderId", type: "integer", required: true, min: 1, description: "IRMA order ID for which custom pricing was accepted or rejected." },
+      { arg: "confirmationState", element: "ConfirmationState", type: "string", required: true, enum: ["Accepted", "Rejected"], description: "Whether KPN accepted or rejected the custom price." },
+      { arg: "remark", element: "Remark", type: "string", description: "Optional pricing decision remark." },
+      { arg: "price", element: "Price", type: "decimal", required: false, description: "Proposed custom price. Optional." },
+      { arg: "setupPrice", element: "SetupPrice", type: "decimal", required: false, description: "Proposed custom setup price. Optional." },
+      { arg: "terminationPrice", element: "TerminationPrice", type: "decimal", required: false, description: "Proposed custom termination price. Optional." },
+    ],
+  },
 ];
 
 function fieldSchema(field: GrexxField): Record<string, unknown> {
@@ -389,6 +464,8 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
       return { type: "string", format: "date-time", description };
     case "integerList":
       return { type: "array", description, items: { type: "integer", minimum: 1 }, minItems: field.min, maxItems: field.max };
+    case "decimal":
+      return { type: "number", description, ...(field.min !== undefined ? { minimum: field.min } : {}), ...(field.max !== undefined ? { maximum: field.max } : {}) };
     default:
       return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}), ...(field.pattern ? { pattern: field.pattern.source } : {}) };
   }

@@ -66,6 +66,14 @@ function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
   switch (field.type) {
     case "integer":
       return readInteger(field, value);
+    case "decimal": {
+      const num = typeof value === "string" && /^-?\d+(\.\d+)?$/.test(value.trim()) ? Number(value) : value;
+      if (typeof num !== "number" || !Number.isFinite(num)) fail(field, "must be a decimal.");
+      const min = field.min ?? XS_INT_MIN;
+      const max = field.max ?? XS_INT_MAX;
+      if (num < min || num > max) fail(field, `must be between ${min} and ${max}.`);
+      return num;
+    }
     case "boolean":
       if (typeof value !== "boolean") fail(field, "must be a boolean.");
       return value;
