@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetVoipTotalUsageResponse_V1>
+  <Status>
+    <Code>Success</Code>
+    <Messages>
+      <string>Totaal verbruik opgehaald voor klant 28665.</string>
+    </Messages>
+  </Status>
+  <CustomerId>28665</CustomerId>
+  <VoipUsages>
+    <VoipUsage_V1>
+      <PhoneNumber>+31612345678</PhoneNumber>
+      <CountCalls>12</CountCalls>
+      <Amount>3.5</Amount>
+      <DurationInSeconds>1250</DurationInSeconds>
+    </VoipUsage_V1>
+  </VoipUsages>
+</GetVoipTotalUsageResponse_V1>

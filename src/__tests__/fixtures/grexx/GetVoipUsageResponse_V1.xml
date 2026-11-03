@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetVoipUsageResponse_V1>
+  <Status>
+    <Code>Success</Code>
+    <Messages>
+      <string>Verbruik opgehaald voor order 123456.</string>
+    </Messages>
+  </Status>
+  <OrderId>123456</OrderId>
+  <CustomerId>28665</CustomerId>
+  <VoipUsage>
+    <PhoneNumber>+31612345678</PhoneNumber>
+    <CountCalls>12</CountCalls>
+    <Amount>3.5</Amount>
+    <DurationInSeconds>1250</DurationInSeconds>
+  </VoipUsage>
+</GetVoipUsageResponse_V1>

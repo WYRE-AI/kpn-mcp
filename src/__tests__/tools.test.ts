@@ -19,8 +19,12 @@ const GREXX_ORDER = [
   "kpn_grexx_get_sim",
   "kpn_grexx_mobile_settings",
   "kpn_grexx_mobile_usage",
+  "kpn_grexx_mobile_total_usage",
   "kpn_grexx_mobile_orders",
+  "kpn_grexx_voip_usage",
+  "kpn_grexx_voip_total_usage",
   "kpn_grexx_available_portings",
+  "kpn_grexx_invoice_catalog",
 ];
 const LEGACY_NAMES = LEGACY_TOOLS.map((tool) => tool.name);
 
@@ -139,6 +143,43 @@ describe("default Grexx surface", () => {
     expect(schema.required).toEqual(["orderId"]);
     expect(schema.properties?.orderId?.type).toBe("integer");
     expect(Object.keys(schema.properties ?? {})).toEqual(["orderId"]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("mobile_total_usage requires the XSD customer id and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_mobile_total_usage");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    expect(schema.required).toEqual(["customerId"]);
+    expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("voip_usage requires the XSD order id and E.164 phone number and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_voip_usage");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string; pattern?: RegExp }> };
+    expect(schema.required).toEqual(["orderId", "phoneNumber"]);
+    expect(schema.properties?.orderId?.type).toBe("integer");
+    expect(schema.properties?.phoneNumber?.pattern).toBe("^\\+\\d{9,15}$");
+    expect(Object.keys(schema.properties ?? {})).toEqual(["orderId", "phoneNumber"]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("voip_total_usage requires the XSD customer id and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_voip_total_usage");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    expect(schema.required).toEqual(["customerId"]);
+    expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("invoice_catalog requires the XSD customer id and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_invoice_catalog");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    expect(schema.required).toEqual(["customerId"]);
+    expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 });

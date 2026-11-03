@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetMobileSubscriptionTotalUsageResponse_V1>
+  <Status>
+    <Code>Success</Code>
+    <Messages>
+      <string>Verbruik opgehaald voor klant 28665.</string>
+    </Messages>
+  </Status>
+  <CustomerId>28665</CustomerId>
+  <MobileBundleInfoUsage>
+    <MobileBundleInfoUsage_V1>
+      <Amount>2.5</Amount>
+      <UomAmount>Euro</UomAmount>
+      <DataBundleValue>10240</DataBundleValue>
+      <DataCurrentValue>3456.78</DataCurrentValue>
+      <UomData>MB</UomData>
+      <VoiceBundleValue>500</VoiceBundleValue>
+      <VoiceCurrentValue>123.5</VoiceCurrentValue>
+      <UomVoice>Minutes</UomVoice>
+      <ProductName>Business Mobiel Groepsbundel</ProductName>
+    </MobileBundleInfoUsage_V1>
+  </MobileBundleInfoUsage>
+</GetMobileSubscriptionTotalUsageResponse_V1>

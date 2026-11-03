@@ -207,6 +207,18 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     fields: [orderId("the mobile number's order")],
   },
   {
+    tool: "kpn_grexx_mobile_total_usage",
+    request: "GetMobileSubscriptionTotalUsageRequest_V1",
+    response: "GetMobileSubscriptionTotalUsageResponse_V1",
+    readOnly: true,
+    description:
+      "Total usage (data, voice, SMS and extra costs) per product for an IRMA customer " +
+      "(GetMobileSubscriptionTotalUsageRequest_V1). Available from 5 minutes after activation.",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, description: "IRMA customer ID, e.g. 28665." },
+    ],
+  },
+  {
     tool: "kpn_grexx_mobile_orders",
     request: "GetMobileSubscriptionOrdersRequest_V1",
     response: "GetMobileSubscriptionOrdersResponse_V1",
@@ -215,6 +227,31 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       "number, SIM, subscription and bundles.",
     fields: [
       { arg: "orderIds", element: "OrderIds", type: "integerList", item: "OrderId", required: true, min: 1, max: 50, description: "IRMA order IDs of the mobile orders (1-50)." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_voip_usage",
+    request: "GetVoipUsageRequest_V1",
+    response: "GetVoipUsageResponse_V1",
+    readOnly: true,
+    description:
+      "Current usage (calls, amount and duration) for a VOIP order (GetVoipUsageRequest_V1). " +
+      "Available from 5 minutes after activation.",
+    fields: [
+      orderId("the VOIP order"),
+      { arg: "phoneNumber", element: "PhoneNumber", type: "string", required: true, pattern: /^\+\d{9,15}$/, description: 'VOIP phone number in E.164 format, e.g. "+31612345678".' },
+    ],
+  },
+  {
+    tool: "kpn_grexx_voip_total_usage",
+    request: "GetVoipTotalUsageRequest_V1",
+    response: "GetVoipTotalUsageResponse_V1",
+    readOnly: true,
+    description:
+      "Total usage (calls, amount and duration) per VOIP phone number for an IRMA customer " +
+      "(GetVoipTotalUsageRequest_V1).",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, description: "IRMA customer ID, e.g. 28665." },
     ],
   },
   {
@@ -234,6 +271,18 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
         ? 'Pass exactly one of "customerId" or "hipGroupOrderId".'
         : undefined,
   },
+  {
+    tool: "kpn_grexx_invoice_catalog",
+    request: "CustomerInvoiceCatalogRequest_V1",
+    response: "CustomerInvoiceCatalogResponse_V1",
+    readOnly: true,
+    description:
+      "Invoice catalog for the last 12 months, including document metadata, for an IRMA customer " +
+      "(CustomerInvoiceCatalogRequest_V1). Catalog only; invoice documents are not exposed.",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, description: "IRMA customer ID, e.g. 28665." },
+    ],
+  },
 ];
 
 function fieldSchema(field: GrexxField): Record<string, unknown> {
@@ -248,7 +297,7 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
     case "integerList":
       return { type: "array", description, items: { type: "integer", minimum: 1 }, minItems: field.min, maxItems: field.max };
     default:
-      return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}) };
+      return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}), ...(field.pattern ? { pattern: field.pattern.source } : {}) };
   }
 }
 

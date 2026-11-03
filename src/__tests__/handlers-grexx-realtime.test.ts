@@ -85,8 +85,12 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
   kpn_grexx_get_sim: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
   kpn_grexx_mobile_settings: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
   kpn_grexx_mobile_usage: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
+  kpn_grexx_mobile_total_usage: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
   kpn_grexx_mobile_orders: { args: { orderIds: [1, 2] }, body: { OrderIds: { OrderId: [1, 2] } } },
+  kpn_grexx_voip_usage: { args: { orderId: 123456, phoneNumber: "+31612345678" }, body: { OrderId: 123456, PhoneNumber: "+31612345678" } },
+  kpn_grexx_voip_total_usage: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
   kpn_grexx_available_portings: { args: { customerId: 28665 }, body: { MobileSubscripionCustomerId: 28665 } },
+  kpn_grexx_invoice_catalog: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
 };
 
 describe("realtime tool surface", () => {
@@ -170,6 +174,10 @@ describe("request bodies", () => {
     ["kpn_grexx_carrier_info", { ...CASES.kpn_grexx_carrier_info.args, houseNumber: 100000 }, "at most 99999"],
     ["kpn_grexx_mobile_orders", { orderIds: [] }, "at least 1"],
     ["kpn_grexx_mobile_orders", { orderIds: Array.from({ length: 51 }, (_, i) => i + 1) }, "at most 50"],
+    ["kpn_grexx_mobile_total_usage", { customerId: 2147483648 }, "at most 2147483647"],
+    ["kpn_grexx_voip_usage", { orderId: 1, phoneNumber: "0612345678" }, "does not match"],
+    ["kpn_grexx_voip_usage", {}, 'Argument "orderId" is required.'],
+    ["kpn_grexx_invoice_catalog", {}, 'Argument "customerId" is required.'],
     ["kpn_grexx_available_portings", {}, "exactly one"],
     ["kpn_grexx_available_portings", { customerId: 1, hipGroupOrderId: 2 }, "exactly one"],
     ["kpn_grexx_start_line_diagnose", { orderId: 1, symptomCode: "Sym999" }, "Sym103"],
@@ -219,6 +227,42 @@ describe("responses", () => {
     expect(body.data.Sim.ESim.ConfirmationCode).toBe(MASK);
     expect(body.data.Sim.ICCId).toBeTruthy();
     expect(raw).not.toContain("12345678");
+  });
+
+  it("parses mobile total usage from its response fixture", async () => {
+    const { client } = stub(fixture("GetMobileSubscriptionTotalUsageResponse_V1"));
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_mobile_total_usage", { customerId: 28665 })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.secretsMasked).toBeUndefined();
+    expect(body.data.CustomerId).toBe("28665");
+    expect(body.data.MobileBundleInfoUsage.MobileBundleInfoUsage_V1.DataCurrentValue).toBe("3456.78");
+  });
+
+  it("parses VOIP usage and total usage from their response fixtures", async () => {
+    const usage = JSON.parse(
+      text(await handleGrexxToolCall(stub(fixture("GetVoipUsageResponse_V1")).client, "kpn_grexx_voip_usage", {
+        orderId: 123456,
+        phoneNumber: "+31612345678",
+      }))
+    );
+    expect(usage.data.VoipUsage.CountCalls).toBe("12");
+    expect(usage.data.VoipUsage.Amount).toBe("3.5");
+
+    const total = JSON.parse(
+      text(await handleGrexxToolCall(stub(fixture("GetVoipTotalUsageResponse_V1")).client, "kpn_grexx_voip_total_usage", {
+        customerId: 28665,
+      }))
+    );
+    expect(total.data.VoipUsages.VoipUsage_V1.DurationInSeconds).toBe("1250");
+  });
+
+  it("parses the invoice catalog from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("CustomerInvoiceCatalogResponse_V1")).client, "kpn_grexx_invoice_catalog", {
+      customerId: 28665,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.CustomerInvoiceCatalogItems.CustomerInvoiceCatalogItem_V1.InvoiceNumber).toBe("INV-2026-001");
+    expect(body.data.CustomerInvoiceCatalogItems.CustomerInvoiceCatalogItem_V1.TotalAmountIncludingVat).toBe("123.45");
   });
 
   it("masks SIM codes inside mobile orders and the PPP password from RadiusCheck", async () => {
