@@ -39,6 +39,9 @@ Releases are cut by semantic-release from Conventional Commits.
 - `kpn_grexx_test_connection`: verify OAuth and realtime access with a zipcode probe
   of public reference address 1012JS 1.
 - `kpn_grexx_zipcode_check`: look up address technology and speeds through Grexx IRMA.
+- Four Grexx IRMA realtime reads for line troubleshooting: `kpn_grexx_mobile_call_forwardings`,
+  `kpn_grexx_mobile_preferences`, `kpn_grexx_mobile_module`, and `kpn_grexx_planned_line`.
+  Requests are sent in XSD element order and all four are read-only.
 - Initial KPN MCP server: flat 23-tool surface over `@wyre-ai/node-kpn` covering
   Disturbance Check, Internet Speed Check, SIM Swap and Mobile Services Management (MSM v11).
 - Dual-era serving on the v2 SDK (`^2.0.0-beta.5`): one shared `McpServerFactory` via

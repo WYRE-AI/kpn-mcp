@@ -28,6 +28,10 @@ const GREXX_ORDER = [
   "kpn_grexx_microsoft_subscription_end_date",
   "kpn_grexx_upgrade_info",
   "kpn_grexx_related_products",
+  "kpn_grexx_mobile_call_forwardings",
+  "kpn_grexx_mobile_preferences",
+  "kpn_grexx_mobile_module",
+  "kpn_grexx_planned_line",
 ];
 const LEGACY_NAMES = LEGACY_TOOLS.map((tool) => tool.name);
 
@@ -96,8 +100,8 @@ describe("default Grexx surface", () => {
     expect(TOOL_NAMES).not.toContain("kpn_mobile_sim_block");
   });
 
-  it("serves a 22-tool default Grexx surface", () => {
-    expect(TOOL_NAMES).toHaveLength(22);
+  it("serves a 26-tool default Grexx surface", () => {
+    expect(TOOL_NAMES).toHaveLength(26);
   });
 
   it("returns the same TOOLS reference on each listToolsResult() call", () => {
@@ -160,6 +164,31 @@ describe("default Grexx surface", () => {
     expect(schema.properties?.customerId?.type).toBe("integer");
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("line troubleshooting realtime reads require their XSD inputs and stay read-only", () => {
+    const callForwardings = GREXX_TOOLS.find((tool) => tool.name === "kpn_grexx_mobile_call_forwardings");
+    expect(callForwardings?.inputSchema).toMatchObject({
+      required: ["orderId"],
+      properties: { orderId: { type: "integer" } },
+    });
+    expect(callForwardings?.annotations).toMatchObject({ readOnlyHint: true });
+
+    const module = GREXX_TOOLS.find((tool) => tool.name === "kpn_grexx_mobile_module");
+    expect(module?.inputSchema).toMatchObject({
+      required: ["orderId"],
+      properties: { orderId: { type: "integer" } },
+    });
+    expect(module?.annotations).toMatchObject({ readOnlyHint: true });
+
+    const plannedLine = GREXX_TOOLS.find((tool) => tool.name === "kpn_grexx_planned_line");
+    const plannedLineSchema = plannedLine?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string }>;
+    };
+    expect(plannedLineSchema.required).toEqual(["houseNumber", "isRoomNumberKnown"]);
+    expect(Object.keys(plannedLineSchema.properties ?? {})).toEqual(["zipCode", "houseNumber", "houseNumberExtension", "roomNumber", "isRoomNumberKnown"]);
+    expect(plannedLine?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
   it("voip_usage requires the XSD order id and E.164 phone number and stays read-only", () => {

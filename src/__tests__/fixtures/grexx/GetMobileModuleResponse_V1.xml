@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetMobileModuleResponse_V1>
+  <Status>
+    <Messages>
+      <string>Mobile module status retrieved.</string>
+    </Messages>
+    <Code>Success</Code>
+  </Status>
+  <MobileModule>
+    <Code>MOB-001</Code>
+    <Status>
+      <IsPending>false</IsPending>
+      <Value>true</Value>
+    </Status>
+  </MobileModule>
+</GetMobileModuleResponse_V1>

@@ -321,6 +321,52 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       { arg: "productCode", element: "ProductCode", type: "string", required: true, min: 1, max: 13, description: "IRMA product code of the parent order, e.g. a mobile subscription." },
     ],
   },
+  {
+    tool: "kpn_grexx_mobile_call_forwardings",
+    request: "GetMobileCallForwardingsRequest_V1",
+    response: "GetMobileCallForwardingsResponse_V1",
+    readOnly: true,
+    description:
+      "Mobile call forwarding status for an IRMA mobile order (GetMobileCallForwardingsRequest_V1). " +
+      "Returns unconditional, no-reply, busy, and unreachable call-forwarding state.",
+    fields: [orderId("the mobile order")],
+  },
+  {
+    tool: "kpn_grexx_mobile_preferences",
+    request: "GetMobilePreferencesRequest_V1",
+    response: "GetMobilePreferencesResponse_V1",
+    readOnly: true,
+    description:
+      "Mobile call-preference settings for an IRMA mobile order (GetMobilePreferencesRequest_V1). " +
+      "Returns roaming, usage-notification, SIM-block, and related preference state.",
+    fields: [orderId("the mobile order")],
+  },
+  {
+    tool: "kpn_grexx_mobile_module",
+    request: "GetMobileModuleRequest_V1",
+    response: "GetMobileModuleResponse_V1",
+    readOnly: true,
+    description:
+      "Mobile module status for an IRMA mobile order (GetMobileModuleRequest_V1). " +
+      "Returns whether the requested mobile module is enabled or pending.",
+    fields: [orderId("the mobile order")],
+  },
+  {
+    tool: "kpn_grexx_planned_line",
+    request: "PlannedLineRequest_V3",
+    response: "PlannedLineResponse_V3",
+    readOnly: true,
+    description:
+      "Planned line details for a Dutch address and room (PlannedLineRequest_V3). " +
+      "Returns fibre and copper planning, delivery, technology, and connection status.",
+    fields: [
+      { arg: "zipCode", element: "ZipCode", type: "string", description: "Dutch postcode, e.g. 1012JS. Optional." },
+      { arg: "houseNumber", element: "HouseNr", type: "integer", required: true, description: "XSD HouseNr (xs:int)." },
+      { arg: "houseNumberExtension", element: "HouseNrExtension", type: "string", description: "House number addition. Optional." },
+      { arg: "roomNumber", element: "RoomNumber", type: "string", description: "Room number. Optional." },
+      { arg: "isRoomNumberKnown", element: "IsRoomNumberKnown", type: "boolean", required: true, description: "XSD IsRoomNumberKnown. Required. False when the room number is not known." },
+    ],
+  },
 ];
 
 function fieldSchema(field: GrexxField): Record<string, unknown> {

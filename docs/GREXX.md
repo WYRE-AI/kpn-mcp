@@ -29,7 +29,7 @@ Token minting is the `^2.0.1` behavior from
 [node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4).
 Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
-## Tools (22)
+## Tools (26)
 
 | Tool | IRMA request | SDK |
 |---|---|---|
@@ -48,7 +48,7 @@ Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
 These four tools are reads. Realtime retries (network, HTTP 429 / code 108, 5xx) stay inside the SDK.
 
-### XSD-spec tools (18)
+### XSD-spec tools (22)
 
 Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: field names, order, types, limits and enums copied from the request XSDs in the portal (API Toolmodule → Webservice Beschrijvingen, export 2026-10-05). One handler (`src/handlers/grexx-realtime.ts`) validates arguments, emits the body in XSD order and posts it with `GrexxClient.postRealtime`. **IRMA enforces `xs:sequence` order**: an element out of place is a 109.
 
@@ -72,8 +72,12 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_microsoft_subscription_end_date` | `MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` | customer or optional order ID; subscription end date |
 | `kpn_grexx_upgrade_info` | `GetUpgradeInfoRequest_V1` | order upgrade options and whether upgrading is allowed |
 | `kpn_grexx_related_products` | `RelatedProductsRequest_V1` | customer and parent product; related products |
+| `kpn_grexx_mobile_call_forwardings` | `GetMobileCallForwardingsRequest_V1` | mobile call-forwarding status |
+| `kpn_grexx_mobile_preferences` | `GetMobilePreferencesRequest_V1` | mobile call-preference settings |
+| `kpn_grexx_mobile_module` | `GetMobileModuleRequest_V1` | mobile module enablement status |
+| `kpn_grexx_planned_line` | `PlannedLineRequest_V3` | planned fibre/copper line details |
 
-The tools added for the usage, invoice-catalog, renewal and upsell batches are all reads. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
+The tools added for the mobile line-troubleshooting and renewal/upsell batches are all reads. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
 
 Results are JSON: `request`, `response`, `code`, `messages`, `requestId`, `httpStatus`, `data` (the response document without `Status`), and `secretsMasked: true` when anything was masked. Lists come back as parsed: one element is an object, several are an array.
 

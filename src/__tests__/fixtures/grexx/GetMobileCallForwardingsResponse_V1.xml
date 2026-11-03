@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetMobileCallForwardingsResponse_V1>
+  <CallForwardings>
+    <CallForwardingUnconditional>
+      <PhoneNumber>0612345678</PhoneNumber>
+      <Pending>false</Pending>
+    </CallForwardingUnconditional>
+    <CallForwardingOnNoReply>
+      <Pending>true</Pending>
+    </CallForwardingOnNoReply>
+  </CallForwardings>
+</GetMobileCallForwardingsResponse_V1>

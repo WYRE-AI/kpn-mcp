@@ -87,6 +87,13 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
   kpn_grexx_mobile_usage: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
   kpn_grexx_mobile_total_usage: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
   kpn_grexx_mobile_orders: { args: { orderIds: [1, 2] }, body: { OrderIds: { OrderId: [1, 2] } } },
+  kpn_grexx_mobile_call_forwardings: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
+  kpn_grexx_mobile_preferences: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
+  kpn_grexx_mobile_module: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
+  kpn_grexx_planned_line: {
+    args: { zipCode: "1012JS", houseNumber: 1, isRoomNumberKnown: true },
+    body: { ZipCode: "1012JS", HouseNr: 1, IsRoomNumberKnown: true },
+  },
   kpn_grexx_voip_usage: { args: { orderId: 123456, phoneNumber: "+31612345678" }, body: { OrderId: 123456, PhoneNumber: "+31612345678" } },
   kpn_grexx_voip_total_usage: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
   kpn_grexx_available_portings: { args: { customerId: 28665 }, body: { MobileSubscripionCustomerId: 28665 } },
@@ -153,6 +160,24 @@ describe("request bodies", () => {
     );
   });
 
+  it("emits planned line elements in XSD order", () => {
+    const xml = renderRealtimeBody(
+      "PlannedLineRequest_V3",
+      buildRealtimeBody(spec("kpn_grexx_planned_line"), {
+        houseNumberExtension: "A",
+        roomNumber: "2",
+        zipCode: "1012JS",
+        houseNumber: 1,
+        isRoomNumberKnown: true,
+      })
+    );
+    expect(xml).toContain(
+      "<PlannedLineRequest_V3><ZipCode>1012JS</ZipCode><HouseNr>1</HouseNr>" +
+        "<HouseNrExtension>A</HouseNrExtension><RoomNumber>2</RoomNumber><IsRoomNumberKnown>true</IsRoomNumberKnown>" +
+        "</PlannedLineRequest_V3>"
+    );
+  });
+
   it("wraps list fields in their XSD item element", () => {
     const orders = renderRealtimeBody(
       "GetMobileSubscriptionOrdersRequest_V1",
@@ -183,6 +208,12 @@ describe("request bodies", () => {
     ["kpn_grexx_mobile_total_usage", { customerId: 2147483648 }, "at most 2147483647"],
     ["kpn_grexx_voip_usage", { orderId: 1, phoneNumber: "0612345678" }, "does not match"],
     ["kpn_grexx_voip_usage", {}, 'Argument "orderId" is required.'],
+    ["kpn_grexx_mobile_call_forwardings", {}, 'Argument "orderId" is required.'],
+    ["kpn_grexx_mobile_preferences", {}, 'Argument "orderId" is required.'],
+    ["kpn_grexx_mobile_module", {}, 'Argument "orderId" is required.'],
+    ["kpn_grexx_planned_line", {}, 'Argument "houseNumber" is required.'],
+    ["kpn_grexx_planned_line", { houseNumber: 1 }, 'Argument "isRoomNumberKnown" is required.'],
+    ["kpn_grexx_planned_line", { houseNumber: 1, isRoomNumberKnown: "true" }, "must be a boolean"],
     ["kpn_grexx_invoice_catalog", {}, 'Argument "customerId" is required.'],
     ["kpn_grexx_available_portings", {}, "exactly one"],
     ["kpn_grexx_available_portings", { customerId: 1, hipGroupOrderId: 2 }, "exactly one"],
@@ -285,6 +316,46 @@ describe("responses", () => {
     const radius = text(await handleGrexxToolCall(stub(fixture("RadiusCheckResponse_V1")).client, "kpn_grexx_radius_check", { orderId: 1 }));
     expect(JSON.parse(radius).secretsMasked).toBe(true);
     expect(radius).toMatch(/"Password": "••••"/);
+  });
+
+  it("parses mobile call forwardings from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("GetMobileCallForwardingsResponse_V1")).client, "kpn_grexx_mobile_call_forwardings", {
+      orderId: 123456,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.CallForwardings.CallForwardingUnconditional.PhoneNumber).toBe("0612345678");
+    expect(body.data.CallForwardings.CallForwardingUnconditional.Pending).toBe("false");
+  });
+
+  it("parses mobile preferences from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("GetMobilePreferencesResponse_V1")).client, "kpn_grexx_mobile_preferences", {
+      orderId: 123456,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.RatesAbroadNotificationsEnabled).toBe("true");
+    expect(body.data.DataUsageNotificationsEnabled).toBe("false");
+    expect(body.data.SimBlock).toBe("false");
+  });
+
+  it("parses the mobile module from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("GetMobileModuleResponse_V1")).client, "kpn_grexx_mobile_module", {
+      orderId: 123456,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.MobileModule.Code).toBe("MOB-001");
+    expect(body.data.MobileModule.Status.IsPending).toBe("false");
+    expect(body.data.MobileModule.Status.Value).toBe("true");
+  });
+
+  it("parses planned line results from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("PlannedLineResponse_V3")).client, "kpn_grexx_planned_line", {
+      zipCode: "1012JS",
+      houseNumber: 1,
+      isRoomNumberKnown: true,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.PlannedLines.PlannedLine_V6.RoomNumber).toBe("1");
+    expect(body.data.PlannedLines.PlannedLine_V6.TechnologyStatus).toBe("Open");
   });
 
   it("reports the HTTP 200 NinaResponse rejection as an error with its code and details", async () => {
