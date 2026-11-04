@@ -47,12 +47,14 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
 - `kpn_grexx_invoice_catalog`: list a KPN customer's invoices from the last 12 months (invoice number,
   date, amount and document details); it does not return the invoice PDFs
   (`CustomerInvoiceCatalogRequest_V1` → `CustomerInvoiceCatalogResponse_V1`).
-- `kpn_grexx_microsoft_subscription_end_date`: Microsoft 365 subscription end date
+- `kpn_grexx_microsoft_subscription_end_date`: get the end (renewal) date of a customer's Microsoft 365
+  subscription; without an order number it returns the first matching subscription
   (`MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` →
   `MicrosoftProductOrderLineSubscriptionEndDateResponse_V1`).
-- `kpn_grexx_upgrade_info`: order upgrade options
+- `kpn_grexx_upgrade_info`: check whether an order can be upgraded and list the products it can move to;
+  it doesn't place an upgrade
   (`GetUpgradeInfoRequest_V1` → `GetUpgradeInfoResponse_V1`).
-- `kpn_grexx_related_products`: related products for a customer and parent product
+- `kpn_grexx_related_products`: list add-ons and related products a customer can add to a product
   (`RelatedProductsRequest_V1` → `RelatedProductsResponse_V1`).
 
 IRMA enforces XSD element order and rejects a bad request with an HTTP 200

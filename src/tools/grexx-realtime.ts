@@ -298,13 +298,14 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "MicrosoftProductOrderLineSubscriptionEndDateResponse_V1",
     readOnly: true,
     description:
-      "Microsoft 365 product subscription end date for an IRMA customer or order " +
-      "(MicrosoftProductOrderLineSubscriptionEndDateRequest_V1). With an order ID, the specific " +
-      "subscription is returned; without one, the first subscription for the customer and product.",
+      "Get the end (renewal) date of a customer's Microsoft 365 subscription bought through KPN. Read-only. " +
+      "If you pass an order number you get that subscription. Without one you get the first matching " +
+      "subscription, which may not be the one you want when the customer has several. " +
+      "(Grexx: MicrosoftProductOrderLineSubscriptionEndDateRequest_V1)",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
-      { arg: "productId", element: "ProductId", type: "string", required: true, description: "IRMA product code for the Microsoft Office subscription." },
-      { arg: "orderId", element: "OrderId", type: "integer", required: false, min: 1, max: 2147483647, description: "IRMA order ID of the Microsoft Office licence. Optional; omit to find the first subscription." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
+      { arg: "productId", element: "ProductId", type: "string", required: true, label: "Product code", description: "KPN product code of the Microsoft 365 subscription." },
+      { arg: "orderId", element: "OrderId", type: "integer", required: false, min: 1, max: 2147483647, label: "Order number", description: "KPN order number of the Microsoft 365 subscription. Optional. Leave it empty to get the customer's first matching subscription." },
     ],
   },
   {
@@ -313,8 +314,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetUpgradeInfoResponse_V1",
     readOnly: true,
     description:
-      "Whether an IRMA order can be upgraded and which target products are available " +
-      "(GetUpgradeInfoRequest_V1).",
+      "Check whether a KPN order can be upgraded and list the products it can move to. Read-only. " +
+      "Doesn't place an upgrade. (Grexx: GetUpgradeInfoRequest_V1)",
     fields: [orderId("the order")],
   },
   {
@@ -323,11 +324,11 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "RelatedProductsResponse_V1",
     readOnly: true,
     description:
-      "Related products for a customer and product, such as mobile subscription modules " +
-      "(RelatedProductsRequest_V1).",
+      "List add-ons and related products a KPN customer can add to a product, e.g. extra bundles for a " +
+      "mobile subscription. Read-only. (Grexx: RelatedProductsRequest_V1)",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
-      { arg: "productCode", element: "ProductCode", type: "string", required: true, min: 1, max: 13, description: "IRMA product code of the parent order, e.g. a mobile subscription." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
+      { arg: "productCode", element: "ProductCode", type: "string", required: true, min: 1, max: 13, label: "Product code", description: "KPN product code of the main product the add-ons belong to (up to 13 characters), e.g. a mobile subscription." },
     ],
   },
 ];

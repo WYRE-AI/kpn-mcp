@@ -201,11 +201,12 @@ describe("request bodies", () => {
     ["kpn_grexx_available_portings", {}, "exactly one"],
     ["kpn_grexx_available_portings", { customerId: 1, hipGroupOrderId: 2 }, "exactly one"],
     ["kpn_grexx_start_line_diagnose", { orderId: 1, symptomCode: "Sym999" }, "Sym103"],
-    ["kpn_grexx_microsoft_subscription_end_date", { customerId: 28665 }, 'Argument "productId" is required.'],
-    ["kpn_grexx_microsoft_subscription_end_date", { customerId: 28665, productId: "MS-001", orderId: 0 }, "at least 1"],
-    ["kpn_grexx_upgrade_info", {}, 'Argument "orderId" is required.'],
-    ["kpn_grexx_related_products", { customerId: 28665 }, 'Argument "productCode" is required.'],
-    ["kpn_grexx_related_products", { customerId: 28665, productCode: "MOB-0012345678901234" }, "at most 13"],
+    ["kpn_grexx_microsoft_subscription_end_date", { customerId: 28665 }, "Product code (productId) is required."],
+    ["kpn_grexx_microsoft_subscription_end_date", { customerId: 28665, productId: "MS-001", orderId: 0 }, "Order number must be at least 1."],
+    ["kpn_grexx_upgrade_info", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_related_products", { customerId: 28665 }, "Product code (productCode) is required."],
+    ["kpn_grexx_related_products", { customerId: 28665, productCode: "MOB-0012345678901234" }, "Product code can be at most 13 characters."],
+    ["kpn_grexx_related_products", { customerId: 28665, productCode: "  " }, "Product code can't be empty."],
   ])("%s rejects %j without calling Grexx", async (tool, args, message) => {
     const { client, postRealtime } = stub(fixture("OrderDataResponse_V1"));
     const result = (await handleGrexxToolCall(client, tool, args)) as ToolResult;

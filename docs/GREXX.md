@@ -69,9 +69,9 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_voip_total_usage` | `GetVoipTotalUsageRequest_V1` | get total VoIP call usage per phone number; read-only |
 | `kpn_grexx_available_portings` | `AvailablePortingsRequest_V1` | exactly one of customerId / hipGroupOrderId |
 | `kpn_grexx_invoice_catalog` | `CustomerInvoiceCatalogRequest_V1` | list invoices; does not return the PDFs |
-| `kpn_grexx_microsoft_subscription_end_date` | `MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` | customer or optional order ID; subscription end date |
-| `kpn_grexx_upgrade_info` | `GetUpgradeInfoRequest_V1` | order upgrade options and whether upgrading is allowed |
-| `kpn_grexx_related_products` | `RelatedProductsRequest_V1` | customer and parent product; related products |
+| `kpn_grexx_microsoft_subscription_end_date` | `MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` | customer number, product code, optional order number; without the order number, the first matching subscription |
+| `kpn_grexx_upgrade_info` | `GetUpgradeInfoRequest_V1` | whether the order can be upgraded and the target products; read-only, places nothing |
+| `kpn_grexx_related_products` | `RelatedProductsRequest_V1` | add-ons a customer can add to a main product (product code up to 13 characters) |
 
 The tools added for the usage, invoice-catalog, renewal and upsell batches are all reads. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
 
