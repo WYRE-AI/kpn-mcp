@@ -29,7 +29,7 @@ import {
   ToolInputError,
   type ToolResult,
 } from "./results.js";
-import { type ElicitationContext } from "../elicitation.js";
+import type { ElicitationContext } from "../elicitation.js";
 import { GREXX_REALTIME_HANDLERS } from "./grexx-realtime.js";
 
 /**
@@ -46,7 +46,7 @@ export const GREXX_CONNECTION_PROBE: ZipCodeCheckInput = {
 export type GrexxToolHandler = (
   client: GrexxClient,
   args: Record<string, unknown>,
-  elicitation?: ElicitationContext
+  elicitation: ElicitationContext
 ) => Promise<ToolResult | InputRequiredResult>;
 
 /** Probe the public reference address through the SDK and summarize OAuth/realtime success. */

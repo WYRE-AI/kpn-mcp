@@ -17,7 +17,7 @@ import {
 } from "@wyre-ai/node-kpn";
 import { CONFIRM_ARG } from "../elicitation.js";
 import { buildRealtimeBody, customPricePrompt } from "../handlers/grexx-realtime.js";
-import { describeGrexxError, handleGrexxToolCall } from "../handlers/index.js";
+import { describeGrexxError, handleGrexxToolCall, handleToolCall } from "../handlers/index.js";
 import { MASK } from "../handlers/masking.js";
 import type { ToolResult } from "../handlers/results.js";
 import { GREXX_TOOLS } from "../tools/grexx.js";
@@ -132,7 +132,7 @@ describe("realtime tool surface", () => {
     expect(Object.keys(CASES).sort()).toEqual(GREXX_REALTIME_SPECS.map((s) => s.tool).sort());
   });
 
-  it("appends the KPN-B4 WilroffReitsma realtime reads after the existing specs", () => {
+  it("appends the KPN-B4 realtime reads after the existing specs", () => {
     expect(GREXX_REALTIME_SPECS.slice(-6).map((s) => s.tool)).toEqual([
       "kpn_grexx_hip_number_orders",
       "kpn_grexx_clean_internet_info",
@@ -633,5 +633,20 @@ describe("describeGrexxError", () => {
     })) as ToolResult;
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("The request may or may not have reached KPN; check the order in KPN before retrying.");
+  });
+});
+
+describe("Grexx dispatcher elicitation pass-through", () => {
+  it("prompts an elicitation-capable client for custom_price through handleToolCall instead of using the confirm argument", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    const result = await handleToolCall(
+      { grexx: client },
+      "kpn_grexx_custom_price",
+      { orderId: 123456, confirmationState: "Accepted", [CONFIRM_ARG]: true },
+      { clientCapabilities: { elicitation: {} } }
+    );
+    expect(JSON.stringify(result)).toContain("Accept KPN's custom price on order 123456?");
+    expect((result as ToolResult).isError).not.toBe(true);
+    expect(postRealtime).not.toHaveBeenCalled();
   });
 });
