@@ -221,8 +221,8 @@ async function legacyLeg() {
   const toolsRes = await legacyPost({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
   check('tools/list HTTP 200', toolsRes.status === 200, `status=${toolsRes.status}`);
   const tools = (await mcpBody(toolsRes))?.result?.tools ?? [];
-    check('tools/list returns the phase-1 Grexx tools',
-      tools.length === EXPECTED_TOOL_COUNT && EXPECTED_TOOLS.every((name, index) => tools[index]?.name === name),
+  check('tools/list returns the phase-1 Grexx tools',
+    tools.length === EXPECTED_TOOL_COUNT && EXPECTED_TOOLS.every((name, index) => tools[index]?.name === name),
     `count=${tools.length} names=${tools.map((tool) => tool.name).join(',')}`);
   return tools;
 }
@@ -244,8 +244,8 @@ async function modernLeg() {
   check('client negotiated the 2026-07-28 era', negotiated === '2026-07-28', `negotiated=${negotiated}`);
 
   const { tools } = await client.listTools();
-    check('tools/list returns the phase-1 Grexx tools',
-      tools.length === EXPECTED_TOOL_COUNT && EXPECTED_TOOLS.every((name, index) => tools[index]?.name === name),
+  check('tools/list returns the phase-1 Grexx tools',
+    tools.length === EXPECTED_TOOL_COUNT && EXPECTED_TOOLS.every((name, index) => tools[index]?.name === name),
     `count=${tools.length} names=${tools.map((tool) => tool.name).join(',')}`);
   await client.close();
   return tools;
