@@ -10,7 +10,7 @@ with the same tool list for every caller. Ships as a GHCR container only (no MCP
 The client is [`@wyre-ai/node-kpn`](https://github.com/WYRE-AI/node-kpn) (Grexx export).
 Contract: [`docs/GREXX.md`](docs/GREXX.md).
 
-## Tools (32, flat)
+## Tools (38, flat)
 
 - `kpn_grexx_test_connection`: the SDK mints an OAuth client-credentials token and posts a
   `ZipCodeCheckRequest_V6` probe for the public reference address 1012JS 1 (portfolio All).
@@ -23,7 +23,7 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
 - `kpn_grexx_order_data`: customer id, product code, and quantity for an order id
   (`OrderDataRequest_V1` → `OrderDataResponse_V1`).
 
-- 28 more realtime tools built from the portal request XSDs (see `docs/GREXX.md`):
+- 34 more realtime tools built from the portal request XSDs (see `docs/GREXX.md`):
   `kpn_grexx_carrier_info`, `kpn_grexx_radius_check`, `kpn_grexx_ras_check`,
   `kpn_grexx_start_line_diagnose`, `kpn_grexx_customer_data`, `kpn_grexx_order_summary`,
   `kpn_grexx_get_sim`, `kpn_grexx_mobile_settings`, `kpn_grexx_mobile_usage`,
@@ -38,6 +38,13 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   - `kpn_grexx_microsoft_tenant_exists`: Microsoft tenant existence.
   - `kpn_grexx_microsoft_domain_ownership`: delegated access and onboarding readiness.
   - `kpn_grexx_custom_price`: accepted or rejected custom pricing.
+  - `kpn_grexx_get_contact`: one customer contact.
+  - `kpn_grexx_search_contacts`: customer contact search and paging.
+  - `kpn_grexx_create_contact`: creates a contact; write plus confirmation.
+  - `kpn_grexx_update_contact`: updates a contact; write plus confirmation.
+  - `kpn_grexx_modify_voip_user`: changes a PBX user; write plus confirmation.
+  - `kpn_grexx_modify_device_profile`: changes a PBX device profile; write plus confirmation.
+  - `kpn_grexx_delete_contact`: admin delete; hidden by default and confirmation required.
   `start_line_diagnose` starts
   a test at KPN, so it is not read-only and is never retried. SIM codes and the
   RadiusCheck PPP password are masked.

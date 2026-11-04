@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<DeleteContactResponse_V1>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+  <CustomerId>28665</CustomerId>
+  <ContactId>1</ContactId>
+</DeleteContactResponse_V1>

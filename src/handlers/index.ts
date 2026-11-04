@@ -194,12 +194,13 @@ export async function handleLegacyToolCall(
 export async function handleGrexxToolCall(
   client: GrexxClient,
   name: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  elicitation: ElicitationContext = NO_ELICITATION
 ): Promise<ToolResult | InputRequiredResult> {
   if (!Object.hasOwn(GREXX_HANDLERS, name)) {
     return errorResult(`Unknown tool: ${name}`);
   }
-  return runHandler(GREXX_HANDLERS[name], client, name, args, NO_ELICITATION, (error) =>
+  return runHandler(GREXX_HANDLERS[name], client, name, args, elicitation, (error) =>
     describeGrexxError(error as GrexxError, name)
   );
 }
@@ -221,7 +222,7 @@ export async function handleToolCall(
           "send X-KPN-Grexx-Username and X-KPN-Grexx-Password."
       );
     }
-    return handleGrexxToolCall(clients.grexx, name, args);
+    return handleGrexxToolCall(clients.grexx, name, args, elicitation);
   }
   if (LEGACY_DEVELOPER_API_ENABLED && Object.hasOwn(LEGACY_HANDLERS, name)) {
     if (!clients.legacy) {

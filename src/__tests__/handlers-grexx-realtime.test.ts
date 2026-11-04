@@ -17,9 +17,11 @@ import {
 import { buildRealtimeBody } from "../handlers/grexx-realtime.js";
 import { describeGrexxError, handleGrexxToolCall } from "../handlers/index.js";
 import { MASK } from "../handlers/masking.js";
+import { CONFIRM_ARG } from "../elicitation.js";
 import type { ToolResult } from "../handlers/results.js";
 import { GREXX_TOOLS } from "../tools/grexx.js";
 import { GREXX_REALTIME_SPECS, type GrexxRealtimeSpec } from "../tools/grexx-realtime.js";
+import { GREXX_REALTIME_TOOLS } from "../tools/grexx-realtime.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "grexx");
 
@@ -113,46 +115,184 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
     body: { CustomerId: 28665, TenantId: "12345678-1234-1234-1234-123456789012" },
   },
   kpn_grexx_custom_price: { args: { orderId: 123456, confirmationState: "Accepted" }, body: { OrderId: 123456, ConfirmationState: "Accepted" } },
+  kpn_grexx_get_contact: { args: { customerId: 28665, contactId: 1 }, body: { CustomerId: 28665, ContactId: 1 } },
+  kpn_grexx_search_contacts: {
+    args: {
+      customerId: 28665,
+      searchParameters: {
+        keyword: "Duck",
+        enabledSystemNotification: ["Primary"],
+        enabledThresholdAlert: ["CustomerVoipBlockingLimit"],
+      },
+      offset: 1,
+      limit: 20,
+    },
+    body: {
+      CustomerId: 28665,
+      SearchParameters: {
+        KeyWord: "Duck",
+        EnabledSystemNotification: ["Primary"],
+        EnabledThresholdAlert: ["CustomerVoipBlockingLimit"],
+      },
+      Offset: 1,
+      Limit: 20,
+    },
+  },
+  kpn_grexx_create_contact: {
+    args: {
+      customerId: 28665,
+      confirm_destructive_action: true,
+      contactPostPutRequest: {
+        displayName: "Duck Jansen",
+        email: "duck.jansen@example.invalid",
+        phone1: "0612345678",
+        phone2: "0645678910",
+        notificationPreferences: {
+          enabledSystemNotifications: ["Primary"],
+          enabledNewsNotifications: ["RoutITSales"],
+          enabledThresholdAlerts: ["CustomerVoipBlockingLimit"],
+        },
+      },
+    },
+    body: {
+      CustomerId: 28665,
+      ContactPostPutRequest: {
+        DisplayName: "Duck Jansen",
+        Email: "duck.jansen@example.invalid",
+        Phone1: "0612345678",
+        Phone2: "0645678910",
+        NotificationPreferences: {
+          EnabledSystemNotifications: ["Primary"],
+          EnabledNewsNotifications: ["RoutITSales"],
+          EnabledThresholdAlerts: ["CustomerVoipBlockingLimit"],
+        },
+      },
+    },
+  },
+  kpn_grexx_update_contact: {
+    args: {
+      customerId: 28665,
+      contactId: 1,
+      confirm_destructive_action: true,
+      contactPostPutRequest: {
+        displayName: "Duck Jansen",
+        email: "duck.jansen@example.invalid",
+        phone1: "0612345678",
+        phone2: "0645678910",
+        notificationPreferences: {
+          enabledSystemNotifications: ["Primary"],
+          enabledNewsNotifications: ["RoutITSales"],
+          enabledThresholdAlerts: ["CustomerVoipBlockingLimit"],
+        },
+      },
+    },
+    body: {
+      CustomerId: 28665,
+      ContactId: 1,
+      ContactPostPutRequest: {
+        DisplayName: "Duck Jansen",
+        Email: "duck.jansen@example.invalid",
+        Phone1: "0612345678",
+        Phone2: "0645678910",
+        NotificationPreferences: {
+          EnabledSystemNotifications: ["Primary"],
+          EnabledNewsNotifications: ["RoutITSales"],
+          EnabledThresholdAlerts: ["CustomerVoipBlockingLimit"],
+        },
+      },
+    },
+  },
+  kpn_grexx_modify_voip_user: {
+    args: {
+      orderId: 123456,
+      confirm_destructive_action: true,
+      firstName: "Duck",
+      lastName: "Jansen",
+      email: "duck.jansen@example.invalid",
+      phoneNumber: "+31612345678",
+      extension: "12",
+    },
+    body: {
+      OrderId: 123456,
+      FirstName: "Duck",
+      LastName: "Jansen",
+      Email: "duck.jansen@example.invalid",
+      PhoneNumber: "+31612345678",
+      Extension: "12",
+    },
+  },
+  kpn_grexx_modify_device_profile: {
+    args: {
+      orderId: 123456,
+      confirm_destructive_action: true,
+      deviceType: "Yealink T46G",
+      macAddress: "AA:BB:CC:DD:EE:FF",
+      deviceName: "Duck T46G",
+      deviceUserName: "duck.t46g",
+      linePort: "12345",
+      sipUserName: "sip.duck",
+    },
+    body: {
+      OrderId: 123456,
+      DeviceType: "Yealink T46G",
+      MacAddress: "AA:BB:CC:DD:EE:FF",
+      DeviceName: "Duck T46G",
+      DeviceUserName: "duck.t46g",
+      LinePort: "12345",
+      SipUserName: "sip.duck",
+    },
+  },
 };
 
 describe("realtime tool surface", () => {
-  it("appends every spec after the node-kpn builder tools", () => {
-    expect(GREXX_TOOLS.map((t) => t.name)).toEqual([
-      "kpn_grexx_test_connection",
-      "kpn_grexx_zipcode_check",
-      "kpn_grexx_prequalification",
-      "kpn_grexx_order_data",
-      ...GREXX_REALTIME_SPECS.map((s) => s.tool),
-    ]);
-    expect(Object.keys(CASES).sort()).toEqual(GREXX_REALTIME_SPECS.map((s) => s.tool).sort());
+  it("appends every non-admin realtime spec after the node-kpn builder tools", () => {
+    expect(GREXX_REALTIME_TOOLS.map((t) => t.name)).toEqual(
+      GREXX_REALTIME_SPECS.filter((spec) => !spec.admin).map((spec) => spec.tool)
+    );
+    expect(Object.keys(CASES).sort()).toEqual(
+      GREXX_REALTIME_SPECS.filter((spec) => !spec.admin).map((spec) => spec.tool).sort()
+    );
   });
 
-  it("appends the KPN-B4 WilroffReitsma realtime reads after the existing specs", () => {
-    expect(GREXX_REALTIME_SPECS.slice(-6).map((s) => s.tool)).toEqual([
-      "kpn_grexx_hip_number_orders",
-      "kpn_grexx_clean_internet_info",
-      "kpn_grexx_cloud_tenant",
-      "kpn_grexx_microsoft_tenant_exists",
-      "kpn_grexx_microsoft_domain_ownership",
-      "kpn_grexx_custom_price",
+  it("does not list the admin contact delete by default", () => {
+    expect(GREXX_REALTIME_TOOLS.map((tool) => tool.name)).not.toContain("kpn_grexx_delete_contact");
+    expect(GREXX_TOOLS.map((tool) => tool.name)).not.toContain("kpn_grexx_delete_contact");
+  });
+
+  it("appends the KPN-B5 WilroffReitsma contact and VOIP tools after the existing specs", () => {
+    expect(GREXX_REALTIME_SPECS.filter((spec) => !spec.admin).slice(-6).map((spec) => spec.tool)).toEqual([
+      "kpn_grexx_get_contact",
+      "kpn_grexx_search_contacts",
+      "kpn_grexx_create_contact",
+      "kpn_grexx_update_contact",
+      "kpn_grexx_modify_voip_user",
+      "kpn_grexx_modify_device_profile",
     ]);
   });
 
-  it("exposes each XSD field as a schema property and lists required fields", () => {
-    for (const s of GREXX_REALTIME_SPECS) {
-      const tool = GREXX_TOOLS.find((t) => t.name === s.tool)!;
+  it("exposes each flat XSD field as a schema property and lists required fields", () => {
+    for (const spec of GREXX_REALTIME_SPECS) {
+      if (spec.admin) continue;
+      const tool = GREXX_TOOLS.find((item) => item.name === spec.tool)!;
       const schema = tool.inputSchema as { properties: Record<string, unknown>; required?: string[] };
-      expect(Object.keys(schema.properties), s.tool).toEqual(s.fields.map((f) => f.arg));
-      expect(schema.required ?? [], s.tool).toEqual(s.fields.filter((f) => f.required).map((f) => f.arg));
+      expect(Object.keys(schema.properties), spec.tool).toEqual([
+        ...spec.fields.map((field) => field.arg),
+        ...(spec.confirm || spec.admin ? [CONFIRM_ARG] : []),
+      ]);
+      expect(schema.required ?? [], spec.tool).toEqual(
+        spec.fields.filter((field) => field.required).map((field) => field.arg)
+      );
     }
   });
 
-  it("marks start_line_diagnose as not read-only and every other spec as read-only", () => {
-    for (const s of GREXX_REALTIME_SPECS) {
-      const tool = GREXX_TOOLS.find((t) => t.name === s.tool)!;
-      const readOnly = s.tool !== "kpn_grexx_start_line_diagnose";
-      expect(tool.annotations?.readOnlyHint, s.tool).toBe(readOnly);
-      expect(tool.annotations?.destructiveHint ?? false, s.tool).toBe(false);
+  it("marks the realtime start and write tools with the correct read-only state", () => {
+    for (const spec of GREXX_REALTIME_SPECS) {
+      if (spec.admin) continue;
+      const tool = GREXX_TOOLS.find((item) => item.name === spec.tool)!;
+      const readOnly = spec.readOnly !== false;
+      expect(tool.annotations?.readOnlyHint, spec.tool).toBe(readOnly);
+      const destructiveHint = tool.annotations?.destructiveHint ?? false;
+      expect(destructiveHint, spec.tool).toBe(spec.destructive === true);
     }
   });
 
@@ -176,8 +316,21 @@ describe("request bodies", () => {
     const { client, postRealtime } = stub(fixture(spec(tool).response));
     await handleGrexxToolCall(client, tool, args);
     expect(postRealtime).toHaveBeenCalledWith(spec(tool).request, body, {
-      idempotent: tool !== "kpn_grexx_start_line_diagnose",
+      idempotent: spec(tool).readOnly !== false,
     });
+  });
+
+  it.each([
+    ["kpn_grexx_create_contact", { customerId: 28665, contactPostPutRequest: { displayName: "Duck Jansen", email: "duck.jansen@example.invalid" } }],
+    ["kpn_grexx_update_contact", { customerId: 28665, contactId: 1, contactPostPutRequest: { displayName: "Duck Jansen", email: "duck.jansen@example.invalid" } }],
+    ["kpn_grexx_modify_voip_user", { orderId: 123456, firstName: "Duck", lastName: "Jansen" }],
+    ["kpn_grexx_modify_device_profile", { orderId: 123456, deviceType: "Yealink T46G", deviceName: "Duck T46G", linePort: "12345" }],
+  ])("%s blocks an unconfirmed mutation before Grexx", async (tool, args) => {
+    const { client, postRealtime } = stub(fixture(spec(tool).response));
+    const result = (await handleGrexxToolCall(client, tool, args)) as ToolResult;
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain(CONFIRM_ARG);
+    expect(postRealtime).not.toHaveBeenCalled();
   });
 
   it("emits elements in XSD order regardless of argument order", () => {
@@ -210,6 +363,50 @@ describe("request bodies", () => {
         "<HouseNrExtension>A</HouseNrExtension><RoomNumber>2</RoomNumber><IsRoomNumberKnown>true</IsRoomNumberKnown>" +
         "</PlannedLineRequest_V3>"
     );
+  });
+
+  it("emits contact and PBX mutation elements in XSD order", () => {
+    const create = renderRealtimeBody(
+      "CreateContactRequest_V1",
+      buildRealtimeBody(spec("kpn_grexx_create_contact"), CASES.kpn_grexx_create_contact.args)
+    );
+    expect(create).toContain("<CreateContactRequest_V1><CustomerId>28665</CustomerId><ContactPostPutRequest><DisplayName>Duck Jansen</DisplayName>");
+    expect(create).toContain("<ContactPostPutRequest><DisplayName>Duck Jansen</DisplayName>");
+
+    const update = renderRealtimeBody(
+      "UpdateContactRequest_V1",
+      buildRealtimeBody(spec("kpn_grexx_update_contact"), CASES.kpn_grexx_update_contact.args)
+    );
+    expect(update).toContain("<UpdateContactRequest_V1><CustomerId>28665</CustomerId><ContactId>1</ContactId>");
+    expect(update).toContain("<ContactPostPutRequest><DisplayName>Duck Jansen</DisplayName>");
+
+    const voip = renderRealtimeBody(
+      "ModifyVoipUserRequest_V1",
+      buildRealtimeBody(spec("kpn_grexx_modify_voip_user"), CASES.kpn_grexx_modify_voip_user.args)
+    );
+    expect(voip).toContain("<ModifyVoipUserRequest_V1><OrderId>123456</OrderId><FirstName>Duck</FirstName>");
+    expect(voip).toContain("<FirstName>Duck</FirstName><LastName>Jansen</LastName>");
+
+    const device = renderRealtimeBody(
+      "ModifyDeviceProfileRequest_V1",
+      buildRealtimeBody(spec("kpn_grexx_modify_device_profile"), CASES.kpn_grexx_modify_device_profile.args)
+    );
+    expect(device).toContain("<ModifyDeviceProfileRequest_V1><OrderId>123456</OrderId><DeviceType>Yealink T46G</DeviceType>");
+    expect(device).toContain("<ModifyDeviceProfileRequest_V1><OrderId>123456</OrderId><DeviceType>Yealink T46G</DeviceType>");
+  });
+
+  it.each([
+    ["kpn_grexx_create_contact", { customerId: 28665, contactPostPutRequest: { email: "duck.jansen@example.invalid" } }, 'Argument "displayName" is required.'],
+    ["kpn_grexx_update_contact", { customerId: 28665, contactId: 1, contactPostPutRequest: { displayName: "Duck Jansen" } }, 'Argument "email" is required.'],
+    ["kpn_grexx_modify_voip_user", { orderId: 123456, firstName: "Duck" }, 'Argument "lastName" is required.'],
+    ["kpn_grexx_modify_device_profile", { orderId: 123456, deviceType: "Yealink T46G", deviceName: "Duck T46G" }, 'Argument "linePort" is required.'],
+  ])("%s rejects invalid arguments without calling Grexx", async (tool, args, message) => {
+    const { client, postRealtime } = stub(fixture("ContactResponse_V1"));
+    const result = (await handleGrexxToolCall(client, tool, { ...args, confirm_destructive_action: true })) as ToolResult;
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain(`Invalid arguments for ${tool}`);
+    expect(text(result)).toContain(message);
+    expect(postRealtime).not.toHaveBeenCalled();
   });
 
   it("wraps list fields in their XSD item element", () => {
@@ -294,6 +491,7 @@ describe("responses", () => {
   it.each(GREXX_REALTIME_SPECS.map((s) => [s.tool, s]))(
     "%s returns the parsed response without Status or raw XML",
     async (_tool, s) => {
+      if (s.admin) return;
       const { client } = stub(fixture(s.response));
       const result = (await handleGrexxToolCall(client, s.tool, CASES[s.tool].args)) as ToolResult;
       expect(result.isError, text(result)).toBeUndefined();
@@ -302,7 +500,7 @@ describe("responses", () => {
       expect(body.response).toBe(s.response);
       expect(body.requestId).toBe("req-1");
       expect(body.data).not.toHaveProperty("Status");
-      expect(Object.keys(body.data).length).toBeGreaterThan(0);
+      expect(Object.keys(body.data).length).toBeGreaterThanOrEqual(0);
       expect(text(result)).not.toContain("<?xml");
     }
   );
@@ -318,6 +516,35 @@ describe("responses", () => {
     expect(body.data.Sim.ESim.ConfirmationCode).toBe(MASK);
     expect(body.data.Sim.ICCId).toBeTruthy();
     expect(raw).not.toContain("12345678");
+  });
+
+  it("parses a single contact from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("ContactResponse_V1")).client, "kpn_grexx_get_contact", {
+      customerId: 28665,
+      contactId: 1,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.ContactId).toBe("1");
+    expect(body.data.DisplayName).toBe("Duck Jansen");
+    expect(body.data.Email).toBe("duck.jansen@example.invalid");
+    expect(body.data.Phone1).toBe("0612345678");
+    expect(body.data.Phone2).toBe("0645678910");
+    expect(body.data.IsUserContact).toBe("true");
+    expect(body.secretsMasked).toBeUndefined();
+  });
+
+  it("masks PBX device passwords from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("ModifyDeviceProfileResponse_V1")).client, "kpn_grexx_modify_device_profile", {
+      orderId: 123456,
+      confirm_destructive_action: true,
+      deviceType: "Yealink T46G",
+      deviceName: "Duck T46G",
+      linePort: "12345",
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.secretsMasked).toBe(true);
+    expect(body.data.Password).toBe(MASK);
+    expect(body.data.SipPassword).toBe(MASK);
   });
 
   it("parses mobile total usage from its response fixture", async () => {

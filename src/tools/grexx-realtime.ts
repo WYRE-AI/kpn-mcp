@@ -10,8 +10,17 @@
  * live in grexx.ts instead.
  */
 import type { Tool } from "@modelcontextprotocol/server";
+import { CONFIRM_ARG_PROPERTY } from "../elicitation.js";
 
-export type GrexxFieldType = "string" | "integer" | "boolean" | "dateTime" | "integerList" | "decimal";
+export type GrexxFieldType =
+  | "string"
+  | "integer"
+  | "boolean"
+  | "dateTime"
+  | "integerList"
+  | "decimal"
+  | "object"
+  | "stringList";
 
 export interface GrexxField {
   /** Tool argument name. */
@@ -33,6 +42,8 @@ export interface GrexxField {
   item?: string;
     /** decimal: XSD decimal value. */
     decimal?: boolean;
+  /** Nested object fields, in XSD child-element order. */
+  fields?: readonly GrexxField[];
 }
 
 export interface GrexxRealtimeSpec {
@@ -47,6 +58,12 @@ export interface GrexxRealtimeSpec {
   check?: (args: Record<string, unknown>) => string | undefined;
   /** False for calls that start work at KPN (not retried, not read-only). */
   readOnly?: boolean;
+  /** Off by default for destructive/admin tools; writes use the confirm gate. */
+  admin?: boolean;
+  /** Require interactive or explicit confirmation before one mutating call. */
+  confirm?: boolean;
+  /** High-impact writes use destructive annotations and the confirmation gate. */
+  destructive?: boolean;
 }
 
 const orderId = (what: string): GrexxField => ({
@@ -79,6 +96,18 @@ const CUSTOMER_ORDER_BY = [
 const CARRIER_PRODUCT_TYPES = ["xDSL", "FttH", "WeasFiber", "All"] as const;
 
 const LINE_DIAGNOSE_SYMPTOMS = ["Sym103", "Sym104", "Sym105", "Sym111"] as const;
+
+const CONTACT_SYSTEM_NOTIFICATIONS = [
+  "Primary", "Management", "Financial", "Technical", "Commercial", "HelpDesk247", "Security",
+  "OrderStatusUpdates", "AntiDdos", "ProActiveFiberNotifications", "HighUsageNotifications",
+] as const;
+
+const CONTACT_NEWS_NOTIFICATIONS = ["RoutITSales", "RoutITCommercial", "RoutITTechnical", "RoutITFinancial"] as const;
+
+const CONTACT_THRESHOLD_ALERTS = [
+  "CustomerVoipBlockingLimit", "PartnerVoipWarningLimit", "CustomerVoipWarningLimit",
+  "CustomerMobileHighUsage", "PartnerMobileHighUsage", "PartnerEsimUnblock", "PartnerM2MHighUsage",
+] as const;
 
 export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
   // Connectivity
@@ -442,6 +471,188 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       { arg: "terminationPrice", element: "TerminationPrice", type: "decimal", required: false, description: "Proposed custom termination price. Optional." },
     ],
   },
+  {
+    tool: "kpn_grexx_get_contact",
+    request: "GetContactRequest_V1",
+    response: "ContactResponse_V1",
+    readOnly: true,
+    description:
+      "Get one contact person for an IRMA customer (GetContactRequest_V1): display name, email, phone numbers and notification preferences.",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "contactId", element: "ContactId", type: "integer", required: true, min: 1, description: "IRMA contact ID." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_search_contacts",
+    request: "GetContactsByCustomerIdAndSearchParametersRequest_V1",
+    response: "ContactResponsePagingResult_V1",
+    readOnly: true,
+    description:
+      "Search contact persons for an IRMA customer by keyword and optional notification preferences (GetContactsByCustomerIdAndSearchParametersRequest_V1).",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
+      {
+        arg: "searchParameters",
+        element: "SearchParameters",
+        type: "object",
+        required: true,
+        description: "Contact search parameters.",
+        fields: [
+          { arg: "keyword", element: "KeyWord", type: "string", description: "Free-text search across display name, email and phone numbers." },
+          { arg: "enabledSystemNotification", element: "EnabledSystemNotification", type: "stringList", enum: CONTACT_SYSTEM_NOTIFICATIONS, description: "Enabled system notification type." },
+          { arg: "enabledThresholdAlert", element: "EnabledThresholdAlert", type: "stringList", enum: CONTACT_THRESHOLD_ALERTS, description: "Enabled threshold alert type." },
+        ],
+      },
+      { arg: "offset", element: "Offset", type: "integer", required: true, min: 1, description: "Number of results to skip (paging)." },
+      { arg: "limit", element: "Limit", type: "integer", min: 0, description: "Maximum number of contacts to return." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_create_contact",
+    request: "CreateContactRequest_V1",
+    response: "ContactResponse_V1",
+    readOnly: false,
+    confirm: true,
+    destructive: true,
+    description:
+      "⚠ HIGH-IMPACT. Create a contact person for an IRMA customer (CreateContactRequest_V1). " +
+      "This creates a customer record change and requires confirmation. Confirm with the user before invoking.",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID to attach the contact to." },
+      {
+        arg: "contactPostPutRequest",
+        element: "ContactPostPutRequest",
+        type: "object",
+        required: true,
+        description: "Contact details.",
+        fields: [
+          { arg: "displayName", element: "DisplayName", type: "string", required: true, description: "Display name of the contact person." },
+          { arg: "email", element: "Email", type: "string", required: true, description: "Email address of the contact person." },
+          { arg: "phone1", element: "Phone1", type: "string", description: "Primary phone number (optional)." },
+          { arg: "phone2", element: "Phone2", type: "string", description: "Secondary phone number (optional)." },
+          {
+            arg: "notificationPreferences",
+            element: "NotificationPreferences",
+            type: "object",
+            required: false,
+            description: "Notification preferences.",
+            fields: [
+              { arg: "enabledSystemNotifications", element: "EnabledSystemNotifications", type: "stringList", enum: CONTACT_SYSTEM_NOTIFICATIONS, description: "Enabled system notifications." },
+              { arg: "enabledNewsNotifications", element: "EnabledNewsNotifications", type: "stringList", enum: CONTACT_NEWS_NOTIFICATIONS, description: "Enabled news notifications." },
+              { arg: "enabledThresholdAlerts", element: "EnabledThresholdAlerts", type: "stringList", enum: CONTACT_THRESHOLD_ALERTS, description: "Enabled threshold alerts." },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    tool: "kpn_grexx_update_contact",
+    request: "UpdateContactRequest_V1",
+    response: "ContactResponse_V1",
+    readOnly: false,
+    confirm: true,
+    destructive: true,
+    description:
+      "⚠ HIGH-IMPACT. Update a contact person for an IRMA customer (UpdateContactRequest_V1). " +
+      "This changes customer record data and requires confirmation. Confirm with the user before invoking.",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID the contact belongs to." },
+      { arg: "contactId", element: "ContactId", type: "integer", required: true, min: 1, description: "IRMA contact ID to update." },
+      {
+        arg: "contactPostPutRequest",
+        element: "ContactPostPutRequest",
+        type: "object",
+        required: true,
+        description: "Updated contact details.",
+        fields: [
+          { arg: "displayName", element: "DisplayName", type: "string", required: true, description: "Display name of the contact person." },
+          { arg: "email", element: "Email", type: "string", required: true, description: "Email address of the contact person." },
+          { arg: "phone1", element: "Phone1", type: "string", required: true, description: "Primary phone number." },
+          { arg: "phone2", element: "Phone2", type: "string", description: "Secondary phone number (optional)." },
+          {
+            arg: "notificationPreferences",
+            element: "NotificationPreferences",
+            type: "object",
+            required: false,
+            description: "Notification preferences.",
+            fields: [
+              { arg: "enabledSystemNotifications", element: "EnabledSystemNotifications", type: "stringList", enum: CONTACT_SYSTEM_NOTIFICATIONS, description: "Enabled system notifications." },
+              { arg: "enabledNewsNotifications", element: "EnabledNewsNotifications", type: "stringList", enum: CONTACT_NEWS_NOTIFICATIONS, description: "Enabled news notifications." },
+              { arg: "enabledThresholdAlerts", element: "EnabledThresholdAlerts", type: "stringList", enum: CONTACT_THRESHOLD_ALERTS, description: "Enabled threshold alerts." },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    tool: "kpn_grexx_modify_voip_user",
+    request: "ModifyVoipUserRequest_V1",
+    response: "ModifyVoipUserResponse_V1",
+    readOnly: false,
+    confirm: true,
+    destructive: true,
+    description:
+      "⚠ HIGH-IMPACT. Modify a PBX user in the telephone exchange (ModifyVoipUserRequest_V1). " +
+      "This changes the PBX user and requires confirmation. Confirm with the user before invoking.",
+    fields: [
+      { arg: "orderId", element: "OrderId", type: "integer", required: true, min: 1, description: "IRMA order ID of the VOIP user." },
+      { arg: "firstName", element: "FirstName", type: "string", required: true, description: "First name of the PBX user." },
+      { arg: "lastName", element: "LastName", type: "string", required: true, description: "Last name of the PBX user." },
+      { arg: "email", element: "Email", type: "string", description: "Alternative username for the PBX user." },
+      { arg: "phoneNumber", element: "PhoneNumber", type: "string", description: "E.164 phone number for the PBX user." },
+      { arg: "extension", element: "Extension", type: "string", description: "Short extension code for the PBX user." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_modify_device_profile",
+    request: "ModifyDeviceProfileRequest_V1",
+    response: "ModifyDeviceProfileResponse_V1",
+    readOnly: false,
+    confirm: true,
+    destructive: true,
+    description:
+      "⚠ HIGH-IMPACT. Modify a PBX device profile in the telephone exchange (ModifyDeviceProfileRequest_V1). " +
+      "This changes the PBX device profile and requires confirmation. Confirm with the user before invoking.",
+    fields: [
+      { arg: "orderId", element: "OrderId", type: "integer", required: true, min: 1, description: "IRMA order ID of the device." },
+      { arg: "deviceType", element: "DeviceType", type: "string", required: true, description: "Device type, e.g. Yealink T46G." },
+      { arg: "macAddress", element: "MacAddress", type: "string", max: 17, description: "Device MAC address (optional)." },
+      { arg: "deviceName", element: "DeviceName", type: "string", required: true, min: 1, max: 32, description: "Device name, unique within the telephone exchange." },
+      { arg: "deviceUserName", element: "DeviceUserName", type: "string", min: 1, max: 32, description: "Device user name (optional, unique systemwide)." },
+      { arg: "linePort", element: "LinePort", type: "string", required: true, min: 1, max: 161, description: "Device line port identifier." },
+      { arg: "sipUserName", element: "SipUserName", type: "string", description: "SIP user name (optional)." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_delete_contact",
+    request: "DeleteContactRequest_V1",
+    response: "DeleteContactResponse_V1",
+    readOnly: false,
+    admin: true,
+    confirm: true,
+    destructive: true,
+    description:
+      "⚠ DESTRUCTIVE. Delete a contact person for an IRMA customer (DeleteContactRequest_V1). " +
+      "This is destructive and requires confirmation. Confirm with the user before invoking.",
+    fields: [
+      {
+        arg: "header",
+        element: "Header",
+        type: "object",
+        required: true,
+        description: "Delete request header.",
+        fields: [
+          { arg: "partnerReference", element: "PartnerReference", type: "string", required: true, description: "Partner reference for the delete." },
+          { arg: "dateCreated", element: "DateCreated", type: "dateTime", required: true, description: "Creation timestamp of the delete request." },
+        ],
+      },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID the contact belongs to." },
+      { arg: "contactId", element: "ContactId", type: "integer", required: true, min: 1, description: "IRMA contact ID to delete." },
+    ],
+  },
 ];
 
 function fieldSchema(field: GrexxField): Record<string, unknown> {
@@ -466,30 +677,64 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
       return { type: "array", description, items: { type: "integer", minimum: 1 }, minItems: field.min, maxItems: field.max };
     case "decimal":
       return { type: "number", description, ...(field.min !== undefined ? { minimum: field.min } : {}), ...(field.max !== undefined ? { maximum: field.max } : {}) };
+    case "stringList":
+      return {
+        type: "array",
+        description,
+        items: { type: "string", enum: field.enum ? [...field.enum] : undefined },
+        minItems: field.min,
+        maxItems: field.max,
+      };
+    case "object":
+      return {
+        type: "object",
+        properties: Object.fromEntries((field.fields ?? []).map((child) => [child.arg, fieldSchema(child)])),
+        ...(field.fields?.some((child) => child.required) ? { required: (field.fields ?? []).filter((child) => child.required).map((child) => child.arg) } : {}),
+      };
     default:
       return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}), ...(field.pattern ? { pattern: field.pattern.source } : {}) };
   }
 }
 
+function collectRequiredFields(fields: readonly GrexxField[]): string[] {
+  const required: string[] = [];
+  for (const field of fields) {
+    if (field.required) {
+      required.push(field.arg);
+    }
+  }
+  return required;
+}
+
 /** Build the MCP tool definition for a spec. */
 export function realtimeTool(spec: GrexxRealtimeSpec): Tool {
   const readOnly = spec.readOnly !== false;
+  const requiredArguments = collectRequiredFields(spec.fields);
+  const destructive = spec.admin === true || spec.destructive === true;
   return {
     name: spec.tool,
     description: spec.description,
     inputSchema: {
       type: "object",
-      properties: Object.fromEntries(
-        spec.fields.map((field) => [field.arg, fieldSchema(field)])
-      ) as NonNullable<Tool["inputSchema"]["properties"]>,
-      ...(spec.fields.some((field) => field.required)
-        ? { required: spec.fields.filter((field) => field.required).map((field) => field.arg) }
-        : {}),
+      properties: {
+        ...Object.fromEntries(
+          spec.fields.map((field) => [field.arg, fieldSchema(field)])
+        ) as NonNullable<Tool["inputSchema"]["properties"]>,
+        ...(spec.confirm || spec.admin ? { ...CONFIRM_ARG_PROPERTY } : {}),
+      },
+      ...(requiredArguments.length > 0 ? { required: requiredArguments } : {}),
     },
     annotations: readOnly
       ? { readOnlyHint: true, openWorldHint: true, idempotentHint: true }
-      : { readOnlyHint: false, destructiveHint: false, openWorldHint: true, idempotentHint: false },
+      : {
+          readOnlyHint: false,
+          destructiveHint: destructive,
+          openWorldHint: true,
+          idempotentHint: false,
+        },
   };
 }
 
-export const GREXX_REALTIME_TOOLS: Tool[] = GREXX_REALTIME_SPECS.map(realtimeTool);
+export const GREXX_REALTIME_TOOLS: Tool[] = GREXX_REALTIME_SPECS
+  .filter((spec) => !spec.admin)
+  .map(realtimeTool);

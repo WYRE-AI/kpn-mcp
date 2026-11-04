@@ -56,6 +56,10 @@ Releases are cut by semantic-release from Conventional Commits.
   non-interactive callers) on the SIM block/unblock/replace, order authorize/cancel and
   PUK-reveal tools; destructive-warning convention enforced by
   `scripts/lint-destructive-warnings.mjs` in CI.
+- WilroffReitsma contact and VOIP pilot tools: `kpn_grexx_get_contact`,
+  `kpn_grexx_search_contacts`, `kpn_grexx_create_contact`, `kpn_grexx_update_contact`,
+  `kpn_grexx_modify_voip_user`, and `kpn_grexx_modify_device_profile`. Writes and the
+  admin contact delete use fail-closed confirmation; the admin delete is hidden by default.
 - PIN/PUK masking on every tool that returns contract or order details.
 - GHCR container (node:22-alpine multi-stage, non-root, linux/amd64), MCP Registry
   `server.json`, fleet CI via the centralized reusable release workflow. No deploy job:

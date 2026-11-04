@@ -65,6 +65,12 @@ const EXPECTED_TOOLS = [
   'kpn_grexx_microsoft_tenant_exists',
   'kpn_grexx_microsoft_domain_ownership',
   'kpn_grexx_custom_price',
+  'kpn_grexx_get_contact',
+  'kpn_grexx_search_contacts',
+  'kpn_grexx_create_contact',
+  'kpn_grexx_update_contact',
+  'kpn_grexx_modify_voip_user',
+  'kpn_grexx_modify_device_profile',
 ];
 
 const EXPECTED_TOOL_COUNT = EXPECTED_TOOLS.length;

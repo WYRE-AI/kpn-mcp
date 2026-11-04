@@ -29,7 +29,7 @@ Token minting is the `^2.0.1` behavior from
 [node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4).
 Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
-## Tools (32)
+## Tools (38)
 
 | Tool | IRMA request | SDK |
 |---|---|---|
@@ -48,7 +48,7 @@ Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
 These four tools are reads. Realtime retries (network, HTTP 429 / code 108, 5xx) stay inside the SDK.
 
-### XSD-spec tools (28)
+### XSD-spec tools (34)
 
 Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: field names, order, types, limits and enums copied from the request XSDs in the portal (API Toolmodule → Webservice Beschrijvingen, export 2026-10-05). One handler (`src/handlers/grexx-realtime.ts`) validates arguments, emits the body in XSD order and posts it with `GrexxClient.postRealtime`. **IRMA enforces `xs:sequence` order**: an element out of place is a 109.
 
@@ -82,8 +82,15 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_microsoft_tenant_exists` | `MicrosoftTenantExistsCheckRequest_V1` | Microsoft tenant existence |
 | `kpn_grexx_microsoft_domain_ownership` | `MicrosoftTenantDomainOwnershipCheckRequest_V1` | delegated access and onboarding readiness |
 | `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | accepted or rejected custom pricing |
+| `kpn_grexx_get_contact` | `GetContactRequest_V1` | one customer contact |
+| `kpn_grexx_search_contacts` | `GetContactsByCustomerIdAndSearchParametersRequest_V1` | customer contact search and paging |
+| `kpn_grexx_create_contact` | `CreateContactRequest_V1` | creates a contact; write plus confirmation |
+| `kpn_grexx_update_contact` | `UpdateContactRequest_V1` | updates a contact; write plus confirmation |
+| `kpn_grexx_modify_voip_user` | `ModifyVoipUserRequest_V1` | changes a PBX user; write plus confirmation |
+| `kpn_grexx_modify_device_profile` | `ModifyDeviceProfileRequest_V1` | changes a PBX device profile; write plus confirmation |
+| `kpn_grexx_delete_contact` | `DeleteContactRequest_V1` | admin delete; hidden by default and confirmation required |
 
-The tools added for the mobile line-troubleshooting and renewal/upsell batches are all reads. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
+The contact, VOIP, and device tools added for the WilroffReitsma pilot use the same response envelope, XSD-order body builder and secret masking. Reads are read-only; writes and the admin delete require confirmation.
 
 Results are JSON: `request`, `response`, `code`, `messages`, `requestId`, `httpStatus`, `data` (the response document without `Status`), and `secretsMasked: true` when anything was masked. Lists come back as parsed: one element is an object, several are an array.
 

@@ -16,14 +16,17 @@ import {
   type XmlValue,
 } from "@wyre-ai/node-kpn";
 import { GREXX_REALTIME_SPECS, type GrexxField, type GrexxRealtimeSpec } from "../tools/grexx-realtime.js";
+import type { GrexxToolHandler } from "./grexx.js";
 import { MASK } from "./masking.js";
-import { errorResult, jsonResult, ToolInputError, type ToolResult } from "./results.js";
+import { confirmDestructive, NO_ELICITATION, type ElicitationContext } from "../elicitation.js";
+import { errorResult, jsonResult, textResult, ToolInputError, type ToolResult } from "./results.js";
+import type { InputRequiredResult } from "@modelcontextprotocol/server";
 
 /**
  * SIM and line secrets: PIN/PUK/PUC codes, eSIM activation and confirmation
  * codes, and the PPP password RadiusCheck returns in clear text.
  */
-const SECRET_KEY = /^(pin|puk|puc)\d?$|^(activationcode|confirmationcode|password)$/i;
+const SECRET_KEY = /^(pin|puk|puc)\d?$|^(activationcode|confirmationcode|password|sippassword)$/i;
 
 function fail(field: GrexxField, message: string): never {
   throw new ToolInputError(`Argument "${field.arg}" ${message}`);
@@ -90,6 +93,27 @@ function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
       if (field.max !== undefined && value.length > field.max) fail(field, `allows at most ${field.max} items.`);
       const items = value.map((item) => readInteger({ ...field, min: 1, max: undefined }, item));
       return { [field.item ?? field.element]: items };
+    }
+    case "stringList": {
+      if (!Array.isArray(value)) fail(field, "must be an array.");
+      if (field.min !== undefined && value.length < field.min) fail(field, `needs at least ${field.min} item(s).`);
+      if (field.max !== undefined && value.length > field.max) fail(field, `allows at most ${field.max} items.`);
+      const items = value.map((item) => {
+        if (typeof item !== "string") fail(field, "must contain only strings.");
+        if (field.enum && !field.enum.includes(item)) fail(field, `must be one of: ${field.enum.join(", ")}.`);
+        return item;
+      });
+      return items;
+    }
+    case "object": {
+      if (typeof value !== "object" || value === null || Array.isArray(value)) fail(field, "must be an object.");
+      const nested = value as Record<string, unknown>;
+      const result: Record<string, XmlValue> = {};
+      for (const child of field.fields ?? []) {
+        const childValue = readField(child, nested);
+        if (childValue !== undefined) result[child.element] = childValue;
+      }
+      return result;
     }
     default:
       return readString(field, value);
@@ -165,8 +189,19 @@ export function ninaErrorFromResponse(error: GrexxError): GrexxError | undefined
 export async function callRealtime(
   client: GrexxClient,
   spec: GrexxRealtimeSpec,
-  args: Record<string, unknown>
-): Promise<ToolResult> {
+  args: Record<string, unknown>,
+  elicitation: ElicitationContext = NO_ELICITATION
+): Promise<ToolResult | InputRequiredResult> {
+  if (spec.confirm || spec.admin) {
+    const gate = confirmDestructive(
+      elicitation,
+      args,
+      spec.description
+    );
+    if (gate.kind === "ask") return gate.result;
+    if (gate.kind === "blocked") return errorResult(gate.message);
+    if (gate.kind === "refused") return textResult("Cancelled; nothing was changed.");
+  }
   const body = buildRealtimeBody(spec, args);
   const result = await client.postRealtime(spec.request, body, { idempotent: spec.readOnly !== false });
   const rejected = ninaError(result.document, result.requestId);
@@ -207,5 +242,5 @@ export async function callRealtime(
   return jsonResult(output);
 }
 
-export const GREXX_REALTIME_HANDLERS: Record<string, (client: GrexxClient, args: Record<string, unknown>) => Promise<ToolResult>> =
-  Object.fromEntries(GREXX_REALTIME_SPECS.map((spec) => [spec.tool, (client: GrexxClient, args: Record<string, unknown>) => callRealtime(client, spec, args)]));
+export const GREXX_REALTIME_HANDLERS: Record<string, GrexxToolHandler> =
+  Object.fromEntries(GREXX_REALTIME_SPECS.map((spec) => [spec.tool, (client: GrexxClient, args: Record<string, unknown>, elicitation: ElicitationContext) => callRealtime(client, spec, args, elicitation)]));
