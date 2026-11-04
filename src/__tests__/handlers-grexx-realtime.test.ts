@@ -994,3 +994,18 @@ describe("B5 admin gate, confirmation prompts and contact search (review #16)", 
     expect(() => buildRealtimeBody(spec("kpn_grexx_modify_device_profile"), { ...device, linePort: "l1", macAddress: "not-a-mac" })).toThrow(/MAC address must be/);
   });
 });
+
+describe("Grexx dispatcher elicitation pass-through", () => {
+  it("prompts an elicitation-capable client for custom_price through handleToolCall instead of using the confirm argument", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    const result = await handleToolCall(
+      { grexx: client },
+      "kpn_grexx_custom_price",
+      { orderId: 123456, confirmationState: "Accepted", [CONFIRM_ARG]: true },
+      { clientCapabilities: { elicitation: {} } }
+    );
+    expect(JSON.stringify(result)).toContain("Accept KPN's custom price on order 123456?");
+    expect((result as ToolResult).isError).not.toBe(true);
+    expect(postRealtime).not.toHaveBeenCalled();
+  });
+});
