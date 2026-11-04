@@ -63,15 +63,15 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_get_sim` | `GetSimRequest_V1` | `Puc1`, eSIM `ActivationCode`/`ConfirmationCode` masked |
 | `kpn_grexx_mobile_settings` | `GetMobileSettingsRequest_V1` | |
 | `kpn_grexx_mobile_usage` | `GetMobileSubscriptionUsageRequest_V1` | |
-| `kpn_grexx_mobile_total_usage` | `GetMobileSubscriptionTotalUsageRequest_V1` | total usage per IRMA customer |
+| `kpn_grexx_mobile_total_usage` | `GetMobileSubscriptionTotalUsageRequest_V1` | get total mobile usage per subscription; read-only |
 | `kpn_grexx_mobile_orders` | `GetMobileSubscriptionOrdersRequest_V1` | 1-50 ids; one bad id fails the batch; SIM codes masked |
-| `kpn_grexx_voip_usage` | `GetVoipUsageRequest_V1` | order plus E.164 phone number; calls, amount and duration |
-| `kpn_grexx_voip_total_usage` | `GetVoipTotalUsageRequest_V1` | total usage per IRMA customer |
+| `kpn_grexx_voip_usage` | `GetVoipUsageRequest_V1` | order plus international phone number; get current-period VoIP call usage |
+| `kpn_grexx_voip_total_usage` | `GetVoipTotalUsageRequest_V1` | get total VoIP call usage per phone number; read-only |
 | `kpn_grexx_available_portings` | `AvailablePortingsRequest_V1` | exactly one of customerId / hipGroupOrderId |
-| `kpn_grexx_invoice_catalog` | `CustomerInvoiceCatalogRequest_V1` | catalog only; documents are not exposed |
-| `kpn_grexx_microsoft_subscription_end_date` | `MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` | customer or optional order ID; subscription end date |
-| `kpn_grexx_upgrade_info` | `GetUpgradeInfoRequest_V1` | order upgrade options and whether upgrading is allowed |
-| `kpn_grexx_related_products` | `RelatedProductsRequest_V1` | customer and parent product; related products |
+| `kpn_grexx_invoice_catalog` | `CustomerInvoiceCatalogRequest_V1` | list invoices; does not return the PDFs |
+| `kpn_grexx_microsoft_subscription_end_date` | `MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` | customer number, product code, optional order number; without the order number, the first matching subscription |
+| `kpn_grexx_upgrade_info` | `GetUpgradeInfoRequest_V1` | whether the order can be upgraded and the target products; read-only, places nothing |
+| `kpn_grexx_related_products` | `RelatedProductsRequest_V1` | add-ons a customer can add to a main product (product code up to 13 characters) |
 | `kpn_grexx_mobile_call_forwardings` | `GetMobileCallForwardingsRequest_V1` | mobile call-forwarding status |
 | `kpn_grexx_mobile_preferences` | `GetMobilePreferencesRequest_V1` | mobile call-preference settings |
 | `kpn_grexx_mobile_module` | `GetMobileModuleRequest_V1` | mobile module enablement status |
