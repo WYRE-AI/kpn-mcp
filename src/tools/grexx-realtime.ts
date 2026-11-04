@@ -337,15 +337,14 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
         ...(field.min !== undefined ? { minLength: field.min } : {}),
         ...(field.max !== undefined ? { maxLength: field.max } : {}),
         ...(field.enum ? { enum: [...field.enum] } : {}),
-        ...(field.pattern ? { pattern: field.pattern.source } : {}),
+        ...(field.postcode ? undefined : field.pattern ? { pattern: field.pattern.source } : {}),
       };
     case "dateTime":
       return { type: "string", format: "date-time", description };
     case "integerList":
       return { type: "array", description, items: { type: "integer", minimum: 1 }, minItems: field.min, maxItems: field.max };
     default: {
-      const pattern = field.postcode ? undefined : field.pattern;
-      return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}), ...(pattern ? { pattern: pattern.source } : {}) };
+      return { type: "string", description };
     }
   }
 }
