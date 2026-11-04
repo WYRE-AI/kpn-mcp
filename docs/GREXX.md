@@ -84,7 +84,7 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | accept or reject KPN's proposed custom price; tier D, destructive, confirmed, sent once |
 | `kpn_grexx_get_contact` | `GetContactRequest_V1` | one customer contact |
 | `kpn_grexx_search_contacts` | `GetContactsByCustomerIdAndSearchParametersRequest_V1` | customer contact search and paging |
-| `kpn_grexx_create_contact` | `CreateContactRequest_V1` | adds a contact; tier C write (reversible: update or remove later) plus confirmation |
+| `kpn_grexx_create_contact` | `CreateContactRequest_V1` | adds a contact; tier C write (additive, not destructive; reversible: update or remove later) plus confirmation |
 | `kpn_grexx_update_contact` | `UpdateContactRequest_V1` | updates a contact; write plus confirmation |
 | `kpn_grexx_modify_voip_user` | `ModifyVoipUserRequest_V1` | changes a VoIP user (phone-system user); write plus confirmation |
 | `kpn_grexx_modify_device_profile` | `ModifyDeviceProfileRequest_V1` | changes a VoIP device profile; write plus confirmation |

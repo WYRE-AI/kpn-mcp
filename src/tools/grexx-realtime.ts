@@ -44,8 +44,6 @@ export interface GrexxField {
   max?: number;
   /** integerList: XSD item element name (`OrderId`). */
   item?: string;
-  /** decimal: XSD decimal value. */
-  decimal?: boolean;
   /** Nested object fields, in XSD child-element order. */
   fields?: readonly GrexxField[];
   /** Filled in by the server (not an input argument), e.g. a request header. */
@@ -575,7 +573,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "ContactResponse_V1",
     readOnly: false,
     confirm: true,
-    destructive: true,
+    // Additive (MCP destructiveHint=false); still confirmed because it can start KPN notifications.
     description:
       "Adds a contact person to a KPN customer's account. They may start receiving the KPN notifications you select. " +
       "You can update or remove the contact later. Confirm with the user before invoking. (Grexx: CreateContactRequest_V1)",

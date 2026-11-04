@@ -42,7 +42,7 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
     (tier D, destructive) that is sent once and can't be undone through this tool.
   - `kpn_grexx_get_contact`: one customer contact.
   - `kpn_grexx_search_contacts`: customer contact search and paging.
-  - `kpn_grexx_create_contact`: adds a contact; write (tier C, reversible) plus confirmation.
+  - `kpn_grexx_create_contact`: adds a contact; additive write (tier C, not destructive, reversible) plus confirmation.
   - `kpn_grexx_update_contact`: updates a contact; write plus confirmation.
   - `kpn_grexx_modify_voip_user`: changes a VoIP user (phone-system user); write plus confirmation.
   - `kpn_grexx_modify_device_profile`: changes a VoIP device profile; write plus confirmation.

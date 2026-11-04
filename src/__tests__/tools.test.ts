@@ -139,7 +139,6 @@ describe("default Grexx surface", () => {
         expect(t.inputSchema.properties?.[CONFIRM_ARG]).toBeUndefined();
       } else if (
         [
-          "kpn_grexx_create_contact",
           "kpn_grexx_update_contact",
           "kpn_grexx_modify_voip_user",
           "kpn_grexx_modify_device_profile",
@@ -150,6 +149,11 @@ describe("default Grexx surface", () => {
           destructiveHint: true,
           idempotentHint: false,
         });
+        expect(t.description).not.toContain("⚠");
+        expect(t.description).toMatch(/Confirm with the user before invoking\. \(Grexx: .+\)$/u);
+        expect(t.inputSchema.properties?.[CONFIRM_ARG]).toBeDefined();
+      } else if (t.name === "kpn_grexx_create_contact") {
+        expect(t.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false, idempotentHint: false });
         expect(t.description).not.toContain("⚠");
         expect(t.description).toMatch(/Confirm with the user before invoking\. \(Grexx: .+\)$/u);
         expect(t.inputSchema.properties?.[CONFIRM_ARG]).toBeDefined();
@@ -450,6 +454,7 @@ describe("default Grexx surface", () => {
 
   it("create_contact requires the nested contact payload and confirmation", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_create_contact");
+    // Additive write: confirmed, but not destructive.
     const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string; properties?: Record<string, unknown> }> };
     expect(schema.required).toEqual(["customerId", "contactPostPutRequest"]);
     expect(schema.properties?.contactPostPutRequest?.type).toBe("object");
@@ -457,7 +462,7 @@ describe("default Grexx surface", () => {
       displayName: { type: "string" },
       email: { type: "string" },
     });
-    expect(tool?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false });
     expect(tool?.description).toMatch(/Confirm with the user before invoking\. \(Grexx: .+\)$/u);
     expect(schema.properties?.[CONFIRM_ARG]).toMatchObject({ type: "boolean" });
   });

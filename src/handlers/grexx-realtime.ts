@@ -88,6 +88,9 @@ function readInteger(field: GrexxField, value: unknown): number {
 }
 
 function readString(field: GrexxField, value: unknown): string {
+  if (Array.isArray(value)) {
+    fail(`${fieldLabel(field)} takes one value, not a list${field.enum ? `, e.g. "${field.enum[0]}"` : ""}.`);
+  }
   if (typeof value !== "string" || value.trim() === "") fail(`${fieldLabel(field)} can't be empty.`);
   const text = field.postcode ? value.replace(/\s+/g, "").toUpperCase() : value.trim();
   if (field.min !== undefined && text.length < field.min) {

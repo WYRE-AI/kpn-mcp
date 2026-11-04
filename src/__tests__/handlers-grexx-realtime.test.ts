@@ -975,7 +975,7 @@ describe("B5 admin gate, confirmation prompts and contact search (review #16)", 
     const tool = spec("kpn_grexx_search_contacts");
     expect(() =>
       buildRealtimeBody(tool, { customerId: 28665, offset: 0, searchParameters: { enabledSystemNotification: ["Primary"] } })
-    ).toThrow();
+    ).toThrow('System notification takes one value, not a list, e.g. "Primary".');
     const xml = renderRealtimeBody(
       tool.request,
       buildRealtimeBody(tool, { customerId: 28665, offset: 0, searchParameters: { enabledSystemNotification: "Primary" } })
