@@ -128,6 +128,20 @@ describe("realtime tool surface", () => {
       expect(tool.annotations?.destructiveHint ?? false, s.tool).toBe(false);
     }
   });
+
+  it("normalizes the postcode before building the XSD request", async () => {
+    const { client, postRealtime } = stub(fixture("CarrierInfoResponse_V1"));
+    const args = CASES.kpn_grexx_carrier_info.args;
+    const result = await handleGrexxToolCall(client, "kpn_grexx_carrier_info", args);
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledWith(
+      "CarrierInfoRequest_V1",
+      CASES.kpn_grexx_carrier_info.body,
+      { idempotent: true }
+    );
+    const xml = renderRealtimeBody("CarrierInfoRequest_V1", buildRealtimeBody(spec("kpn_grexx_carrier_info"), args));
+    expect(xml).toContain("<ZipCode>1012JS</ZipCode>");
+  });
 });
 
 describe("request bodies", () => {

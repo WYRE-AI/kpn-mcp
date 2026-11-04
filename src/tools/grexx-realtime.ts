@@ -215,7 +215,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       "Total usage (data, voice, SMS and extra costs) per product for an IRMA customer " +
       "(GetMobileSubscriptionTotalUsageRequest_V1). Available from 5 minutes after activation.",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
     ],
   },
   {
@@ -251,7 +251,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       "Total usage (calls, amount and duration) per VOIP phone number for an IRMA customer " +
       "(GetVoipTotalUsageRequest_V1).",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
     ],
   },
   {
@@ -280,7 +280,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       "Invoice catalog for the last 12 months, including document metadata, for an IRMA customer " +
       "(CustomerInvoiceCatalogRequest_V1). Catalog only; invoice documents are not exposed.",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
     ],
   },
   {
@@ -343,8 +343,10 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
       return { type: "string", format: "date-time", description };
     case "integerList":
       return { type: "array", description, items: { type: "integer", minimum: 1 }, minItems: field.min, maxItems: field.max };
-    default:
-      return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}), ...(field.pattern ? { pattern: field.pattern.source } : {}) };
+    default: {
+      const pattern = field.postcode ? undefined : field.pattern;
+      return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}), ...(pattern ? { pattern: pattern.source } : {}) };
+    }
   }
 }
 
