@@ -22,7 +22,11 @@ export interface GrexxField {
   type: GrexxFieldType;
   description: string;
   required?: boolean;
+  /** Human-readable field label for validation messages. */
+  label?: string;
   enum?: readonly string[];
+  /** Calm, field-specific format guidance for validation messages. */
+  formatHint?: string;
   /** Strings: full-match pattern, checked after trimming. */
   pattern?: RegExp;
   /** Strings: remove spaces and upper-case (Dutch postcodes). */
@@ -58,7 +62,7 @@ const orderId = (what: string): GrexxField => ({
   type: "integer",
   required: true,
   min: 1,
-  description: `IRMA order ID of ${what}.`,
+  description: `KPN order number (IRMA order ID) of ${what}.`,
 });
 
 const has = (args: Record<string, unknown>, key: string) =>
@@ -95,16 +99,16 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     request: "CarrierInfoRequest_V1",
     response: "CarrierInfoResponse_V1",
     description:
-      "Infrastructure (carrier) information at a Dutch address for xDSL, FttH or WEAS fiber " +
-      "(IRMA CarrierInfoRequest_V1): connection points, line details and planned work.",
+      "Get carrier information for a Dutch address. Read-only. Includes connection points, " +
+      "line details and planned work. (Grexx: CarrierInfoRequest_V1)",
     fields: [
       { arg: "productType", element: "ProductType", type: "string", required: true, enum: CARRIER_PRODUCT_TYPES, description: "xDSL, FttH, WeasFiber, or All." },
-      { arg: "zipCode", element: "ZipCode", type: "string", required: true, postcode: true, pattern: /^\d{4}[A-Z]{2}$/, description: 'Dutch postcode, e.g. "1012JS".' },
-      { arg: "houseNumber", element: "HouseNumber", type: "integer", required: true, min: 1, max: 99999, description: "House number, 1-99999." },
-      { arg: "houseNumberExtension", element: "HouseNumberExt", type: "string", pattern: /^.{0,4}$/, description: "House number addition, up to 4 characters." },
-      { arg: "phoneNumber", element: "PhoneNumber", type: "string", pattern: /^0\d{9}$/, description: 'Phone number, 10 digits starting with 0. xDSL only.' },
-      { arg: "israSpecification", element: "IsraSpecification", type: "string", pattern: /^\d{3}$/, description: 'ISRA point, 3 digits, e.g. "001". xDSL only.' },
-      { arg: "serviceId", element: "ServiceId", type: "string", description: "KPN service ID. xDSL only." },
+      { arg: "zipCode", element: "ZipCode", type: "string", required: true, postcode: true, pattern: /^\d{4}[A-Z]{2}$/, label: "Postcode", formatHint: "Postcode must look like 1234AB: four digits, then two letters.", description: 'Dutch postcode: four digits and two letters, with or without a space, e.g. "1012 JS" or "1012JS".' },
+      { arg: "houseNumber", element: "HouseNumber", type: "integer", required: true, min: 1, max: 99999, label: "House number", description: "House number, 1-99999." },
+      { arg: "houseNumberExtension", element: "HouseNumberExt", type: "string", pattern: /^.{0,4}$/, label: "House number addition", formatHint: "House number addition can be at most 4 characters, e.g. A or bis.", description: "House number addition (toevoeging), up to 4 characters, e.g. A or bis." },
+      { arg: "phoneNumber", element: "PhoneNumber", type: "string", pattern: /^0\d{9}$/, label: "Phone number", formatHint: "Phone number must be 10 digits starting with 0, e.g. 0201234567.", description: "Phone number, 10 digits starting with 0, e.g. 0201234567. xDSL only." },
+      { arg: "israSpecification", element: "IsraSpecification", type: "string", pattern: /^\d{3}$/, label: "ISRA point", formatHint: "ISRA point must be 3 digits, e.g. 001.", description: 'ISRA point, 3 digits, e.g. "001". xDSL only.' },
+      { arg: "serviceId", element: "ServiceId", type: "string", label: "KPN service ID", description: "KPN service ID. xDSL only." },
     ],
   },
   {
@@ -112,8 +116,9 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     request: "RadiusCheckRequest_V1",
     response: "RadiusCheckResponse_V1",
     description:
-      "RADIUS login history of the modem/CPE on a connectivity order for the last 7 days (IRMA RadiusCheckRequest_V1). " +
-      "Many logins suggest a flapping line. An empty result means the line has been up for over 7 days or not at all.",
+      "Get RADIUS login history for a connectivity order. Read-only. Looks at the last 7 days " +
+      "and may suggest checking a line that is flapping. An empty result means the line has been up " +
+      "for over 7 days or not at all. (Grexx: RadiusCheckRequest_V1)",
     fields: [orderId("the connectivity order")],
   },
   {
@@ -121,8 +126,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     request: "RasCheckRequest_V1",
     response: "RasCheckResponse_V1",
     description:
-      "PPP/RAS session check on a connectivity order (IRMA RasCheckRequest_V1): whether a PPP session is up " +
-      "and which IP address the connection has.",
+      "Get the PPP/RAS session state for a connectivity order. Read-only. Shows whether the session " +
+      "is up and which IP address the connection has. (Grexx: RasCheckRequest_V1)",
     fields: [orderId("the connectivity order")],
   },
   {
@@ -131,9 +136,9 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "StartLineDiagnoseResponse_V1",
     readOnly: false,
     description:
-      "Start a KPN line diagnose on an xDSL (Ethernet) order (IRMA StartLineDiagnoseRequest_V1). " +
-      "Use it when a line is out of sync. This starts a test at KPN; it is not retried automatically. " +
-      "The response confirms the start and returns an AnalysisId. Fetching the result (GetLatest) is not exposed yet.",
+      "Starts a KPN line diagnose on an xDSL (Ethernet) order. Use it when a line is out of sync. " +
+      "This starts a test at KPN; it is not retried automatically. The response confirms the start and " +
+      "returns an AnalysisId. Fetching the result (GetLatest) is not exposed yet. (Grexx: StartLineDiagnoseRequest_V1)",
     fields: [
       orderId("the xDSL order"),
       { arg: "symptomCode", element: "SymptomCode", type: "string", required: true, enum: LINE_DIAGNOSE_SYMPTOMS, description: "IRMA symptom code: Sym103, Sym104, Sym105, or Sym111." },
@@ -145,13 +150,13 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     request: "CustomerDataRequest_V1",
     response: "CustomerDataResponse_V1",
     description:
-      "Search IRMA customer cards (CustomerDataRequest_V1). With no filters it pages through every customer. " +
-      "Returns PagedResult with TotalNumberOfRecords. Take is at most 100 (default 20).",
+      "Search customer data for a KPN customer. Read-only. With no filters it pages through every " +
+      "customer; take is at most 100 (default 20). (Grexx: CustomerDataRequest_V1)",
     fields: [
-      { arg: "customerId", element: "Id", type: "integer", min: 1, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "customerId", element: "Id", type: "integer", min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
       { arg: "name", element: "Name", type: "string", description: "Customer name." },
       { arg: "street", element: "Street", type: "string", description: "Street name." },
-      { arg: "zipCode", element: "ZipCode", type: "string", postcode: true, description: 'Postcode, e.g. "6716BX".' },
+      { arg: "zipCode", element: "ZipCode", type: "string", postcode: true, label: "Postcode", formatHint: "Postcode must look like 1234AB: four digits, then two letters.", description: 'Dutch postcode: four digits and two letters, with or without a space, e.g. "1012 JS" or "1012JS".' },
       { arg: "city", element: "City", type: "string", description: "City." },
       { arg: "countryCode", element: "CountryCode", type: "string", enum: ["BEL", "DEU", "FRA", "NLD"], description: "BEL, DEU, FRA, or NLD." },
       { arg: "phone1", element: "Phone1", type: "string", description: "First phone number." },
@@ -172,10 +177,11 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     request: "OrderSummaryRequest_V1",
     response: "OrderSummaryResponse_V1",
     description:
-      "Summary of orders (IRMA OrderSummaryRequest_V1), optionally for one customer card and filtered by state, " +
-      "product group, product, dates, label or attribute (e.g. a phone number). Take is at most 2500; page with skip.",
+      "Summarize orders for a KPN customer. Read-only. Optionally filter by state, product group, " +
+      "product, dates, label or attribute (e.g. a phone number); take is at most 2500 and pages with skip. " +
+      "(Grexx: OrderSummaryRequest_V1)",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", min: 1, description: "IRMA customer card ID." },
+      { arg: "customerId", element: "CustomerId", type: "integer", min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
       { arg: "orderState", element: "OrderState", type: "string", enum: ORDER_STATES, description: "Only orders in this state." },
       { arg: "productGroup", element: "ProductGroup", type: "string", enum: PRODUCT_GROUPS, description: "Only orders in this product group." },
       { arg: "productName", element: "ProductName", type: "string", description: "Only orders for this product name." },
@@ -195,8 +201,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     request: "GetSimRequest_V1",
     response: "GetSimResponse_V1",
     description:
-      "Active SIM card (or eSIM) on an active mobile order (IRMA GetSimRequest_V1): ICCID and SIM type. " +
-      "The PUK (Puc1) and eSIM activation and confirmation codes are masked.",
+      "Get the active SIM card or eSIM for a mobile order. Read-only. Returns the ICCID and SIM type; " +
+      "the PUK and eSIM activation and confirmation codes are masked. (Grexx: GetSimRequest_V1)",
     fields: [orderId("the mobile order")],
   },
   {
@@ -204,7 +210,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     request: "GetMobileSettingsRequest_V1",
     response: "GetMobileSettingsResponse_V1",
     description:
-      "Blocks and limits on a mobile number (IRMA GetMobileSettingsRequest_V1). Available from 5 minutes after activation.",
+      "Get blocks and limits for a mobile number. Read-only. Available from 5 minutes after activation. " +
+      "(Grexx: GetMobileSettingsRequest_V1)",
     fields: [orderId("the mobile number's order")],
   },
   {
@@ -212,8 +219,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     request: "GetMobileSubscriptionUsageRequest_V1",
     response: "GetMobileSubscriptionUsageResponse_V1",
     description:
-      "Current usage (data, voice, SMS) of a mobile number (IRMA GetMobileSubscriptionUsageRequest_V1). " +
-      "Available from 5 minutes after activation.",
+      "Get current usage for a mobile number. Read-only. Covers data, calls and SMS; available from " +
+      "5 minutes after activation. (Grexx: GetMobileSubscriptionUsageRequest_V1)",
     fields: [orderId("the mobile number's order")],
   },
   {
@@ -222,10 +229,11 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetMobileSubscriptionTotalUsageResponse_V1",
     readOnly: true,
     description:
-      "Total usage (data, voice, SMS and extra costs) per product for an IRMA customer " +
-      "(GetMobileSubscriptionTotalUsageRequest_V1). Available from 5 minutes after activation.",
+      "Get total mobile usage (data, calls, SMS and extra costs) per subscription for a KPN customer. " +
+      "Read-only. Data appears about 5 minutes after a line is activated. " +
+      "(Grexx: GetMobileSubscriptionTotalUsageRequest_V1)",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
     ],
   },
   {
@@ -233,10 +241,10 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     request: "GetMobileSubscriptionOrdersRequest_V1",
     response: "GetMobileSubscriptionOrdersResponse_V1",
     description:
-      "Order data for 1-50 mobile subscription orders (IRMA GetMobileSubscriptionOrdersRequest_V1): " +
-      "number, SIM, subscription and bundles.",
+      "Get mobile subscription orders. Read-only. Returns the number, SIM, subscription and bundle " +
+      "details for up to 50 orders. (Grexx: GetMobileSubscriptionOrdersRequest_V1)",
     fields: [
-      { arg: "orderIds", element: "OrderIds", type: "integerList", item: "OrderId", required: true, min: 1, max: 50, description: "IRMA order IDs of the mobile orders (1-50)." },
+      { arg: "orderIds", element: "OrderIds", type: "integerList", item: "OrderId", required: true, min: 1, max: 50, description: "KPN order numbers (IRMA order IDs) of the mobile orders (1-50)." },
     ],
   },
   {
@@ -245,11 +253,12 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetVoipUsageResponse_V1",
     readOnly: true,
     description:
-      "Current usage (calls, amount and duration) for a VOIP order (GetVoipUsageRequest_V1). " +
-      "Available from 5 minutes after activation.",
+      "Get current-period VoIP call usage (number of calls, cost and duration) for one KPN VoIP order. " +
+      "Read-only. Data appears about 5 minutes after activation. " +
+      "(Grexx: GetVoipUsageRequest_V1)",
     fields: [
-      orderId("the VOIP order"),
-      { arg: "phoneNumber", element: "PhoneNumber", type: "string", required: true, pattern: /^\+\d{9,15}$/, description: 'VOIP phone number in E.164 format, e.g. "+31612345678".' },
+      orderId("the VoIP order"),
+      { arg: "phoneNumber", element: "PhoneNumber", type: "string", required: true, pattern: /^\+\d{9,15}$/, label: "Phone number", formatHint: "Phone number must be in international format, e.g. +31612345678 (plus sign, country code, no spaces). Replace the leading 0 with +31.", description: 'VoIP phone number in international format: plus sign, country code, no spaces or leading 0, e.g. "+31201234567".' },
     ],
   },
   {
@@ -258,10 +267,10 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetVoipTotalUsageResponse_V1",
     readOnly: true,
     description:
-      "Total usage (calls, amount and duration) per VOIP phone number for an IRMA customer " +
-      "(GetVoipTotalUsageRequest_V1).",
+      "Get total VoIP call usage (number of calls, cost and duration) per phone number for a KPN customer. " +
+      "Read-only. (Grexx: GetVoipTotalUsageRequest_V1)",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
     ],
   },
   {
@@ -269,12 +278,12 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     request: "AvailablePortingsRequest_V1",
     response: "AvailablePortingsResponse_V1",
     description:
-      "Number portings available for every mobile subscription of an IRMA customer, or for every number of a " +
-      "HIP group / HIP Express Office / KPN EEN switchboard order (IRMA AvailablePortingsRequest_V1). Pass exactly one ID.",
+      "List portings available for a KPN customer or VoIP number. Read-only. Pass exactly one customer ID " +
+      "or HIP group order ID. (Grexx: AvailablePortingsRequest_V1)",
     fields: [
       // Element name is misspelled in the XSD ("Subscripion"); IRMA expects it as written.
-      { arg: "customerId", element: "MobileSubscripionCustomerId", type: "integer", min: 1, description: "IRMA customer ID (mobile subscriptions)." },
-      { arg: "hipGroupOrderId", element: "HipGroupOrderId", type: "integer", min: 1, description: "Order ID of a HIP group / HIP Express Office / KPN EEN switchboard." },
+      { arg: "customerId", element: "MobileSubscripionCustomerId", type: "integer", min: 1, description: "KPN customer number (IRMA customer ID) for mobile subscriptions." },
+      { arg: "hipGroupOrderId", element: "HipGroupOrderId", type: "integer", min: 1, description: "KPN order number (IRMA order ID) for a HIP group / HIP Express Office / KPN EEN switchboard." },
     ],
     check: (args) =>
       has(args, "customerId") === has(args, "hipGroupOrderId")
@@ -287,10 +296,10 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "CustomerInvoiceCatalogResponse_V1",
     readOnly: true,
     description:
-      "Invoice catalog for the last 12 months, including document metadata, for an IRMA customer " +
-      "(CustomerInvoiceCatalogRequest_V1). Catalog only; invoice documents are not exposed.",
+      "List a KPN customer's invoices from the last 12 months (invoice number, date, amount and document " +
+      "details). Read-only. Doesn't return the invoice PDFs. (Grexx: CustomerInvoiceCatalogRequest_V1)",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
     ],
   },
   {
@@ -299,13 +308,14 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "MicrosoftProductOrderLineSubscriptionEndDateResponse_V1",
     readOnly: true,
     description:
-      "Microsoft 365 product subscription end date for an IRMA customer or order " +
-      "(MicrosoftProductOrderLineSubscriptionEndDateRequest_V1). With an order ID, the specific " +
-      "subscription is returned; without one, the first subscription for the customer and product.",
+      "Get the end (renewal) date of a customer's Microsoft 365 subscription bought through KPN. Read-only. " +
+      "If you pass an order number you get that subscription. Without one you get the first matching " +
+      "subscription, which may not be the one you want when the customer has several. " +
+      "(Grexx: MicrosoftProductOrderLineSubscriptionEndDateRequest_V1)",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
-      { arg: "productId", element: "ProductId", type: "string", required: true, description: "IRMA product code for the Microsoft Office subscription." },
-      { arg: "orderId", element: "OrderId", type: "integer", required: false, min: 1, max: 2147483647, description: "IRMA order ID of the Microsoft Office licence. Optional; omit to find the first subscription." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
+      { arg: "productId", element: "ProductId", type: "string", required: true, label: "Product code", description: "KPN product code of the Microsoft 365 subscription." },
+      { arg: "orderId", element: "OrderId", type: "integer", required: false, min: 1, max: 2147483647, label: "Order number", description: "KPN order number of the Microsoft 365 subscription. Optional. Leave it empty to get the customer's first matching subscription." },
     ],
   },
   {
@@ -314,8 +324,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetUpgradeInfoResponse_V1",
     readOnly: true,
     description:
-      "Whether an IRMA order can be upgraded and which target products are available " +
-      "(GetUpgradeInfoRequest_V1).",
+      "Check whether a KPN order can be upgraded and list the products it can move to. Read-only. " +
+      "Doesn't place an upgrade. (Grexx: GetUpgradeInfoRequest_V1)",
     fields: [orderId("the order")],
   },
   {
@@ -324,11 +334,11 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "RelatedProductsResponse_V1",
     readOnly: true,
     description:
-      "Related products for a customer and product, such as mobile subscription modules " +
-      "(RelatedProductsRequest_V1).",
+      "List add-ons and related products a KPN customer can add to a product, e.g. extra bundles for a " +
+      "mobile subscription. Read-only. (Grexx: RelatedProductsRequest_V1)",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
-      { arg: "productCode", element: "ProductCode", type: "string", required: true, min: 1, max: 13, description: "IRMA product code of the parent order, e.g. a mobile subscription." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
+      { arg: "productCode", element: "ProductCode", type: "string", required: true, min: 1, max: 13, label: "Product code", description: "KPN product code of the main product the add-ons belong to (up to 13 characters), e.g. a mobile subscription." },
     ],
   },
   {
@@ -337,8 +347,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetMobileCallForwardingsResponse_V1",
     readOnly: true,
     description:
-      "Mobile call forwarding status for an IRMA mobile order (GetMobileCallForwardingsRequest_V1). " +
-      "Returns unconditional, no-reply, busy, and unreachable call-forwarding state.",
+      "Get the call-forwarding settings of a KPN mobile line: always, when not answered, when busy and " +
+      "when unreachable. Read-only. (Grexx: GetMobileCallForwardingsRequest_V1)",
     fields: [orderId("the mobile order")],
   },
   {
@@ -347,8 +357,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetMobilePreferencesResponse_V1",
     readOnly: true,
     description:
-      "Mobile call-preference settings for an IRMA mobile order (GetMobilePreferencesRequest_V1). " +
-      "Returns roaming, usage-notification, SIM-block, and related preference state.",
+      "Get a KPN mobile line's settings: roaming (use abroad), usage alerts, SIM block and similar " +
+      "preferences. Read-only. It doesn't change a SIM block. (Grexx: GetMobilePreferencesRequest_V1)",
     fields: [orderId("the mobile order")],
   },
   {
@@ -357,9 +367,10 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetMobileModuleResponse_V1",
     readOnly: true,
     description:
-      "Mobile module status for an IRMA mobile order (GetMobileModuleRequest_V1). " +
-      "Returns whether the requested mobile module is enabled or pending.",
-    fields: [orderId("the mobile order")],
+      "Check whether an add-on (module, e.g. a data or roaming bundle) is active or pending on a KPN mobile " +
+      "line. Read-only. The module is identified by its own order number (orderId), not the mobile line's. " +
+      "(Grexx: GetMobileModuleRequest_V1)",
+    fields: [orderId("the mobile module (add-on) order")],
   },
   {
     tool: "kpn_grexx_planned_line",
@@ -367,14 +378,15 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "PlannedLineResponse_V3",
     readOnly: true,
     description:
-      "Planned line details for a Dutch address and room (PlannedLineRequest_V3). " +
-      "Returns fibre and copper planning, delivery, technology, and connection status.",
+      "Get planned and existing KPN internet line details for a Dutch address: fibre or copper, planned " +
+      "delivery dates, technology and connection status. Read-only. Use it to check whether and when fibre " +
+      "is coming to an address. (Grexx: PlannedLineRequest_V3)",
     fields: [
-      { arg: "zipCode", element: "ZipCode", type: "string", postcode: true, description: "Dutch postcode, e.g. 1012JS. Optional." },
-      { arg: "houseNumber", element: "HouseNr", type: "integer", required: true, min: 1, description: "House number, e.g. 12." },
-      { arg: "houseNumberExtension", element: "HouseNrExtension", type: "string", description: "House number addition. Optional." },
-      { arg: "roomNumber", element: "RoomNumber", type: "string", description: "Room number. Optional." },
-      { arg: "isRoomNumberKnown", element: "IsRoomNumberKnown", type: "boolean", required: true, description: "XSD IsRoomNumberKnown. Required. False when the room number is not known." },
+      { arg: "zipCode", element: "ZipCode", type: "string", postcode: true, description: "Dutch postcode: four digits and two letters, e.g. 1012JS. Optional, but strongly recommended: a house number alone may match several addresses." },
+      { arg: "houseNumber", element: "HouseNr", type: "integer", required: true, min: 1, description: "House number, digits only, e.g. 12. Put any letter or suffix (A, bis, -1) in houseNumberExtension." },
+      { arg: "houseNumberExtension", element: "HouseNrExtension", type: "string", description: "House number addition (toevoeging), e.g. A, bis or 3-hoog. Optional." },
+      { arg: "roomNumber", element: "RoomNumber", type: "string", description: "Room or unit number inside the building, e.g. in an office complex or care home. Only needed when isRoomNumberKnown is true." },
+      { arg: "isRoomNumberKnown", element: "IsRoomNumberKnown", type: "boolean", required: true, label: "Room number known", description: "Do you know the room number? Set true and fill in roomNumber, or set false if not (false is the usual value: most homes have no room number)." },
     ],
   },
   {

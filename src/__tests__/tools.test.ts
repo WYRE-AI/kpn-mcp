@@ -133,6 +133,18 @@ describe("default Grexx surface", () => {
     }
   });
 
+  it("uses calm, read-only Grexx descriptions without legacy wording", () => {
+    for (const tool of GREXX_TOOLS) {
+      expect(tool.description, tool.name).not.toMatch(/VOIP|PBX|Microsoft Office|Microsoft cloud/);
+      expect(tool.description, tool.name).toMatch(/\(Grexx: .+\)$/);
+      if (tool.annotations?.readOnlyHint !== true) {
+        expect(tool.description, tool.name).not.toContain("Read-only.");
+        continue;
+      }
+      expect(tool.description, tool.name).toContain("Read-only.");
+    }
+  });
+
   it("zipcode_check requires the XSD fields the SDK builder knows", () => {
     const schema = GREXX_TOOLS[1].inputSchema as { required?: string[]; properties?: Record<string, { enum?: string[] }> };
     expect([...(schema.required ?? [])].sort()).toEqual(
@@ -172,7 +184,7 @@ describe("default Grexx surface", () => {
     const schema = tool?.inputSchema as { properties?: Record<string, { type?: string; pattern?: unknown }> };
     expect(schema.properties?.zipCode).toEqual({
       type: "string",
-      description: 'Dutch postcode, e.g. "1012JS".',
+      description: 'Dutch postcode: four digits and two letters, with or without a space, e.g. "1012 JS" or "1012JS".',
     });
     expect(schema.properties?.zipCode?.pattern).toBeUndefined();
   });
@@ -184,10 +196,10 @@ describe("default Grexx surface", () => {
       properties?: Record<string, { type?: string; description?: string; minimum?: number }>;
     };
     expect(schema.required).toEqual(["houseNumber", "isRoomNumberKnown"]);
-    expect(schema.properties?.zipCode).toEqual({ type: "string", description: "Dutch postcode, e.g. 1012JS. Optional." });
+    expect(schema.properties?.zipCode).toEqual({ type: "string", description: "Dutch postcode: four digits and two letters, e.g. 1012JS. Optional, but strongly recommended: a house number alone may match several addresses." });
     expect(schema.properties?.houseNumber).toEqual({
       type: "integer",
-      description: "House number, e.g. 12.",
+      description: "House number, digits only, e.g. 12. Put any letter or suffix (A, bis, -1) in houseNumberExtension.",
       minimum: 1,
     });
   });
@@ -230,7 +242,7 @@ describe("default Grexx surface", () => {
     expect(plannedLine?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
-  it("voip_usage requires the XSD order id and E.164 phone number and stays read-only", () => {
+  it("voip_usage requires the XSD order id and international phone number and stays read-only", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_voip_usage");
     const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string; pattern?: RegExp }> };
     expect(schema.required).toEqual(["orderId", "phoneNumber"]);
@@ -238,6 +250,23 @@ describe("default Grexx surface", () => {
     expect(schema.properties?.phoneNumber?.pattern).toBe("^\\+\\d{9,15}$");
     expect(Object.keys(schema.properties ?? {})).toEqual(["orderId", "phoneNumber"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("uses caller-facing wording for the B1 usage and invoice reads", () => {
+    const expected: Record<string, string> = {
+      "kpn_grexx_mobile_total_usage":
+        "Get total mobile usage (data, calls, SMS and extra costs) per subscription for a KPN customer. Read-only. Data appears about 5 minutes after a line is activated. (Grexx: GetMobileSubscriptionTotalUsageRequest_V1)",
+      "kpn_grexx_voip_usage":
+        "Get current-period VoIP call usage (number of calls, cost and duration) for one KPN VoIP order. Read-only. Data appears about 5 minutes after activation. (Grexx: GetVoipUsageRequest_V1)",
+      "kpn_grexx_voip_total_usage":
+        "Get total VoIP call usage (number of calls, cost and duration) per phone number for a KPN customer. Read-only. (Grexx: GetVoipTotalUsageRequest_V1)",
+      "kpn_grexx_invoice_catalog":
+        "List a KPN customer's invoices from the last 12 months (invoice number, date, amount and document details). Read-only. Doesn't return the invoice PDFs. (Grexx: CustomerInvoiceCatalogRequest_V1)",
+    };
+    for (const [name, description] of Object.entries(expected)) {
+      const tool = GREXX_TOOLS.find((item) => item.name === name);
+      expect(tool?.description, name).toBe(description);
+    }
   });
 
   it("voip_total_usage requires the XSD customer id and stays read-only", () => {
