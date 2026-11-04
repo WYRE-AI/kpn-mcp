@@ -37,7 +37,7 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   - `kpn_grexx_cloud_tenant`: Microsoft cloud tenant information.
   - `kpn_grexx_microsoft_tenant_exists`: Microsoft tenant existence.
   - `kpn_grexx_microsoft_domain_ownership`: delegated access and onboarding readiness.
-  - `kpn_grexx_custom_price`: accepted or rejected custom pricing.
+  - `kpn_grexx_custom_price`: confirmed accepted/rejected custom pricing decision; tier D, destructive, confirmation required.
   `start_line_diagnose` starts
   a test at KPN, so it is not read-only and is never retried. SIM codes and the
   RadiusCheck PPP password are masked.

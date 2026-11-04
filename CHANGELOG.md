@@ -25,6 +25,12 @@ Releases are cut by semantic-release from Conventional Commits.
 - Three Grexx IRMA realtime reads for subscription and upgrade context:
   `kpn_grexx_microsoft_subscription_end_date`, `kpn_grexx_upgrade_info`, and
   `kpn_grexx_related_products`.
+- Five Grexx IRMA realtime reads for the VOIP/cloud pricing batch:
+  `kpn_grexx_hip_number_orders`, `kpn_grexx_clean_internet_info`,
+  `kpn_grexx_cloud_tenant`, `kpn_grexx_microsoft_tenant_exists`, and
+  `kpn_grexx_microsoft_domain_ownership`.
+- `kpn_grexx_custom_price` is a confirmed destructive write that submits an
+  accepted or rejected custom price decision; it is not retried.
 - 11 Grexx IRMA realtime tools built from the portal request XSDs: `kpn_grexx_carrier_info`,
   `kpn_grexx_radius_check`, `kpn_grexx_ras_check`, `kpn_grexx_start_line_diagnose`,
   `kpn_grexx_customer_data`, `kpn_grexx_order_summary`, `kpn_grexx_get_sim`,

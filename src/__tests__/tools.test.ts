@@ -106,7 +106,7 @@ describe("default Grexx surface", () => {
     expect(TOOL_NAMES).not.toContain("kpn_mobile_sim_block");
   });
 
-  it("serves a 26-tool default Grexx surface", () => {
+  it("serves a 32-tool default Grexx surface", () => {
     expect(TOOL_NAMES).toHaveLength(32);
   });
 
@@ -115,16 +115,20 @@ describe("default Grexx surface", () => {
     expect(listToolsResult().tools).toBe(listToolsResult().tools);
   });
 
-  it("every Grexx tool is an object schema with no destructive warning; only start_line_diagnose is not read-only", () => {
+  it("every Grexx tool is an object schema with the expected read-only annotations", () => {
     for (const t of GREXX_TOOLS) {
       expect(t.name).toMatch(/^kpn_grexx_[a-z_]+$/);
       expect(t.description).toBeTruthy();
       expect(t.inputSchema.type).toBe("object");
       expect(t.annotations).toMatchObject({
-        readOnlyHint: t.name !== "kpn_grexx_start_line_diagnose",
+        readOnlyHint: t.name !== "kpn_grexx_start_line_diagnose" && t.name !== "kpn_grexx_custom_price",
         openWorldHint: true,
       });
-      expect(t.description).not.toContain("⚠");
+      if (t.name === "kpn_grexx_custom_price") {
+        expect(t.description).toContain("⚠ DESTRUCTIVE.");
+      } else {
+        expect(t.description).not.toContain("⚠");
+      }
       expect(t.description?.toLowerCase()).not.toContain("basic auth is the default");
     }
   });
@@ -335,13 +339,28 @@ describe("default Grexx surface", () => {
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
-  it("custom_price requires an order and confirmation state and stays read-only", () => {
+  it("custom_price requires an order and confirmation state and is a destructive write", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_custom_price");
     const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
     expect(schema.required).toEqual(["orderId", "confirmationState"]);
-    expect(Object.keys(schema.properties ?? {})).toEqual(["orderId", "confirmationState", "remark", "price", "setupPrice", "terminationPrice"]);
+    expect(Object.keys(schema.properties ?? {})).toEqual([
+      "orderId",
+      "confirmationState",
+      "remark",
+      "price",
+      "setupPrice",
+      "terminationPrice",
+      "confirm_destructive_action",
+    ]);
     expect(schema.properties?.price?.type).toBe("number");
-    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+    expect(tool?.annotations).toMatchObject({
+      readOnlyHint: false,
+      idempotentHint: false,
+      destructiveHint: true,
+      openWorldHint: true,
+    });
+    expect(tool?.description?.startsWith("⚠ DESTRUCTIVE.")).toBe(true);
+    expect(schema.properties?.confirm_destructive_action?.type).toBe("boolean");
   });
 });
 

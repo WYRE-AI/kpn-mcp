@@ -7,6 +7,7 @@
  * envelope (`IsSuccess=false`, e.g. 109 XML validation error), which carries
  * no `Status` and would otherwise look like success.
  */
+import type { InputRequiredResult } from "@modelcontextprotocol/server";
 import {
   GrexxError,
   parseGrexxError,
@@ -17,7 +18,14 @@ import {
 } from "@wyre-ai/node-kpn";
 import { GREXX_REALTIME_SPECS, type GrexxField, type GrexxRealtimeSpec } from "../tools/grexx-realtime.js";
 import { MASK } from "./masking.js";
-import { errorResult, jsonResult, ToolInputError, type ToolResult } from "./results.js";
+import {
+  errorResult,
+  jsonResult,
+  textResult,
+  ToolInputError,
+  type ToolResult,
+} from "./results.js";
+import { confirmDestructive, NO_ELICITATION, type ElicitationContext } from "../elicitation.js";
 
 /**
  * SIM and line secrets: PIN/PUK/PUC codes, eSIM activation and confirmation
@@ -67,7 +75,7 @@ function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
     case "integer":
       return readInteger(field, value);
     case "decimal": {
-      const num = typeof value === "string" && /^-?\d+(\.\d+)?$/.test(value.trim()) ? Number(value) : value;
+      const num = typeof value === "string" && /^-?(\d+(\.\d+)?|\.\d+)$/.test(value.trim()) ? Number(value) : value;
       if (typeof num !== "number" || !Number.isFinite(num)) fail(field, "must be a decimal.");
       const min = field.min ?? XS_INT_MIN;
       const max = field.max ?? XS_INT_MAX;
@@ -165,9 +173,29 @@ export function ninaErrorFromResponse(error: GrexxError): GrexxError | undefined
 export async function callRealtime(
   client: GrexxClient,
   spec: GrexxRealtimeSpec,
-  args: Record<string, unknown>
-): Promise<ToolResult> {
+  args: Record<string, unknown>,
+  elicitation: ElicitationContext = NO_ELICITATION
+): Promise<ToolResult | InputRequiredResult> {
   const body = buildRealtimeBody(spec, args);
+  if (spec.destructive === true) {
+    const decision = String(body.ConfirmationState ?? "");
+    const orderId = String(body.OrderId ?? "");
+    const details: string[] = [];
+    if (body.Price !== undefined) details.push(`price ${body.Price}`);
+    if (body.SetupPrice !== undefined) details.push(`setup ${body.SetupPrice}`);
+    if (body.TerminationPrice !== undefined) details.push(`termination ${body.TerminationPrice}`);
+    const detailText = details.length > 0 ? ` (${details.join(", ")})` : "";
+    const remark = body.Remark === undefined ? "none" : String(body.Remark);
+    const gate = confirmDestructive(
+      elicitation,
+      args,
+      `Submit custom price decision ${decision} on order ${orderId}${detailText}; remark: ${remark}?`
+    );
+    if (gate.kind === "ask") return gate.result;
+    if (gate.kind === "blocked") return errorResult(gate.message);
+    if (gate.kind === "refused") return textResult("Cancelled; nothing was changed.");
+    if (gate.kind !== "proceed") throw new Error("Unexpected destructive confirmation outcome.");
+  }
   const result = await client.postRealtime(spec.request, body, { idempotent: spec.readOnly !== false });
   const rejected = ninaError(result.document, result.requestId);
   if (rejected) throw rejected;
@@ -207,5 +235,17 @@ export async function callRealtime(
   return jsonResult(output);
 }
 
-export const GREXX_REALTIME_HANDLERS: Record<string, (client: GrexxClient, args: Record<string, unknown>) => Promise<ToolResult>> =
-  Object.fromEntries(GREXX_REALTIME_SPECS.map((spec) => [spec.tool, (client: GrexxClient, args: Record<string, unknown>) => callRealtime(client, spec, args)]));
+export type GrexxRealtimeHandler = (
+  client: GrexxClient,
+  args: Record<string, unknown>,
+  elicitation?: ElicitationContext
+) => Promise<ToolResult | InputRequiredResult>;
+
+export const GREXX_REALTIME_HANDLERS: Record<string, GrexxRealtimeHandler> =
+  Object.fromEntries(
+    GREXX_REALTIME_SPECS.map((spec) => [
+      spec.tool,
+      (client: GrexxClient, args: Record<string, unknown>, elicitation: ElicitationContext = NO_ELICITATION) =>
+        callRealtime(client, spec, args, elicitation),
+    ])
+  );

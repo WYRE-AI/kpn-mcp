@@ -8,12 +8,14 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
   GrexxError,
+  GrexxServerError,
   parseXml,
   readGrexxStatus,
   renderRealtimeBody,
   type GrexxClient,
   type GrexxRealtimeResult,
 } from "@wyre-ai/node-kpn";
+import { CONFIRM_ARG } from "../elicitation.js";
 import { buildRealtimeBody } from "../handlers/grexx-realtime.js";
 import { describeGrexxError, handleGrexxToolCall } from "../handlers/index.js";
 import { MASK } from "../handlers/masking.js";
@@ -112,7 +114,10 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
     args: { customerId: 28665, tenantId: "12345678-1234-1234-1234-123456789012" },
     body: { CustomerId: 28665, TenantId: "12345678-1234-1234-1234-123456789012" },
   },
-  kpn_grexx_custom_price: { args: { orderId: 123456, confirmationState: "Accepted" }, body: { OrderId: 123456, ConfirmationState: "Accepted" } },
+  kpn_grexx_custom_price: {
+    args: { orderId: 123456, confirmationState: "Accepted", [CONFIRM_ARG]: true },
+    body: { OrderId: 123456, ConfirmationState: "Accepted" },
+  },
 };
 
 describe("realtime tool surface", () => {
@@ -142,17 +147,20 @@ describe("realtime tool surface", () => {
     for (const s of GREXX_REALTIME_SPECS) {
       const tool = GREXX_TOOLS.find((t) => t.name === s.tool)!;
       const schema = tool.inputSchema as { properties: Record<string, unknown>; required?: string[] };
-      expect(Object.keys(schema.properties), s.tool).toEqual(s.fields.map((f) => f.arg));
+      expect(Object.keys(schema.properties), s.tool).toEqual([
+        ...s.fields.map((f) => f.arg),
+        ...(s.destructive ? [CONFIRM_ARG] : []),
+      ]);
       expect(schema.required ?? [], s.tool).toEqual(s.fields.filter((f) => f.required).map((f) => f.arg));
     }
   });
 
-  it("marks start_line_diagnose as not read-only and every other spec as read-only", () => {
+  it("marks start_line_diagnose and custom_price as writes and the other specs as read-only", () => {
     for (const s of GREXX_REALTIME_SPECS) {
       const tool = GREXX_TOOLS.find((t) => t.name === s.tool)!;
-      const readOnly = s.tool !== "kpn_grexx_start_line_diagnose";
+      const readOnly = s.tool !== "kpn_grexx_start_line_diagnose" && s.tool !== "kpn_grexx_custom_price";
       expect(tool.annotations?.readOnlyHint, s.tool).toBe(readOnly);
-      expect(tool.annotations?.destructiveHint ?? false, s.tool).toBe(false);
+      expect(tool.annotations?.destructiveHint ?? false, s.tool).toBe(s.tool === "kpn_grexx_custom_price");
     }
   });
 
@@ -163,11 +171,91 @@ describe("realtime tool surface", () => {
       "kpn_grexx_cloud_tenant",
       "kpn_grexx_microsoft_tenant_exists",
       "kpn_grexx_microsoft_domain_ownership",
-      "kpn_grexx_custom_price",
     ]) {
       const toolDefinition = GREXX_TOOLS.find((item) => item.name === tool)!;
       expect(toolDefinition.annotations).toMatchObject({ readOnlyHint: true });
     }
+  });
+
+  it("marks custom_price as a destructive write with a confirmation argument", () => {
+    const toolDefinition = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_custom_price")!;
+    expect(toolDefinition.annotations).toMatchObject({
+      readOnlyHint: false,
+      idempotentHint: false,
+      destructiveHint: true,
+      openWorldHint: true,
+    });
+    const schema = toolDefinition.inputSchema as {
+      properties?: Record<string, { type?: string }>;
+      required?: string[];
+    };
+    expect(schema.properties?.confirm_destructive_action?.type).toBe("boolean");
+    expect(schema.required ?? []).not.toContain("confirm_destructive_action");
+    expect(toolDefinition.description).toContain("⚠ DESTRUCTIVE.");
+  });
+
+  it("blocks custom_price without confirmation and does not post", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_custom_price", {
+      orderId: 1234567,
+      confirmationState: "Accepted",
+      remark: "Accepted pricing",
+      price: 10,
+      setupPrice: 0,
+      terminationPrice: 0,
+    })) as ToolResult;
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("1234567");
+    expect(text(result)).toContain("Accepted");
+    expect(postRealtime).not.toHaveBeenCalled();
+  });
+
+  it("confirms a custom price and posts exactly one non-retried write", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    const args = {
+      orderId: 1234567,
+      confirmationState: "Accepted",
+      remark: "Accepted pricing",
+      price: 10,
+      setupPrice: 0,
+      terminationPrice: 0,
+      [CONFIRM_ARG]: true,
+    };
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_custom_price", args)) as ToolResult;
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledTimes(1);
+    expect(postRealtime).toHaveBeenCalledWith(
+      "CustomPriceRequest_V1",
+      {
+        OrderId: 1234567,
+        ConfirmationState: "Accepted",
+        Remark: "Accepted pricing",
+        Price: 10,
+        SetupPrice: 0,
+        TerminationPrice: 0,
+      },
+      { idempotent: false }
+    );
+    const xml = renderRealtimeBody(
+      "CustomPriceRequest_V1",
+      buildRealtimeBody(spec("kpn_grexx_custom_price"), args)
+    );
+    expect(xml).toContain(
+      "<CustomPriceRequest_V1><OrderId>1234567</OrderId><ConfirmationState>Accepted</ConfirmationState>" +
+        "<Remark>Accepted pricing</Remark><Price>10</Price><SetupPrice>0</SetupPrice>" +
+        "<TerminationPrice>0</TerminationPrice></CustomPriceRequest_V1>"
+    );
+  });
+
+  it("rejects an invalid custom price decision before asking for confirmation", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_custom_price", {
+      orderId: 1234567,
+      confirmationState: "Maybe",
+    })) as ToolResult;
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain('Argument "confirmationState" must be one of');
+    expect(postRealtime).not.toHaveBeenCalled();
   });
 
   it("normalizes the postcode before building the XSD request", async () => {
@@ -218,7 +306,8 @@ describe("request bodies", () => {
     const { client, postRealtime } = stub(fixture(spec(tool).response));
     await handleGrexxToolCall(client, tool, args);
     expect(postRealtime).toHaveBeenCalledWith(spec(tool).request, body, {
-      idempotent: tool !== "kpn_grexx_start_line_diagnose",
+      idempotent:
+        tool !== "kpn_grexx_start_line_diagnose" && tool !== "kpn_grexx_custom_price",
     });
   });
 
@@ -505,5 +594,17 @@ describe("describeGrexxError", () => {
     const message = describeGrexxError(error, "kpn_grexx_prequalification");
     expect(message).toContain("Grexx error (HTTP 200, 107): Message type not allowed");
     expect(message).toContain("rid");
+  });
+
+  it("adds the Grexx write retry hint on a 5xx error for custom_price", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    postRealtime.mockRejectedValue(new GrexxServerError("Bad gateway", 502, {}));
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_custom_price", {
+      orderId: 1234567,
+      confirmationState: "Accepted",
+      [CONFIRM_ARG]: true,
+    })) as ToolResult;
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("The request may or may not have reached KPN; check the order in KPN before retrying.");
   });
 });

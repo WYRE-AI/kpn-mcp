@@ -10,6 +10,7 @@
  * live in grexx.ts instead.
  */
 import type { Tool } from "@modelcontextprotocol/server";
+import { CONFIRM_ARG, CONFIRM_ARG_PROPERTY } from "../elicitation.js";
 
 export type GrexxFieldType = "string" | "integer" | "boolean" | "dateTime" | "integerList" | "decimal";
 
@@ -31,8 +32,6 @@ export interface GrexxField {
   max?: number;
   /** integerList: XSD item element name (`OrderId`). */
   item?: string;
-    /** decimal: XSD decimal value. */
-    decimal?: boolean;
 }
 
 export interface GrexxRealtimeSpec {
@@ -47,6 +46,10 @@ export interface GrexxRealtimeSpec {
   check?: (args: Record<string, unknown>) => string | undefined;
   /** False for calls that start work at KPN (not retried, not read-only). */
   readOnly?: boolean;
+  /** True for irreversible commercial actions that require confirmation. */
+  destructive?: boolean;
+  /** True for irreversible commercial actions that require a confirmation gate. */
+  confirm?: boolean;
 }
 
 const orderId = (what: string): GrexxField => ({
@@ -79,6 +82,11 @@ const CUSTOMER_ORDER_BY = [
 const CARRIER_PRODUCT_TYPES = ["xDSL", "FttH", "WeasFiber", "All"] as const;
 
 const LINE_DIAGNOSE_SYMPTOMS = ["Sym103", "Sym104", "Sym105", "Sym111"] as const;
+
+/** Grexx realtime tools that submit a request rather than return data. */
+export function isGrexxWriteTool(name: string): boolean {
+  return GREXX_REALTIME_SPECS.some((spec) => spec.tool === name && spec.readOnly === false);
+}
 
 export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
   // Connectivity
@@ -429,13 +437,15 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     tool: "kpn_grexx_custom_price",
     request: "CustomPriceRequest_V1",
     response: "CustomPriceResponse_V1",
-    readOnly: true,
+    readOnly: false,
+    destructive: true,
+    confirm: true,
     description:
-      "Accepted or rejected custom (maatwerk) pricing for an IRMA order (CustomPriceRequest_V1). " +
-      "This is a pricing lookup; it does not submit the pricing decision.",
+      "⚠ DESTRUCTIVE. Accept or reject a KPN custom price on an order (CustomPriceRequest_V1). " +
+      "Submits the decision; not retried. Confirm with the user before invoking.",
     fields: [
       { arg: "orderId", element: "OrderId", type: "integer", required: true, min: 1, description: "IRMA order ID for which custom pricing was accepted or rejected." },
-      { arg: "confirmationState", element: "ConfirmationState", type: "string", required: true, enum: ["Accepted", "Rejected"], description: "Whether KPN accepted or rejected the custom price." },
+      { arg: "confirmationState", element: "ConfirmationState", type: "string", required: true, enum: ["Accepted", "Rejected"], description: "Your decision on the custom price: Accepted or Rejected." },
       { arg: "remark", element: "Remark", type: "string", description: "Optional pricing decision remark." },
       { arg: "price", element: "Price", type: "decimal", required: false, description: "Proposed custom price. Optional." },
       { arg: "setupPrice", element: "SetupPrice", type: "decimal", required: false, description: "Proposed custom setup price. Optional." },
@@ -474,22 +484,29 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
 
 /** Build the MCP tool definition for a spec. */
 export function realtimeTool(spec: GrexxRealtimeSpec): Tool {
-  const readOnly = spec.readOnly !== false;
+  const isWrite = spec.readOnly === false;
+  const destructive = spec.destructive === true;
   return {
     name: spec.tool,
     description: spec.description,
     inputSchema: {
       type: "object",
-      properties: Object.fromEntries(
-        spec.fields.map((field) => [field.arg, fieldSchema(field)])
-      ) as NonNullable<Tool["inputSchema"]["properties"]>,
+      properties: {
+        ...Object.fromEntries(
+          spec.fields.map((field) => [field.arg, fieldSchema(field)])
+        ),
+        ...(destructive ? { [CONFIRM_ARG]: CONFIRM_ARG_PROPERTY[CONFIRM_ARG] } : {}),
+      } as NonNullable<Tool["inputSchema"]["properties"]>,
       ...(spec.fields.some((field) => field.required)
         ? { required: spec.fields.filter((field) => field.required).map((field) => field.arg) }
         : {}),
     },
-    annotations: readOnly
-      ? { readOnlyHint: true, openWorldHint: true, idempotentHint: true }
-      : { readOnlyHint: false, destructiveHint: false, openWorldHint: true, idempotentHint: false },
+    annotations: {
+      readOnlyHint: !isWrite,
+      destructiveHint: destructive,
+      idempotentHint: !isWrite,
+      openWorldHint: true,
+    },
   };
 }
 

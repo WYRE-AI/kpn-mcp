@@ -81,9 +81,9 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_cloud_tenant` | `CloudTenantRequest_V2` | Microsoft cloud tenant for an IRMA customer |
 | `kpn_grexx_microsoft_tenant_exists` | `MicrosoftTenantExistsCheckRequest_V1` | Microsoft tenant existence |
 | `kpn_grexx_microsoft_domain_ownership` | `MicrosoftTenantDomainOwnershipCheckRequest_V1` | delegated access and onboarding readiness |
-| `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | accepted or rejected custom pricing |
+| `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | confirmed custom price decision submit; tier D, destructive, confirmation required |
 
-The tools added for the mobile line-troubleshooting and renewal/upsell batches are all reads. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
+The tools added for the mobile line-troubleshooting and renewal/upsell batches are reads except `kpn_grexx_custom_price`, which is a confirmed destructive write. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
 
 Results are JSON: `request`, `response`, `code`, `messages`, `requestId`, `httpStatus`, `data` (the response document without `Status`), and `secretsMasked: true` when anything was masked. Lists come back as parsed: one element is an object, several are an array.
 
