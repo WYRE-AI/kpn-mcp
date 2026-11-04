@@ -16,7 +16,7 @@ import {
   type GrexxRealtimeResult,
 } from "@wyre-ai/node-kpn";
 import { CONFIRM_ARG } from "../elicitation.js";
-import { buildRealtimeBody } from "../handlers/grexx-realtime.js";
+import { buildRealtimeBody, customPricePrompt } from "../handlers/grexx-realtime.js";
 import { describeGrexxError, handleGrexxToolCall } from "../handlers/index.js";
 import { MASK } from "../handlers/masking.js";
 import type { ToolResult } from "../handlers/results.js";
@@ -247,6 +247,31 @@ describe("realtime tool surface", () => {
     );
   });
 
+  it("builds the custom price prompt from the validated values only", () => {
+    const accept = buildRealtimeBody(spec("kpn_grexx_custom_price"), {
+      orderId: "1234567",
+      confirmationState: "Accepted",
+      price: "24.95",
+      setupPrice: 0,
+      terminationPrice: 0,
+      remark: "Agreed by phone",
+    });
+    expect(customPricePrompt(accept)).toBe(
+      "Accept KPN's custom price on order 1234567?\n" +
+        "  Order: 1234567\n" +
+        "  Decision: Accepted\n" +
+        "  Price: 24.95, setup: 0, termination: 0\n" +
+        "  Remark: Agreed by phone\n" +
+        "  Reversible: not through this tool.\n" +
+        "[Accept custom price] [Cancel]"
+    );
+    const reject = buildRealtimeBody(spec("kpn_grexx_custom_price"), { orderId: 42, confirmationState: "Rejected" });
+    expect(customPricePrompt(reject)).toBe(
+      "Reject KPN's custom price on order 42?\n  Order: 42\n  Decision: Rejected\n" +
+        "  Reversible: not through this tool.\n[Reject custom price] [Cancel]"
+    );
+  });
+
   it("rejects an invalid custom price decision before asking for confirmation", async () => {
     const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
     const result = (await handleGrexxToolCall(client, "kpn_grexx_custom_price", {
@@ -254,7 +279,7 @@ describe("realtime tool surface", () => {
       confirmationState: "Maybe",
     })) as ToolResult;
     expect(result.isError).toBe(true);
-    expect(text(result)).toContain('Argument "confirmationState" must be one of');
+    expect(text(result)).toContain("Decision must be one of: Accepted, Rejected.");
     expect(postRealtime).not.toHaveBeenCalled();
   });
 
@@ -398,13 +423,14 @@ describe("request bodies", () => {
     ["kpn_grexx_related_products", { customerId: 28665 }, "Product code (productCode) is required."],
     ["kpn_grexx_related_products", { customerId: 28665, productCode: "MOB-0012345678901234" }, "Product code can be at most 13 characters."],
     ["kpn_grexx_related_products", { customerId: 28665, productCode: "  " }, "Product code can't be empty."],
-    ["kpn_grexx_hip_number_orders", { orderIds: [] }, "at least 1"],
-    ["kpn_grexx_hip_number_orders", { orderIds: Array.from({ length: 51 }, (_, index) => index + 1) }, "at most 50"],
-    ["kpn_grexx_clean_internet_info", {}, 'Argument "orderId" is required.'],
-    ["kpn_grexx_cloud_tenant", {}, 'Argument "customerId" is required.'],
-    ["kpn_grexx_microsoft_tenant_exists", { tenantName: "uwdomein.example.com" }, "does not match"],
-    ["kpn_grexx_microsoft_domain_ownership", { customerId: 28665, tenantId: "not-a-uuid" }, "does not match"],
-    ["kpn_grexx_custom_price", { orderId: 123456 }, 'Argument "confirmationState" is required.'],
+    ["kpn_grexx_hip_number_orders", { orderIds: [] }, "Order numbers can't be empty."],
+    ["kpn_grexx_hip_number_orders", { orderIds: Array.from({ length: 51 }, (_, index) => index + 1) }, "Order numbers can have at most 50 items."],
+    ["kpn_grexx_clean_internet_info", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_cloud_tenant", {}, "Customer number (customerId) is required."],
+    ["kpn_grexx_microsoft_tenant_exists", { tenantName: "uwdomein.example.com" }, "Tenant name must end in .onmicrosoft.com, e.g. yourcompany.onmicrosoft.com."],
+    ["kpn_grexx_microsoft_domain_ownership", { customerId: 28665, tenantId: "not-a-uuid" }, "Tenant ID must be a 36-character ID like 1b2c3d4e-0000-1111-2222-333344445555. You can find it in the Microsoft 365 admin center."],
+    ["kpn_grexx_custom_price", { orderId: 123456 }, "Decision (confirmationState) is required."],
+    ["kpn_grexx_custom_price", { orderId: 123456, confirmationState: "Accepted", price: "abc" }, "Price must be a number, e.g. 24.95."],
   ])("%s rejects %j without calling Grexx", async (tool, args, message) => {
     const { client, postRealtime } = stub(fixture("OrderDataResponse_V1"));
     const result = (await handleGrexxToolCall(client, tool, args)) as ToolResult;

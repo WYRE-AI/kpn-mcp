@@ -395,10 +395,10 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetHipPhoneNumberOrdersResponse_V1",
     readOnly: true,
     description:
-      "Order information for one or more HIP phone numbers on an IRMA customer card " +
-      "(GetHipPhoneNumberOrdersRequest_V1). Up to 50 order IDs per call.",
+      "Get order details for up to 50 KPN HIP phone numbers, e.g. number porting status. Read-only. " +
+      "(Grexx: GetHipPhoneNumberOrdersRequest_V1)",
     fields: [
-      { arg: "orderIds", element: "OrderIds", type: "integerList", item: "OrderId", required: true, min: 1, max: 50, description: "IRMA order IDs of the HIP phone numbers (1-50)." },
+      { arg: "orderIds", element: "OrderIds", type: "integerList", item: "OrderId", required: true, min: 1, max: 50, label: "Order numbers", description: "KPN order numbers (IRMA order IDs) of the phone numbers to look up: 1 to 50 per call." },
     ],
   },
   {
@@ -407,7 +407,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetCleanInternetInfoResponse_V1",
     readOnly: true,
     description:
-      "Whether Extra Safe Internet is active for an IRMA order (GetCleanInternetInfoRequest_V1).",
+      "Check whether Extra Safe Internet (CleanInternet) is switched on for a KPN internet order. Read-only. " +
+      "(Grexx: GetCleanInternetInfoRequest_V1)",
     fields: [orderId("the Extra Safe Internet order")],
   },
   {
@@ -416,9 +417,10 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "CloudTenantResponse_V2",
     readOnly: true,
     description:
-      "Microsoft cloud tenant information for an IRMA customer (CloudTenantRequest_V2). " +
-      "The tenant is created once when the first cloud license order is placed.",
-    fields: [{ arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." }],
+      "Get the Microsoft 365 tenant (the customer's Microsoft account environment) that KPN manages for a " +
+      "customer. Read-only. A customer only has one after their first Microsoft 365 order. " +
+      "(Grexx: CloudTenantRequest_V2)",
+    fields: [{ arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." }],
   },
   {
     tool: "kpn_grexx_microsoft_tenant_exists",
@@ -426,10 +428,10 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "MicrosoftTenantExistsCheckResponse_V1",
     readOnly: true,
     description:
-      "Whether a Microsoft tenant exists (MicrosoftTenantExistsCheckRequest_V1). " +
-      "Tenant names use the `tenant.onmicrosoft.com` form.",
+      "Check whether a Microsoft 365 tenant name is already taken, e.g. before ordering Microsoft 365. " +
+      "Read-only. Use the yourcompany.onmicrosoft.com form. (Grexx: MicrosoftTenantExistsCheckRequest_V1)",
     fields: [
-      { arg: "tenantName", element: "TenantName", type: "string", required: true, pattern: /^[a-zA-Z0-9._-]{1,27}\.onmicrosoft\.com$/, description: "Microsoft tenant name, e.g. \"uwdomein.onmicrosoft.com\"." },
+      { arg: "tenantName", element: "TenantName", type: "string", required: true, pattern: /^[a-zA-Z0-9._-]{1,27}\.onmicrosoft\.com$/, label: "Tenant name", formatHint: "Tenant name must end in .onmicrosoft.com, e.g. yourcompany.onmicrosoft.com.", description: "Microsoft 365 tenant name ending in .onmicrosoft.com, up to 27 characters before it, e.g. \"yourcompany.onmicrosoft.com\"." },
     ],
   },
   {
@@ -438,11 +440,11 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "MicrosoftTenantDomainOwnershipCheckResponse_V1",
     readOnly: true,
     description:
-      "Whether an IRMA customer has delegated access to a Microsoft tenant and whether the tenant is ready for onboarding " +
-      "(MicrosoftTenantDomainOwnershipCheckRequest_V1).",
+      "Check whether KPN has been given admin access (delegated access) to a customer's existing Microsoft 365 " +
+      "tenant, and whether it's ready to move to KPN. Read-only. (Grexx: MicrosoftTenantDomainOwnershipCheckRequest_V1)",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
-      { arg: "tenantId", element: "TenantId", type: "string", required: true, pattern: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, description: "Microsoft tenant ID (UUID)." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
+      { arg: "tenantId", element: "TenantId", type: "string", required: true, pattern: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, label: "Tenant ID", formatHint: "Tenant ID must be a 36-character ID like 1b2c3d4e-0000-1111-2222-333344445555. You can find it in the Microsoft 365 admin center.", description: "Microsoft 365 tenant ID: a 36-character ID like 1b2c3d4e-0000-1111-2222-333344445555. You can find it in the Microsoft 365 admin center." },
     ],
   },
   {
@@ -453,15 +455,16 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     destructive: true,
     confirm: true,
     description:
-      "⚠ DESTRUCTIVE. Accept or reject a KPN custom price on an order (CustomPriceRequest_V1). " +
-      "Submits the decision; not retried. Confirm with the user before invoking.",
+      "⚠ DESTRUCTIVE. Accepts or rejects a custom (maatwerk) price that KPN proposed on an order. " +
+      "Submits your decision to KPN in one call and is not retried; it can't be undone through this tool. " +
+      "Confirm with the user before invoking. (Grexx: CustomPriceRequest_V1)",
     fields: [
-      { arg: "orderId", element: "OrderId", type: "integer", required: true, min: 1, description: "IRMA order ID for which custom pricing was accepted or rejected." },
-      { arg: "confirmationState", element: "ConfirmationState", type: "string", required: true, enum: ["Accepted", "Rejected"], description: "Your decision on the custom price: Accepted or Rejected." },
-      { arg: "remark", element: "Remark", type: "string", description: "Optional pricing decision remark." },
-      { arg: "price", element: "Price", type: "decimal", required: false, description: "Proposed custom price. Optional." },
-      { arg: "setupPrice", element: "SetupPrice", type: "decimal", required: false, description: "Proposed custom setup price. Optional." },
-      { arg: "terminationPrice", element: "TerminationPrice", type: "decimal", required: false, description: "Proposed custom termination price. Optional." },
+      { arg: "orderId", element: "OrderId", type: "integer", required: true, min: 1, label: "Order number", description: "KPN order number (IRMA order ID) the custom price applies to." },
+      { arg: "confirmationState", element: "ConfirmationState", type: "string", required: true, enum: ["Accepted", "Rejected"], label: "Decision", description: "Your decision on KPN's proposed custom price: Accepted or Rejected." },
+      { arg: "remark", element: "Remark", type: "string", description: "Remark sent with your decision. Optional." },
+      { arg: "price", element: "Price", type: "decimal", required: false, description: "Custom price, e.g. 24.95. Optional." },
+      { arg: "setupPrice", element: "SetupPrice", type: "decimal", required: false, label: "Setup price", description: "Custom one-time setup price, e.g. 0.00. Optional." },
+      { arg: "terminationPrice", element: "TerminationPrice", type: "decimal", required: false, label: "Termination price", description: "Custom termination price, e.g. 0.00. Optional." },
     ],
   },
 ];

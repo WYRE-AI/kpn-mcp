@@ -76,12 +76,12 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_mobile_preferences` | `GetMobilePreferencesRequest_V1` | roaming, usage alerts, SIM block and similar line settings; read-only |
 | `kpn_grexx_mobile_module` | `GetMobileModuleRequest_V1` | whether an add-on (module) is active or pending; `orderId` is the module's own order |
 | `kpn_grexx_planned_line` | `PlannedLineRequest_V3` | planned and existing fibre/copper line for an address; postcode optional but recommended |
-| `kpn_grexx_hip_number_orders` | `GetHipPhoneNumberOrdersRequest_V1` | up to 50 HIP order IDs |
-| `kpn_grexx_clean_internet_info` | `GetCleanInternetInfoRequest_V1` | Extra Safe Internet active state |
-| `kpn_grexx_cloud_tenant` | `CloudTenantRequest_V2` | Microsoft cloud tenant for an IRMA customer |
-| `kpn_grexx_microsoft_tenant_exists` | `MicrosoftTenantExistsCheckRequest_V1` | Microsoft tenant existence |
-| `kpn_grexx_microsoft_domain_ownership` | `MicrosoftTenantDomainOwnershipCheckRequest_V1` | delegated access and onboarding readiness |
-| `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | confirmed custom price decision submit; tier D, destructive, confirmation required |
+| `kpn_grexx_hip_number_orders` | `GetHipPhoneNumberOrdersRequest_V1` | 1 to 50 order numbers per call; order details such as porting status |
+| `kpn_grexx_clean_internet_info` | `GetCleanInternetInfoRequest_V1` | whether Extra Safe Internet (CleanInternet) is on for an internet order |
+| `kpn_grexx_cloud_tenant` | `CloudTenantRequest_V2` | the Microsoft 365 tenant KPN manages for a customer |
+| `kpn_grexx_microsoft_tenant_exists` | `MicrosoftTenantExistsCheckRequest_V1` | whether a `yourcompany.onmicrosoft.com` tenant name is taken |
+| `kpn_grexx_microsoft_domain_ownership` | `MicrosoftTenantDomainOwnershipCheckRequest_V1` | whether KPN has delegated (admin) access to the tenant and it is ready to move to KPN |
+| `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | accept or reject KPN's proposed custom price; tier D, destructive, confirmed, sent once |
 
 The tools added for the mobile line-troubleshooting and renewal/upsell batches are reads except `kpn_grexx_custom_price`, which is a confirmed destructive write. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
 

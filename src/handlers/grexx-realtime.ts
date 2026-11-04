@@ -107,10 +107,10 @@ function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
       return readInteger(field, value);
     case "decimal": {
       const num = typeof value === "string" && /^-?(\d+(\.\d+)?|\.\d+)$/.test(value.trim()) ? Number(value) : value;
-      if (typeof num !== "number" || !Number.isFinite(num)) fail(field, "must be a decimal.");
+      if (typeof num !== "number" || !Number.isFinite(num)) fail(`${fieldLabel(field)} must be a number, e.g. 24.95.`);
       const min = field.min ?? XS_INT_MIN;
       const max = field.max ?? XS_INT_MAX;
-      if (num < min || num > max) fail(field, `must be between ${min} and ${max}.`);
+      if (num < min || num > max) fail(`${fieldLabel(field)} must be between ${min} and ${max}.`);
       return num;
     }
     case "boolean":
@@ -129,7 +129,7 @@ function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
     case "integerList": {
       if (!Array.isArray(value)) fail(`${fieldLabel(field)} must be a list.`);
       if (field.min !== undefined && value.length < field.min) fail(field.min === 1 ? `${fieldLabel(field)} can't be empty.` : `${fieldLabel(field)} needs at least ${field.min} items.`);
-      if (field.max !== undefined && value.length > field.max) fail(`${fieldLabel(field)} allows at most ${field.max} items.`);
+      if (field.max !== undefined && value.length > field.max) fail(`${fieldLabel(field)} can have at most ${field.max} items.`);
       const items = value.map((item) => readInteger({ ...field, min: 1, max: undefined }, item));
       return { [field.item ?? field.element]: items };
     }
@@ -203,6 +203,25 @@ export function ninaErrorFromResponse(error: GrexxError): GrexxError | undefined
   }
 }
 
+/** Confirmation prompt for kpn_grexx_custom_price, built only from the validated request body. */
+export function customPricePrompt(body: Record<string, unknown>): string {
+  const decision = String(body.ConfirmationState ?? "");
+  const orderId = String(body.OrderId ?? "");
+  const verb = decision === "Rejected" ? "Reject" : "Accept";
+  const prices: string[] = [];
+  if (body.Price !== undefined) prices.push(`price: ${String(body.Price)}`);
+  if (body.SetupPrice !== undefined) prices.push(`setup: ${String(body.SetupPrice)}`);
+  if (body.TerminationPrice !== undefined) prices.push(`termination: ${String(body.TerminationPrice)}`);
+  const lines = [`${verb} KPN's custom price on order ${orderId}?`, `  Order: ${orderId}`, `  Decision: ${decision}`];
+  if (prices.length > 0) {
+    const text = prices.join(", ");
+    lines.push(`  ${text.charAt(0).toUpperCase()}${text.slice(1)}`);
+  }
+  if (body.Remark !== undefined) lines.push(`  Remark: ${String(body.Remark)}`);
+  lines.push("  Reversible: not through this tool.", `[${verb} custom price] [Cancel]`);
+  return lines.join("\n");
+}
+
 /** Post one realtime call and return its parsed response without raw XML. */
 export async function callRealtime(
   client: GrexxClient,
@@ -212,19 +231,7 @@ export async function callRealtime(
 ): Promise<ToolResult | InputRequiredResult> {
   const body = buildRealtimeBody(spec, args);
   if (spec.destructive === true) {
-    const decision = String(body.ConfirmationState ?? "");
-    const orderId = String(body.OrderId ?? "");
-    const details: string[] = [];
-    if (body.Price !== undefined) details.push(`price ${body.Price}`);
-    if (body.SetupPrice !== undefined) details.push(`setup ${body.SetupPrice}`);
-    if (body.TerminationPrice !== undefined) details.push(`termination ${body.TerminationPrice}`);
-    const detailText = details.length > 0 ? ` (${details.join(", ")})` : "";
-    const remark = body.Remark === undefined ? "none" : String(body.Remark);
-    const gate = confirmDestructive(
-      elicitation,
-      args,
-      `Submit custom price decision ${decision} on order ${orderId}${detailText}; remark: ${remark}?`
-    );
+    const gate = confirmDestructive(elicitation, args, customPricePrompt(body));
     if (gate.kind === "ask") return gate.result;
     if (gate.kind === "blocked") return errorResult(gate.message);
     if (gate.kind === "refused") return textResult("Cancelled; nothing was changed.");

@@ -17,6 +17,10 @@ Releases are cut by semantic-release from Conventional Commits.
   message name, and use "KPN customer number (IRMA customer ID)", "VoIP" and "Microsoft 365" consistently.
 - Length errors read "<Field> can't be empty." or "<Field> must be at least N characters."
   instead of "character(s)".
+- `kpn_grexx_custom_price` asks "Accept KPN's custom price on order N?" (or Reject) and lists only the
+  validated order, decision, prices and remark, with "Reversible: not through this tool."
+- Decimal errors read "<Field> must be a number, e.g. 24.95."; Microsoft 365 tenant name and tenant ID
+  errors explain the expected form.
 - Boolean errors read "<Field> must be true or false." and point out a quoted "true"/"false" string.
 - Line-troubleshooting tools and the `kpn_grexx_planned_line` address fields use plain wording.
 - HTTP mode fails closed when `CONDUIT_S2S_SECRET` is empty or a known placeholder
