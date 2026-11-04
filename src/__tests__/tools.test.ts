@@ -167,6 +167,21 @@ describe("default Grexx surface", () => {
     expect(schema.properties?.zipCode?.pattern).toBeUndefined();
   });
 
+  it("planned_line keeps the postcode optional and validates the house number", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_planned_line");
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; description?: string; minimum?: number }>;
+    };
+    expect(schema.required).toEqual(["houseNumber", "isRoomNumberKnown"]);
+    expect(schema.properties?.zipCode).toEqual({ type: "string", description: "Dutch postcode, e.g. 1012JS. Optional." });
+    expect(schema.properties?.houseNumber).toEqual({
+      type: "integer",
+      description: "House number, e.g. 12.",
+      minimum: 1,
+    });
+  });
+
   it("mobile_total_usage requires the XSD customer id and stays read-only", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_mobile_total_usage");
     const schema = tool?.inputSchema as {

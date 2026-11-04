@@ -360,8 +360,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       "Planned line details for a Dutch address and room (PlannedLineRequest_V3). " +
       "Returns fibre and copper planning, delivery, technology, and connection status.",
     fields: [
-      { arg: "zipCode", element: "ZipCode", type: "string", description: "Dutch postcode, e.g. 1012JS. Optional." },
-      { arg: "houseNumber", element: "HouseNr", type: "integer", required: true, description: "XSD HouseNr (xs:int)." },
+      { arg: "zipCode", element: "ZipCode", type: "string", postcode: true, description: "Dutch postcode, e.g. 1012JS. Optional." },
+      { arg: "houseNumber", element: "HouseNr", type: "integer", required: true, min: 1, description: "House number, e.g. 12." },
       { arg: "houseNumberExtension", element: "HouseNrExtension", type: "string", description: "House number addition. Optional." },
       { arg: "roomNumber", element: "RoomNumber", type: "string", description: "Room number. Optional." },
       { arg: "isRoomNumberKnown", element: "IsRoomNumberKnown", type: "boolean", required: true, description: "XSD IsRoomNumberKnown. Required. False when the room number is not known." },

@@ -149,6 +149,34 @@ describe("realtime tool surface", () => {
     const xml = renderRealtimeBody("CarrierInfoRequest_V1", buildRealtimeBody(spec("kpn_grexx_carrier_info"), args));
     expect(xml).toContain("<ZipCode>1012JS</ZipCode>");
   });
+
+  it("normalizes the planned line postcode and keeps it optional", async () => {
+    const { client, postRealtime } = stub(fixture("PlannedLineResponse_V3"));
+    const args = { zipCode: "1012 js", houseNumber: 1, isRoomNumberKnown: true };
+    const result = await handleGrexxToolCall(client, "kpn_grexx_planned_line", args);
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledWith(
+      "PlannedLineRequest_V3",
+      { ZipCode: "1012JS", HouseNr: 1, IsRoomNumberKnown: true },
+      { idempotent: true }
+    );
+    const xml = renderRealtimeBody("PlannedLineRequest_V3", buildRealtimeBody(spec("kpn_grexx_planned_line"), args));
+    expect(xml).toContain("<ZipCode>1012JS</ZipCode>");
+  });
+
+  it("accepts a planned line without its optional postcode", async () => {
+    const { client, postRealtime } = stub(fixture("PlannedLineResponse_V3"));
+    const result = await handleGrexxToolCall(client, "kpn_grexx_planned_line", {
+      houseNumber: 1,
+      isRoomNumberKnown: true,
+    });
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledWith(
+      "PlannedLineRequest_V3",
+      { HouseNr: 1, IsRoomNumberKnown: true },
+      { idempotent: true }
+    );
+  });
 });
 
 describe("request bodies", () => {
@@ -228,6 +256,7 @@ describe("request bodies", () => {
     ["kpn_grexx_planned_line", {}, 'Argument "houseNumber" is required.'],
     ["kpn_grexx_planned_line", { houseNumber: 1 }, 'Argument "isRoomNumberKnown" is required.'],
     ["kpn_grexx_planned_line", { houseNumber: 1, isRoomNumberKnown: "true" }, "must be a boolean"],
+    ["kpn_grexx_planned_line", { houseNumber: 0, isRoomNumberKnown: true }, "must be at least 1."],
     ["kpn_grexx_invoice_catalog", {}, 'Argument "customerId" is required.'],
     ["kpn_grexx_available_portings", {}, "exactly one"],
     ["kpn_grexx_available_portings", { customerId: 1, hipGroupOrderId: 2 }, "exactly one"],
