@@ -8,16 +8,17 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
   GrexxError,
+  GrexxServerError,
   parseXml,
   readGrexxStatus,
   renderRealtimeBody,
   type GrexxClient,
   type GrexxRealtimeResult,
 } from "@wyre-ai/node-kpn";
-import { buildRealtimeBody } from "../handlers/grexx-realtime.js";
+import { CONFIRM_ARG } from "../elicitation.js";
+import { buildRealtimeBody, customPricePrompt } from "../handlers/grexx-realtime.js";
 import { describeGrexxError, handleGrexxToolCall } from "../handlers/index.js";
 import { MASK } from "../handlers/masking.js";
-import { CONFIRM_ARG } from "../elicitation.js";
 import type { ToolResult } from "../handlers/results.js";
 import { GREXX_TOOLS } from "../tools/grexx.js";
 import { GREXX_REALTIME_SPECS, type GrexxRealtimeSpec } from "../tools/grexx-realtime.js";
@@ -114,7 +115,10 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
     args: { customerId: 28665, tenantId: "12345678-1234-1234-1234-123456789012" },
     body: { CustomerId: 28665, TenantId: "12345678-1234-1234-1234-123456789012" },
   },
-  kpn_grexx_custom_price: { args: { orderId: 123456, confirmationState: "Accepted" }, body: { OrderId: 123456, ConfirmationState: "Accepted" } },
+  kpn_grexx_custom_price: {
+    args: { orderId: 123456, confirmationState: "Accepted", [CONFIRM_ARG]: true },
+    body: { OrderId: 123456, ConfirmationState: "Accepted" },
+  },
   kpn_grexx_get_contact: { args: { customerId: 28665, contactId: 1 }, body: { CustomerId: 28665, ContactId: 1 } },
   kpn_grexx_search_contacts: {
     args: {
@@ -303,11 +307,158 @@ describe("realtime tool surface", () => {
       "kpn_grexx_cloud_tenant",
       "kpn_grexx_microsoft_tenant_exists",
       "kpn_grexx_microsoft_domain_ownership",
-      "kpn_grexx_custom_price",
     ]) {
       const toolDefinition = GREXX_TOOLS.find((item) => item.name === tool)!;
       expect(toolDefinition.annotations).toMatchObject({ readOnlyHint: true });
     }
+  });
+
+  it("marks custom_price as a destructive write with a confirmation argument", () => {
+    const toolDefinition = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_custom_price")!;
+    expect(toolDefinition.annotations).toMatchObject({
+      readOnlyHint: false,
+      idempotentHint: false,
+      destructiveHint: true,
+      openWorldHint: true,
+    });
+    const schema = toolDefinition.inputSchema as {
+      properties?: Record<string, { type?: string }>;
+      required?: string[];
+    };
+    expect(schema.properties?.confirm_destructive_action?.type).toBe("boolean");
+    expect(schema.required ?? []).not.toContain("confirm_destructive_action");
+    expect(toolDefinition.description).toContain("⚠ DESTRUCTIVE.");
+  });
+
+  it("blocks custom_price without confirmation and does not post", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_custom_price", {
+      orderId: 1234567,
+      confirmationState: "Accepted",
+      remark: "Accepted pricing",
+      price: 10,
+      setupPrice: 0,
+      terminationPrice: 0,
+    })) as ToolResult;
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("1234567");
+    expect(text(result)).toContain("Accepted");
+    expect(postRealtime).not.toHaveBeenCalled();
+  });
+
+  it("confirms a custom price and posts exactly one non-retried write", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    const args = {
+      orderId: 1234567,
+      confirmationState: "Accepted",
+      remark: "Accepted pricing",
+      price: 10,
+      setupPrice: 0,
+      terminationPrice: 0,
+      [CONFIRM_ARG]: true,
+    };
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_custom_price", args)) as ToolResult;
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledTimes(1);
+    expect(postRealtime).toHaveBeenCalledWith(
+      "CustomPriceRequest_V1",
+      {
+        OrderId: 1234567,
+        ConfirmationState: "Accepted",
+        Remark: "Accepted pricing",
+        Price: 10,
+        SetupPrice: 0,
+        TerminationPrice: 0,
+      },
+      { idempotent: false }
+    );
+    const xml = renderRealtimeBody(
+      "CustomPriceRequest_V1",
+      buildRealtimeBody(spec("kpn_grexx_custom_price"), args)
+    );
+    expect(xml).toContain(
+      "<CustomPriceRequest_V1><OrderId>1234567</OrderId><ConfirmationState>Accepted</ConfirmationState>" +
+        "<Remark>Accepted pricing</Remark><Price>10</Price><SetupPrice>0</SetupPrice>" +
+        "<TerminationPrice>0</TerminationPrice></CustomPriceRequest_V1>"
+    );
+  });
+
+  it("builds the custom price prompt from the validated values only", () => {
+    const accept = buildRealtimeBody(spec("kpn_grexx_custom_price"), {
+      orderId: "1234567",
+      confirmationState: "Accepted",
+      price: "24.95",
+      setupPrice: 0,
+      terminationPrice: 0,
+      remark: "Agreed by phone",
+    });
+    expect(customPricePrompt(accept)).toBe(
+      "Accept KPN's custom price on order 1234567?\n" +
+        "  Order: 1234567\n" +
+        "  Decision: Accepted\n" +
+        "  Price: 24.95, setup: 0, termination: 0\n" +
+        "  Remark: Agreed by phone\n" +
+        "  Reversible: not through this tool.\n" +
+        "[Accept custom price] [Cancel]"
+    );
+    const reject = buildRealtimeBody(spec("kpn_grexx_custom_price"), { orderId: 42, confirmationState: "Rejected" });
+    expect(customPricePrompt(reject)).toBe(
+      "Reject KPN's custom price on order 42?\n  Order: 42\n  Decision: Rejected\n" +
+        "  Reversible: not through this tool.\n[Reject custom price] [Cancel]"
+    );
+  });
+
+  it("rejects an invalid custom price decision before asking for confirmation", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_custom_price", {
+      orderId: 1234567,
+      confirmationState: "Maybe",
+    })) as ToolResult;
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("Decision must be one of: Accepted, Rejected.");
+    expect(postRealtime).not.toHaveBeenCalled();
+  });
+
+  it("normalizes the postcode before building the XSD request", async () => {
+    const { client, postRealtime } = stub(fixture("CarrierInfoResponse_V1"));
+    const args = CASES.kpn_grexx_carrier_info.args;
+    const result = await handleGrexxToolCall(client, "kpn_grexx_carrier_info", args);
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledWith(
+      "CarrierInfoRequest_V1",
+      CASES.kpn_grexx_carrier_info.body,
+      { idempotent: true }
+    );
+    const xml = renderRealtimeBody("CarrierInfoRequest_V1", buildRealtimeBody(spec("kpn_grexx_carrier_info"), args));
+    expect(xml).toContain("<ZipCode>1012JS</ZipCode>");
+  });
+
+  it("normalizes the planned line postcode and keeps it optional", async () => {
+    const { client, postRealtime } = stub(fixture("PlannedLineResponse_V3"));
+    const args = { zipCode: "1012 js", houseNumber: 1, isRoomNumberKnown: true };
+    const result = await handleGrexxToolCall(client, "kpn_grexx_planned_line", args);
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledWith(
+      "PlannedLineRequest_V3",
+      { ZipCode: "1012JS", HouseNr: 1, IsRoomNumberKnown: true },
+      { idempotent: true }
+    );
+    const xml = renderRealtimeBody("PlannedLineRequest_V3", buildRealtimeBody(spec("kpn_grexx_planned_line"), args));
+    expect(xml).toContain("<ZipCode>1012JS</ZipCode>");
+  });
+
+  it("accepts a planned line without its optional postcode", async () => {
+    const { client, postRealtime } = stub(fixture("PlannedLineResponse_V3"));
+    const result = await handleGrexxToolCall(client, "kpn_grexx_planned_line", {
+      houseNumber: 1,
+      isRoomNumberKnown: true,
+    });
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledWith(
+      "PlannedLineRequest_V3",
+      { HouseNr: 1, IsRoomNumberKnown: true },
+      { idempotent: true }
+    );
   });
 });
 
@@ -430,45 +581,48 @@ describe("request bodies", () => {
   });
 
   it.each([
-    ["kpn_grexx_get_sim", {}, 'Argument "orderId" is required.'],
-    ["kpn_grexx_get_sim", { orderId: 1.5 }, "must be an integer"],
-    ["kpn_grexx_get_sim", { orderId: "0x10" }, "must be an integer"],
+    ["kpn_grexx_get_sim", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_get_sim", { orderId: 1.5 }, "Order number must be a whole number."],
+    ["kpn_grexx_get_sim", { orderId: "0x10" }, "Order number must be a whole number."],
     ["kpn_grexx_get_sim", { orderId: 3000000000 }, "at most 2147483647"],
     ["kpn_grexx_order_summary", { skip: 3000000000 }, "at most 2147483647"],
     ["kpn_grexx_customer_data", { take: 101 }, "at most 100"],
     ["kpn_grexx_order_summary", { take: 2501 }, "at most 2500"],
     ["kpn_grexx_order_summary", { orderState: "Open" }, "must be one of"],
-    ["kpn_grexx_order_summary", { dateActiveFrom: "yesterday" }, "xs:dateTime"],
-    ["kpn_grexx_order_summary", { dateModifiedFrom: "2025-01-01" }, "xs:dateTime"],
-    ["kpn_grexx_carrier_info", { ...CASES.kpn_grexx_carrier_info.args, phoneNumber: "612345678" }, "does not match"],
+    ["kpn_grexx_order_summary", { dateActiveFrom: "yesterday" }, 'Date active from must be a date and time, e.g. "2025-01-01T00:00:00Z".'],
+    ["kpn_grexx_order_summary", { dateModifiedFrom: "2025-01-01" }, 'Date modified from must be a date and time, e.g. "2025-01-01T00:00:00Z".'],
+    ["kpn_grexx_carrier_info", { ...CASES.kpn_grexx_carrier_info.args, phoneNumber: "612345678" }, "Phone number must be 10 digits starting with 0, e.g. 0201234567."],
     ["kpn_grexx_carrier_info", { ...CASES.kpn_grexx_carrier_info.args, houseNumber: 100000 }, "at most 99999"],
-    ["kpn_grexx_mobile_orders", { orderIds: [] }, "at least 1"],
+    ["kpn_grexx_mobile_orders", { orderIds: [] }, "Order numbers can't be empty."],
     ["kpn_grexx_mobile_orders", { orderIds: Array.from({ length: 51 }, (_, i) => i + 1) }, "at most 50"],
     ["kpn_grexx_mobile_total_usage", { customerId: 2147483648 }, "at most 2147483647"],
-    ["kpn_grexx_voip_usage", { orderId: 1, phoneNumber: "0612345678" }, "does not match"],
-    ["kpn_grexx_voip_usage", {}, 'Argument "orderId" is required.'],
-    ["kpn_grexx_mobile_call_forwardings", {}, 'Argument "orderId" is required.'],
-    ["kpn_grexx_mobile_preferences", {}, 'Argument "orderId" is required.'],
-    ["kpn_grexx_mobile_module", {}, 'Argument "orderId" is required.'],
-    ["kpn_grexx_planned_line", {}, 'Argument "houseNumber" is required.'],
-    ["kpn_grexx_planned_line", { houseNumber: 1 }, 'Argument "isRoomNumberKnown" is required.'],
-    ["kpn_grexx_planned_line", { houseNumber: 1, isRoomNumberKnown: "true" }, "must be a boolean"],
-    ["kpn_grexx_invoice_catalog", {}, 'Argument "customerId" is required.'],
+    ["kpn_grexx_voip_usage", { orderId: 1, phoneNumber: "0612345678" }, "Phone number must be in international format, e.g. +31612345678 (plus sign, country code, no spaces). Replace the leading 0 with +31."],
+    ["kpn_grexx_voip_usage", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_invoice_catalog", {}, "Customer number (customerId) is required."],
+    ["kpn_grexx_mobile_call_forwardings", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_mobile_preferences", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_mobile_module", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_planned_line", {}, "House number (houseNumber) is required."],
+    ["kpn_grexx_planned_line", { houseNumber: 1 }, "Room number known (isRoomNumberKnown) is required."],
+    ["kpn_grexx_planned_line", { houseNumber: 1, isRoomNumberKnown: "true" }, 'Room number known must be true or false (not the text "true").'],
+    ["kpn_grexx_planned_line", { houseNumber: 0, isRoomNumberKnown: true }, "House number must be at least 1."],
     ["kpn_grexx_available_portings", {}, "exactly one"],
     ["kpn_grexx_available_portings", { customerId: 1, hipGroupOrderId: 2 }, "exactly one"],
     ["kpn_grexx_start_line_diagnose", { orderId: 1, symptomCode: "Sym999" }, "Sym103"],
-    ["kpn_grexx_microsoft_subscription_end_date", { customerId: 28665 }, 'Argument "productId" is required.'],
-    ["kpn_grexx_microsoft_subscription_end_date", { customerId: 28665, productId: "MS-001", orderId: 0 }, "at least 1"],
-    ["kpn_grexx_upgrade_info", {}, 'Argument "orderId" is required.'],
-    ["kpn_grexx_related_products", { customerId: 28665 }, 'Argument "productCode" is required.'],
-    ["kpn_grexx_related_products", { customerId: 28665, productCode: "MOB-0012345678901234" }, "at most 13"],
-    ["kpn_grexx_hip_number_orders", { orderIds: [] }, "at least 1"],
-    ["kpn_grexx_hip_number_orders", { orderIds: Array.from({ length: 51 }, (_, index) => index + 1) }, "at most 50"],
-    ["kpn_grexx_clean_internet_info", {}, 'Argument "orderId" is required.'],
-    ["kpn_grexx_cloud_tenant", {}, 'Argument "customerId" is required.'],
-    ["kpn_grexx_microsoft_tenant_exists", { tenantName: "uwdomein.example.com" }, "does not match"],
-    ["kpn_grexx_microsoft_domain_ownership", { customerId: 28665, tenantId: "not-a-uuid" }, "does not match"],
-    ["kpn_grexx_custom_price", { orderId: 123456 }, 'Argument "confirmationState" is required.'],
+    ["kpn_grexx_microsoft_subscription_end_date", { customerId: 28665 }, "Product code (productId) is required."],
+    ["kpn_grexx_microsoft_subscription_end_date", { customerId: 28665, productId: "MS-001", orderId: 0 }, "Order number must be at least 1."],
+    ["kpn_grexx_upgrade_info", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_related_products", { customerId: 28665 }, "Product code (productCode) is required."],
+    ["kpn_grexx_related_products", { customerId: 28665, productCode: "MOB-0012345678901234" }, "Product code can be at most 13 characters."],
+    ["kpn_grexx_related_products", { customerId: 28665, productCode: "  " }, "Product code can't be empty."],
+    ["kpn_grexx_hip_number_orders", { orderIds: [] }, "Order numbers can't be empty."],
+    ["kpn_grexx_hip_number_orders", { orderIds: Array.from({ length: 51 }, (_, index) => index + 1) }, "Order numbers can have at most 50 items."],
+    ["kpn_grexx_clean_internet_info", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_cloud_tenant", {}, "Customer number (customerId) is required."],
+    ["kpn_grexx_microsoft_tenant_exists", { tenantName: "uwdomein.example.com" }, "Tenant name must end in .onmicrosoft.com, e.g. yourcompany.onmicrosoft.com."],
+    ["kpn_grexx_microsoft_domain_ownership", { customerId: 28665, tenantId: "not-a-uuid" }, "Tenant ID must be a 36-character ID like 1b2c3d4e-0000-1111-2222-333344445555. You can find it in the Microsoft 365 admin center."],
+    ["kpn_grexx_custom_price", { orderId: 123456 }, "Decision (confirmationState) is required."],
+    ["kpn_grexx_custom_price", { orderId: 123456, confirmationState: "Accepted", price: "abc" }, "Price must be a number, e.g. 24.95."],
   ])("%s rejects %j without calling Grexx", async (tool, args, message) => {
     const { client, postRealtime } = stub(fixture("OrderDataResponse_V1"));
     const result = (await handleGrexxToolCall(client, tool, args)) as ToolResult;
@@ -689,5 +843,17 @@ describe("describeGrexxError", () => {
     const message = describeGrexxError(error, "kpn_grexx_prequalification");
     expect(message).toContain("Grexx error (HTTP 200, 107): Message type not allowed");
     expect(message).toContain("rid");
+  });
+
+  it("adds the Grexx write retry hint on a 5xx error for custom_price", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    postRealtime.mockRejectedValue(new GrexxServerError("Bad gateway", 502, {}));
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_custom_price", {
+      orderId: 1234567,
+      confirmationState: "Accepted",
+      [CONFIRM_ARG]: true,
+    })) as ToolResult;
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("The request may or may not have reached KPN; check the order in KPN before retrying.");
   });
 });

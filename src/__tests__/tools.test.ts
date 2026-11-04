@@ -153,6 +153,10 @@ describe("default Grexx surface", () => {
         expect(t.description).toContain("⚠");
         expect(t.description).toMatch(/Confirm with the user before invoking\.$/u);
         expect(t.inputSchema.properties?.[CONFIRM_ARG]).toBeDefined();
+      } else if (t.name === "kpn_grexx_custom_price") {
+        expect(t.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true, idempotentHint: false });
+        expect(t.description).toContain("⚠ DESTRUCTIVE.");
+        expect(t.inputSchema.properties?.[CONFIRM_ARG]).toBeDefined();
       } else {
         expect(t.annotations).toMatchObject({
           readOnlyHint: true,
@@ -164,6 +168,18 @@ describe("default Grexx surface", () => {
         expect(t.inputSchema.properties?.[CONFIRM_ARG]).toBeUndefined();
       }
       expect(t.description?.toLowerCase()).not.toContain("basic auth is the default");
+    }
+  });
+
+  it("uses calm, read-only Grexx descriptions without legacy wording", () => {
+    for (const tool of GREXX_TOOLS) {
+      expect(tool.description, tool.name).not.toMatch(/VOIP|PBX|Microsoft Office|Microsoft cloud/);
+      expect(tool.description, tool.name).toMatch(/\(Grexx: .+\)$/);
+      if (tool.annotations?.readOnlyHint !== true) {
+        expect(tool.description, tool.name).not.toContain("Read-only.");
+        continue;
+      }
+      expect(tool.description, tool.name).toContain("Read-only.");
     }
   });
 
@@ -201,11 +217,40 @@ describe("default Grexx surface", () => {
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
+  it("carrier_info keeps the normalised postcode schema lenient", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_carrier_info");
+    const schema = tool?.inputSchema as { properties?: Record<string, { type?: string; pattern?: unknown }> };
+    expect(schema.properties?.zipCode).toEqual({
+      type: "string",
+      description: 'Dutch postcode: four digits and two letters, with or without a space, e.g. "1012 JS" or "1012JS".',
+    });
+    expect(schema.properties?.zipCode?.pattern).toBeUndefined();
+  });
+
+  it("planned_line keeps the postcode optional and validates the house number", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_planned_line");
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; description?: string; minimum?: number }>;
+    };
+    expect(schema.required).toEqual(["houseNumber", "isRoomNumberKnown"]);
+    expect(schema.properties?.zipCode).toEqual({ type: "string", description: "Dutch postcode: four digits and two letters, e.g. 1012JS. Optional, but strongly recommended: a house number alone may match several addresses." });
+    expect(schema.properties?.houseNumber).toEqual({
+      type: "integer",
+      description: "House number, digits only, e.g. 12. Put any letter or suffix (A, bis, -1) in houseNumberExtension.",
+      minimum: 1,
+    });
+  });
+
   it("mobile_total_usage requires the XSD customer id and stays read-only", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_mobile_total_usage");
-    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; minimum?: number }>;
+    };
     expect(schema.required).toEqual(["customerId"]);
     expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(schema.properties?.customerId?.minimum).toBe(1);
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
@@ -235,7 +280,7 @@ describe("default Grexx surface", () => {
     expect(plannedLine?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
-  it("voip_usage requires the XSD order id and E.164 phone number and stays read-only", () => {
+  it("voip_usage requires the XSD order id and international phone number and stays read-only", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_voip_usage");
     const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string; pattern?: RegExp }> };
     expect(schema.required).toEqual(["orderId", "phoneNumber"]);
@@ -245,20 +290,45 @@ describe("default Grexx surface", () => {
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
+  it("uses caller-facing wording for the B1 usage and invoice reads", () => {
+    const expected: Record<string, string> = {
+      "kpn_grexx_mobile_total_usage":
+        "Get total mobile usage (data, calls, SMS and extra costs) per subscription for a KPN customer. Read-only. Data appears about 5 minutes after a line is activated. (Grexx: GetMobileSubscriptionTotalUsageRequest_V1)",
+      "kpn_grexx_voip_usage":
+        "Get current-period VoIP call usage (number of calls, cost and duration) for one KPN VoIP order. Read-only. Data appears about 5 minutes after activation. (Grexx: GetVoipUsageRequest_V1)",
+      "kpn_grexx_voip_total_usage":
+        "Get total VoIP call usage (number of calls, cost and duration) per phone number for a KPN customer. Read-only. (Grexx: GetVoipTotalUsageRequest_V1)",
+      "kpn_grexx_invoice_catalog":
+        "List a KPN customer's invoices from the last 12 months (invoice number, date, amount and document details). Read-only. Doesn't return the invoice PDFs. (Grexx: CustomerInvoiceCatalogRequest_V1)",
+    };
+    for (const [name, description] of Object.entries(expected)) {
+      const tool = GREXX_TOOLS.find((item) => item.name === name);
+      expect(tool?.description, name).toBe(description);
+    }
+  });
+
   it("voip_total_usage requires the XSD customer id and stays read-only", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_voip_total_usage");
-    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; minimum?: number }>;
+    };
     expect(schema.required).toEqual(["customerId"]);
     expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(schema.properties?.customerId?.minimum).toBe(1);
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
   it("invoice_catalog requires the XSD customer id and stays read-only", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_invoice_catalog");
-    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; minimum?: number }>;
+    };
     expect(schema.required).toEqual(["customerId"]);
     expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(schema.properties?.customerId?.minimum).toBe(1);
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
@@ -336,13 +406,28 @@ describe("default Grexx surface", () => {
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
-  it("custom_price requires an order and confirmation state and stays read-only", () => {
+  it("custom_price requires an order and confirmation state and is a destructive write", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_custom_price");
     const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
     expect(schema.required).toEqual(["orderId", "confirmationState"]);
-    expect(Object.keys(schema.properties ?? {})).toEqual(["orderId", "confirmationState", "remark", "price", "setupPrice", "terminationPrice"]);
+    expect(Object.keys(schema.properties ?? {})).toEqual([
+      "orderId",
+      "confirmationState",
+      "remark",
+      "price",
+      "setupPrice",
+      "terminationPrice",
+      "confirm_destructive_action",
+    ]);
     expect(schema.properties?.price?.type).toBe("number");
-    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+    expect(tool?.annotations).toMatchObject({
+      readOnlyHint: false,
+      idempotentHint: false,
+      destructiveHint: true,
+      openWorldHint: true,
+    });
+    expect(tool?.description?.startsWith("⚠ DESTRUCTIVE.")).toBe(true);
+    expect(schema.properties?.confirm_destructive_action?.type).toBe("boolean");
   });
 
   it("get_contact requires the XSD customer and contact ids and stays read-only", () => {

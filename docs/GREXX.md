@@ -63,25 +63,25 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_get_sim` | `GetSimRequest_V1` | `Puc1`, eSIM `ActivationCode`/`ConfirmationCode` masked |
 | `kpn_grexx_mobile_settings` | `GetMobileSettingsRequest_V1` | |
 | `kpn_grexx_mobile_usage` | `GetMobileSubscriptionUsageRequest_V1` | |
-| `kpn_grexx_mobile_total_usage` | `GetMobileSubscriptionTotalUsageRequest_V1` | total usage per IRMA customer |
+| `kpn_grexx_mobile_total_usage` | `GetMobileSubscriptionTotalUsageRequest_V1` | get total mobile usage per subscription; read-only |
 | `kpn_grexx_mobile_orders` | `GetMobileSubscriptionOrdersRequest_V1` | 1-50 ids; one bad id fails the batch; SIM codes masked |
-| `kpn_grexx_voip_usage` | `GetVoipUsageRequest_V1` | order plus E.164 phone number; calls, amount and duration |
-| `kpn_grexx_voip_total_usage` | `GetVoipTotalUsageRequest_V1` | total usage per IRMA customer |
+| `kpn_grexx_voip_usage` | `GetVoipUsageRequest_V1` | order plus international phone number; get current-period VoIP call usage |
+| `kpn_grexx_voip_total_usage` | `GetVoipTotalUsageRequest_V1` | get total VoIP call usage per phone number; read-only |
 | `kpn_grexx_available_portings` | `AvailablePortingsRequest_V1` | exactly one of customerId / hipGroupOrderId |
-| `kpn_grexx_invoice_catalog` | `CustomerInvoiceCatalogRequest_V1` | catalog only; documents are not exposed |
-| `kpn_grexx_microsoft_subscription_end_date` | `MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` | customer or optional order ID; subscription end date |
-| `kpn_grexx_upgrade_info` | `GetUpgradeInfoRequest_V1` | order upgrade options and whether upgrading is allowed |
-| `kpn_grexx_related_products` | `RelatedProductsRequest_V1` | customer and parent product; related products |
-| `kpn_grexx_mobile_call_forwardings` | `GetMobileCallForwardingsRequest_V1` | mobile call-forwarding status |
-| `kpn_grexx_mobile_preferences` | `GetMobilePreferencesRequest_V1` | mobile call-preference settings |
-| `kpn_grexx_mobile_module` | `GetMobileModuleRequest_V1` | mobile module enablement status |
-| `kpn_grexx_planned_line` | `PlannedLineRequest_V3` | planned fibre/copper line details |
-| `kpn_grexx_hip_number_orders` | `GetHipPhoneNumberOrdersRequest_V1` | up to 50 HIP order IDs |
-| `kpn_grexx_clean_internet_info` | `GetCleanInternetInfoRequest_V1` | Extra Safe Internet active state |
-| `kpn_grexx_cloud_tenant` | `CloudTenantRequest_V2` | Microsoft cloud tenant for an IRMA customer |
-| `kpn_grexx_microsoft_tenant_exists` | `MicrosoftTenantExistsCheckRequest_V1` | Microsoft tenant existence |
-| `kpn_grexx_microsoft_domain_ownership` | `MicrosoftTenantDomainOwnershipCheckRequest_V1` | delegated access and onboarding readiness |
-| `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | accepted or rejected custom pricing |
+| `kpn_grexx_invoice_catalog` | `CustomerInvoiceCatalogRequest_V1` | list invoices; does not return the PDFs |
+| `kpn_grexx_microsoft_subscription_end_date` | `MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` | customer number, product code, optional order number; without the order number, the first matching subscription |
+| `kpn_grexx_upgrade_info` | `GetUpgradeInfoRequest_V1` | whether the order can be upgraded and the target products; read-only, places nothing |
+| `kpn_grexx_related_products` | `RelatedProductsRequest_V1` | add-ons a customer can add to a main product (product code up to 13 characters) |
+| `kpn_grexx_mobile_call_forwardings` | `GetMobileCallForwardingsRequest_V1` | call forwarding: always, when not answered, when busy, when unreachable |
+| `kpn_grexx_mobile_preferences` | `GetMobilePreferencesRequest_V1` | roaming, usage alerts, SIM block and similar line settings; read-only |
+| `kpn_grexx_mobile_module` | `GetMobileModuleRequest_V1` | whether an add-on (module) is active or pending; `orderId` is the module's own order |
+| `kpn_grexx_planned_line` | `PlannedLineRequest_V3` | planned and existing fibre/copper line for an address; postcode optional but recommended |
+| `kpn_grexx_hip_number_orders` | `GetHipPhoneNumberOrdersRequest_V1` | 1 to 50 order numbers per call; order details such as porting status |
+| `kpn_grexx_clean_internet_info` | `GetCleanInternetInfoRequest_V1` | whether Extra Safe Internet (CleanInternet) is on for an internet order |
+| `kpn_grexx_cloud_tenant` | `CloudTenantRequest_V2` | the Microsoft 365 tenant KPN manages for a customer |
+| `kpn_grexx_microsoft_tenant_exists` | `MicrosoftTenantExistsCheckRequest_V1` | whether a `yourcompany.onmicrosoft.com` tenant name is taken |
+| `kpn_grexx_microsoft_domain_ownership` | `MicrosoftTenantDomainOwnershipCheckRequest_V1` | whether KPN has delegated (admin) access to the tenant and it is ready to move to KPN |
+| `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | accept or reject KPN's proposed custom price; tier D, destructive, confirmed, sent once |
 | `kpn_grexx_get_contact` | `GetContactRequest_V1` | one customer contact |
 | `kpn_grexx_search_contacts` | `GetContactsByCustomerIdAndSearchParametersRequest_V1` | customer contact search and paging |
 | `kpn_grexx_create_contact` | `CreateContactRequest_V1` | creates a contact; write plus confirmation |
@@ -89,6 +89,8 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_modify_voip_user` | `ModifyVoipUserRequest_V1` | changes a PBX user; write plus confirmation |
 | `kpn_grexx_modify_device_profile` | `ModifyDeviceProfileRequest_V1` | changes a PBX device profile; write plus confirmation |
 | `kpn_grexx_delete_contact` | `DeleteContactRequest_V1` | admin delete; hidden by default and confirmation required |
+
+The tools added for the mobile line-troubleshooting and renewal/upsell batches are reads except `kpn_grexx_custom_price`, which is a confirmed destructive write. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
 
 The contact, VOIP, and device tools added for the WilroffReitsma pilot use the same response envelope, XSD-order body builder and secret masking. Reads are read-only; writes and the admin delete require confirmation.
 

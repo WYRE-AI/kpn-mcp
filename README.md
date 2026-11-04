@@ -32,12 +32,14 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   `kpn_grexx_microsoft_subscription_end_date`, `kpn_grexx_upgrade_info`, `kpn_grexx_related_products`,
   `kpn_grexx_mobile_call_forwardings`, `kpn_grexx_mobile_preferences`, `kpn_grexx_mobile_module`,
   and `kpn_grexx_planned_line`.
-  - `kpn_grexx_hip_number_orders`: order information for up to 50 HIP phone numbers.
-  - `kpn_grexx_clean_internet_info`: Extra Safe Internet active state.
-  - `kpn_grexx_cloud_tenant`: Microsoft cloud tenant information.
-  - `kpn_grexx_microsoft_tenant_exists`: Microsoft tenant existence.
-  - `kpn_grexx_microsoft_domain_ownership`: delegated access and onboarding readiness.
-  - `kpn_grexx_custom_price`: accepted or rejected custom pricing.
+  - `kpn_grexx_hip_number_orders`: get order details, such as porting status, for up to 50 HIP phone numbers.
+  - `kpn_grexx_clean_internet_info`: check whether Extra Safe Internet (CleanInternet) is on for an internet order.
+  - `kpn_grexx_cloud_tenant`: get the Microsoft 365 tenant KPN manages for a customer.
+  - `kpn_grexx_microsoft_tenant_exists`: check whether a Microsoft 365 tenant name is already taken.
+  - `kpn_grexx_microsoft_domain_ownership`: check whether KPN has delegated (admin) access to a customer's
+    Microsoft 365 tenant and whether it is ready to move to KPN.
+  - `kpn_grexx_custom_price`: accept or reject a custom price KPN proposed on an order. A confirmed write
+    (tier D, destructive) that is sent once and can't be undone through this tool.
   - `kpn_grexx_get_contact`: one customer contact.
   - `kpn_grexx_search_contacts`: customer contact search and paging.
   - `kpn_grexx_create_contact`: creates a contact; write plus confirmation.

@@ -7,6 +7,7 @@
  * envelope (`IsSuccess=false`, e.g. 109 XML validation error), which carries
  * no `Status` and would otherwise look like success.
  */
+import type { InputRequiredResult } from "@modelcontextprotocol/server";
 import {
   GrexxError,
   parseGrexxError,
@@ -18,9 +19,14 @@ import {
 import { GREXX_REALTIME_SPECS, type GrexxField, type GrexxRealtimeSpec } from "../tools/grexx-realtime.js";
 import type { GrexxToolHandler } from "./grexx.js";
 import { MASK } from "./masking.js";
+import {
+  errorResult,
+  jsonResult,
+  textResult,
+  ToolInputError,
+  type ToolResult,
+} from "./results.js";
 import { confirmDestructive, NO_ELICITATION, type ElicitationContext } from "../elicitation.js";
-import { errorResult, jsonResult, textResult, ToolInputError, type ToolResult } from "./results.js";
-import type { InputRequiredResult } from "@modelcontextprotocol/server";
 
 /**
  * SIM and line secrets: PIN/PUK/PUC codes, eSIM activation and confirmation
@@ -28,8 +34,37 @@ import type { InputRequiredResult } from "@modelcontextprotocol/server";
  */
 const SECRET_KEY = /^(pin|puk|puc)\d?$|^(activationcode|confirmationcode|password|sippassword)$/i;
 
-function fail(field: GrexxField, message: string): never {
-  throw new ToolInputError(`Argument "${field.arg}" ${message}`);
+/** Readable names for common arguments; a field's own `label` wins. */
+const DEFAULT_LABELS: Record<string, string> = {
+  orderId: "Order number",
+  orderIds: "Order numbers",
+  customerId: "Customer number",
+  contactId: "Contact ID",
+  zipCode: "Postcode",
+  phoneNumber: "Phone number",
+  houseNumber: "House number",
+  houseNumberExtension: "House number addition",
+};
+
+/** "dateModifiedFrom" -> "Date modified from". */
+function humanize(arg: string): string {
+  const words = arg.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+export function fieldLabel(field: GrexxField): string {
+  return field.label ?? DEFAULT_LABELS[field.arg] ?? humanize(field.arg);
+}
+
+/** Validation errors are caller-facing sentences; they never show a regex. */
+function fail(message: string): never {
+  throw new ToolInputError(message);
+}
+
+/** The first "e.g. ..." example in a field description, if any. */
+function exampleOf(field: GrexxField): string {
+  const match = /e\.g\. ([^.;)]+(?:\.[a-z][^.;)]*)*)/.exec(field.description);
+  return match ? ` Example: ${match[1].trim()}.` : "";
 }
 
 /** xs:int range. IRMA rejects anything outside it with 109. */
@@ -41,21 +76,23 @@ const XS_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\
 
 function readInteger(field: GrexxField, value: unknown): number {
   const num = typeof value === "string" && /^-?\d+$/.test(value.trim()) ? Number(value) : value;
-  if (typeof num !== "number" || !Number.isInteger(num)) fail(field, "must be an integer.");
+  if (typeof num !== "number" || !Number.isInteger(num)) fail(`${fieldLabel(field)} must be a whole number.`);
   const min = field.min ?? XS_INT_MIN;
   const max = field.max ?? XS_INT_MAX;
-  if (num < min) fail(field, `must be at least ${min}.`);
-  if (num > max) fail(field, `must be at most ${max}.`);
+  if (num < min) fail(`${fieldLabel(field)} must be at least ${min}.`);
+  if (num > max) fail(`${fieldLabel(field)} must be at most ${max}.`);
   return num;
 }
 
 function readString(field: GrexxField, value: unknown): string {
-  if (typeof value !== "string" || value.trim() === "") fail(field, "must be a non-empty string.");
+  if (typeof value !== "string" || value.trim() === "") fail(`${fieldLabel(field)} can't be empty.`);
   const text = field.postcode ? value.replace(/\s+/g, "").toUpperCase() : value.trim();
-  if (field.min !== undefined && text.length < field.min) fail(field, `must be at least ${field.min} character(s).`);
-  if (field.max !== undefined && text.length > field.max) fail(field, `allows at most ${field.max} character(s).`);
-  if (field.enum && !field.enum.includes(text)) fail(field, `must be one of: ${field.enum.join(", ")}.`);
-  if (field.pattern && !field.pattern.test(text)) fail(field, `does not match ${field.pattern.source}.`);
+  if (field.min !== undefined && text.length < field.min) {
+    fail(field.min === 1 ? `${fieldLabel(field)} can't be empty.` : `${fieldLabel(field)} must be at least ${field.min} characters.`);
+  }
+  if (field.max !== undefined && text.length > field.max) fail(`${fieldLabel(field)} can be at most ${field.max} characters.`);
+  if (field.enum && !field.enum.includes(text)) fail(`${fieldLabel(field)} must be one of: ${field.enum.join(", ")}.`);
+  if (field.pattern && !field.pattern.test(text)) fail(field.formatHint ?? `${fieldLabel(field)} isn't in the expected format.${exampleOf(field)}`);
   return text;
 }
 
@@ -63,50 +100,53 @@ function readString(field: GrexxField, value: unknown): string {
 function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
   const value = args[field.arg];
   if (value === undefined || value === null || value === "") {
-    if (field.required) fail(field, "is required.");
+    if (field.required) fail(`${fieldLabel(field)} (${field.arg}) is required.`);
     return undefined;
   }
   switch (field.type) {
     case "integer":
       return readInteger(field, value);
     case "decimal": {
-      const num = typeof value === "string" && /^-?\d+(\.\d+)?$/.test(value.trim()) ? Number(value) : value;
-      if (typeof num !== "number" || !Number.isFinite(num)) fail(field, "must be a decimal.");
+      const num = typeof value === "string" && /^-?(\d+(\.\d+)?|\.\d+)$/.test(value.trim()) ? Number(value) : value;
+      if (typeof num !== "number" || !Number.isFinite(num)) fail(`${fieldLabel(field)} must be a number, e.g. 24.95.`);
       const min = field.min ?? XS_INT_MIN;
       const max = field.max ?? XS_INT_MAX;
-      if (num < min || num > max) fail(field, `must be between ${min} and ${max}.`);
+      if (num < min || num > max) fail(`${fieldLabel(field)} must be between ${min} and ${max}.`);
       return num;
     }
     case "boolean":
-      if (typeof value !== "boolean") fail(field, "must be a boolean.");
+      if (typeof value !== "boolean") {
+        const text = typeof value === "string" ? ` (not the text "${value}")` : "";
+        fail(`${fieldLabel(field)} must be true or false${text}.`);
+      }
       return value;
     case "dateTime": {
       const text = readString(field, value);
       if (!XS_DATE_TIME.test(text) || Number.isNaN(Date.parse(text))) {
-        fail(field, 'must be an xs:dateTime with a time, e.g. "2025-01-01T00:00:00Z".');
+        fail(`${fieldLabel(field)} must be a date and time, e.g. "2025-01-01T00:00:00Z".`);
       }
       return text;
     }
     case "integerList": {
-      if (!Array.isArray(value)) fail(field, "must be an array.");
-      if (field.min !== undefined && value.length < field.min) fail(field, `needs at least ${field.min} item(s).`);
-      if (field.max !== undefined && value.length > field.max) fail(field, `allows at most ${field.max} items.`);
+      if (!Array.isArray(value)) fail(`${fieldLabel(field)} must be a list.`);
+      if (field.min !== undefined && value.length < field.min) fail(field.min === 1 ? `${fieldLabel(field)} can't be empty.` : `${fieldLabel(field)} needs at least ${field.min} items.`);
+      if (field.max !== undefined && value.length > field.max) fail(`${fieldLabel(field)} can have at most ${field.max} items.`);
       const items = value.map((item) => readInteger({ ...field, min: 1, max: undefined }, item));
       return { [field.item ?? field.element]: items };
     }
     case "stringList": {
-      if (!Array.isArray(value)) fail(field, "must be an array.");
-      if (field.min !== undefined && value.length < field.min) fail(field, `needs at least ${field.min} item(s).`);
-      if (field.max !== undefined && value.length > field.max) fail(field, `allows at most ${field.max} items.`);
+      if (!Array.isArray(value)) fail(`${fieldLabel(field)} must be an array.`);
+      if (field.min !== undefined && value.length < field.min) fail(`${fieldLabel(field)} needs at least ${field.min} item(s).`);
+      if (field.max !== undefined && value.length > field.max) fail(`${fieldLabel(field)} allows at most ${field.max} items.`);
       const items = value.map((item) => {
-        if (typeof item !== "string") fail(field, "must contain only strings.");
-        if (field.enum && !field.enum.includes(item)) fail(field, `must be one of: ${field.enum.join(", ")}.`);
+        if (typeof item !== "string") fail(`${fieldLabel(field)} must contain only strings.`);
+        if (field.enum && !field.enum.includes(item)) fail(`${fieldLabel(field)} must be one of: ${field.enum.join(", ")}.`);
         return item;
       });
       return items;
     }
     case "object": {
-      if (typeof value !== "object" || value === null || Array.isArray(value)) fail(field, "must be an object.");
+      if (typeof value !== "object" || value === null || Array.isArray(value)) fail(`${fieldLabel(field)} must be an object.`);
       const nested = value as Record<string, unknown>;
       const result: Record<string, XmlValue> = {};
       for (const child of field.fields ?? []) {
@@ -185,6 +225,25 @@ export function ninaErrorFromResponse(error: GrexxError): GrexxError | undefined
   }
 }
 
+/** Confirmation prompt for kpn_grexx_custom_price, built only from the validated request body. */
+export function customPricePrompt(body: Record<string, unknown>): string {
+  const decision = String(body.ConfirmationState ?? "");
+  const orderId = String(body.OrderId ?? "");
+  const verb = decision === "Rejected" ? "Reject" : "Accept";
+  const prices: string[] = [];
+  if (body.Price !== undefined) prices.push(`price: ${String(body.Price)}`);
+  if (body.SetupPrice !== undefined) prices.push(`setup: ${String(body.SetupPrice)}`);
+  if (body.TerminationPrice !== undefined) prices.push(`termination: ${String(body.TerminationPrice)}`);
+  const lines = [`${verb} KPN's custom price on order ${orderId}?`, `  Order: ${orderId}`, `  Decision: ${decision}`];
+  if (prices.length > 0) {
+    const text = prices.join(", ");
+    lines.push(`  ${text.charAt(0).toUpperCase()}${text.slice(1)}`);
+  }
+  if (body.Remark !== undefined) lines.push(`  Remark: ${String(body.Remark)}`);
+  lines.push("  Reversible: not through this tool.", `[${verb} custom price] [Cancel]`);
+  return lines.join("\n");
+}
+
 /** Post one realtime call and return its parsed response without raw XML. */
 export async function callRealtime(
   client: GrexxClient,
@@ -192,17 +251,15 @@ export async function callRealtime(
   args: Record<string, unknown>,
   elicitation: ElicitationContext = NO_ELICITATION
 ): Promise<ToolResult | InputRequiredResult> {
-  if (spec.confirm || spec.admin) {
-    const gate = confirmDestructive(
-      elicitation,
-      args,
-      spec.description
-    );
+  const body = buildRealtimeBody(spec, args);
+  if (spec.destructive === true || spec.confirm === true || spec.admin === true) {
+    const prompt = spec.destructive === true ? customPricePrompt(body) : spec.description;
+    const gate = confirmDestructive(elicitation, args, prompt);
     if (gate.kind === "ask") return gate.result;
     if (gate.kind === "blocked") return errorResult(gate.message);
     if (gate.kind === "refused") return textResult("Cancelled; nothing was changed.");
+    if (gate.kind !== "proceed") throw new Error("Unexpected destructive confirmation outcome.");
   }
-  const body = buildRealtimeBody(spec, args);
   const result = await client.postRealtime(spec.request, body, { idempotent: spec.readOnly !== false });
   const rejected = ninaError(result.document, result.requestId);
   if (rejected) throw rejected;
@@ -242,5 +299,17 @@ export async function callRealtime(
   return jsonResult(output);
 }
 
-export const GREXX_REALTIME_HANDLERS: Record<string, GrexxToolHandler> =
-  Object.fromEntries(GREXX_REALTIME_SPECS.map((spec) => [spec.tool, (client: GrexxClient, args: Record<string, unknown>, elicitation: ElicitationContext) => callRealtime(client, spec, args, elicitation)]));
+export type GrexxRealtimeHandler = (
+  client: GrexxClient,
+  args: Record<string, unknown>,
+  elicitation?: ElicitationContext
+) => Promise<ToolResult | InputRequiredResult>;
+
+export const GREXX_REALTIME_HANDLERS: Record<string, GrexxRealtimeHandler> =
+  Object.fromEntries(
+    GREXX_REALTIME_SPECS.map((spec) => [
+      spec.tool,
+      (client: GrexxClient, args: Record<string, unknown>, elicitation: ElicitationContext = NO_ELICITATION) =>
+        callRealtime(client, spec, args, elicitation),
+    ])
+  );

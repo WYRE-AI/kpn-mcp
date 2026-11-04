@@ -2,6 +2,7 @@
  * Phase-1 Grexx handlers. OAuth minting and XML live in `@wyre-ai/node-kpn`.
  * This module only checks JSON types and maps SDK results and errors.
  */
+import type { InputRequiredResult } from "@modelcontextprotocol/server";
 import {
   PREQUALIFICATION_PRODUCT_TYPES,
   PREQUALIFICATION_SUPPLIERS,
@@ -28,7 +29,6 @@ import {
   ToolInputError,
   type ToolResult,
 } from "./results.js";
-import type { InputRequiredResult } from "@modelcontextprotocol/server";
 import type { ElicitationContext } from "../elicitation.js";
 import { GREXX_REALTIME_HANDLERS } from "./grexx-realtime.js";
 

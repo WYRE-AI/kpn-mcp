@@ -14,6 +14,7 @@ import {
   GrexxError,
   GrexxForbiddenError,
   GrexxRateLimitError,
+  GrexxServerError,
   GrexxValidationError,
   type GrexxClient,
 } from "@wyre-ai/node-kpn";
@@ -29,6 +30,7 @@ import { NO_ELICITATION, type ElicitationContext } from "../elicitation.js";
 import { LEGACY_DEVELOPER_API_ENABLED, LEGACY_TOOLS, TOOLS } from "../tools/index.js";
 import { GREXX_HANDLERS, type GrexxToolHandler } from "./grexx.js";
 import { ninaErrorFromResponse } from "./grexx-realtime.js";
+import { isGrexxWriteTool } from "../tools/grexx-realtime.js";
 import { CORE_HANDLERS } from "./core.js";
 import { MOBILE_READ_HANDLERS } from "./mobile-read.js";
 import { MOBILE_WRITE_HANDLERS } from "./mobile-write.js";
@@ -78,6 +80,9 @@ const MSM_HINT =
 const WRITE_RETRY_HINT =
   "The order may or may not have been created; check kpn_mobile_orders_list before retrying.";
 
+const GREXX_WRITE_RETRY_HINT =
+  "The request may or may not have reached KPN; check the order in KPN before retrying.";
+
 function isWriteTool(name: string): boolean {
   return Object.hasOwn(MOBILE_WRITE_HANDLERS, name);
 }
@@ -97,6 +102,7 @@ export function describeKpnError(error: KpnError, toolName = ""): string {
   }
   const isAuthFailure = error instanceof AuthenticationError || error instanceof ForbiddenError;
   if (isAuthFailure && toolName.startsWith("kpn_mobile_")) text += ` ${MSM_HINT}`;
+  if (error instanceof GrexxServerError && isGrexxWriteTool(toolName)) text += ` ${GREXX_WRITE_RETRY_HINT}`;
   if (error instanceof ServerError && isWriteTool(toolName)) text += ` ${WRITE_RETRY_HINT}`;
   return text;
 }
@@ -140,6 +146,9 @@ export function describeGrexxError(sdkError: GrexxError, toolName = ""): string 
   if (error instanceof GrexxForbiddenError && error.code === "102") {
     text += " Grexx rejected the caller IP (code 102).";
   }
+  if (error instanceof GrexxServerError && isGrexxWriteTool(toolName)) {
+    text += ` ${GREXX_WRITE_RETRY_HINT}`;
+  }
   return text;
 }
 
@@ -170,7 +179,11 @@ async function runHandler(
       return errorResult(describe(error));
     }
     const message = error instanceof Error ? error.message : String(error);
-    const hint = isWriteTool(name) ? ` ${WRITE_RETRY_HINT}` : "";
+    const hint = isWriteTool(name)
+      ? ` ${WRITE_RETRY_HINT}`
+      : isGrexxWriteTool(name)
+        ? ` ${GREXX_WRITE_RETRY_HINT}`
+        : "";
     return errorResult(`Error calling ${name}: ${message}${hint}`);
   }
 }
