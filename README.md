@@ -35,13 +35,17 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   a test at KPN, so it is not read-only and is never retried. SIM codes and the
   RadiusCheck PPP password are masked.
 
-- `kpn_grexx_mobile_total_usage`: total usage per IRMA customer
+- `kpn_grexx_mobile_total_usage`: get total mobile usage (data, calls, SMS and extra costs) per
+  subscription for a KPN customer
   (`GetMobileSubscriptionTotalUsageRequest_V1` → `GetMobileSubscriptionTotalUsageResponse_V1`).
-- `kpn_grexx_voip_usage`: current usage per VOIP order
+- `kpn_grexx_voip_usage`: get current-period VoIP call usage (number of calls, cost and duration) per
+  KPN VoIP order
   (`GetVoipUsageRequest_V1` → `GetVoipUsageResponse_V1`).
-- `kpn_grexx_voip_total_usage`: total usage per IRMA customer
+- `kpn_grexx_voip_total_usage`: get total VoIP call usage (number of calls, cost and duration) per phone
+  number for a KPN customer
   (`GetVoipTotalUsageRequest_V1` → `GetVoipTotalUsageResponse_V1`).
-- `kpn_grexx_invoice_catalog`: invoice catalog per IRMA customer
+- `kpn_grexx_invoice_catalog`: list a KPN customer's invoices from the last 12 months (invoice number,
+  date, amount and document details); it does not return the invoice PDFs
   (`CustomerInvoiceCatalogRequest_V1` → `CustomerInvoiceCatalogResponse_V1`).
 - `kpn_grexx_microsoft_subscription_end_date`: Microsoft 365 subscription end date
   (`MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` →
