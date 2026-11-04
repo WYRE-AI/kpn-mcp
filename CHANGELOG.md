@@ -10,6 +10,11 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Fixed
 
+- Grexx realtime validation errors are caller-facing sentences per field (for example
+  "Postcode must look like 1234AB: four digits, then two letters." or "Order number (orderId)
+  is required.") and no longer show the regular expression.
+- Grexx tool descriptions start with a verb, say "Read-only." on every read, end with the Grexx
+  message name, and use "KPN customer number (IRMA customer ID)" and "VoIP" consistently.
 - HTTP mode fails closed when `CONDUIT_S2S_SECRET` is empty or a known placeholder
   (CWE-306). `MCP_ALLOW_INSECURE_DEV=1` is the only bypass and listens on
   `127.0.0.1`. Gateway mode still rejects requests that omit Grexx credential headers.
