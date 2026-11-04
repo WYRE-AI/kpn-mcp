@@ -16,8 +16,11 @@ import {
   type XmlObject,
   type XmlValue,
 } from "@wyre-ai/node-kpn";
-import { GREXX_REALTIME_SPECS, type GrexxField, type GrexxRealtimeSpec } from "../tools/grexx-realtime.js";
-import type { GrexxToolHandler } from "./grexx.js";
+import { referenceNumber as defaultReferenceNumber } from "@wyre-ai/node-kpn/legacy";
+import {
+  ENABLED_GREXX_REALTIME_SPECS,
+  GREXX_ADMIN_TOOLS_ENABLED,
+  type GrexxField, type GrexxRealtimeSpec } from "../tools/grexx-realtime.js";
 import { MASK } from "./masking.js";
 import {
   errorResult,
@@ -96,8 +99,24 @@ function readString(field: GrexxField, value: unknown): string {
   return text;
 }
 
+/**
+ * Server-generated values (never taken from the caller): the DeleteContact
+ * Header's PartnerReference and DateCreated.
+ */
+function generatedValue(field: GrexxField): XmlValue {
+  if (field.type === "object") {
+    const result: Record<string, XmlValue> = {};
+    for (const child of field.fields ?? []) result[child.element] = generatedValue(child);
+    return result;
+  }
+  if (field.type === "dateTime") return new Date().toISOString();
+  if (field.element === "PartnerReference") return defaultReferenceNumber();
+  throw new Error(`No generator for server-generated field ${field.element}.`);
+}
+
 /** Convert one argument to its XSD value; undefined when the optional argument is absent. */
 function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
+  if (field.generated === true) return generatedValue(field);
   const value = args[field.arg];
   if (value === undefined || value === null || value === "") {
     if (field.required) fail(`${fieldLabel(field)} (${field.arg}) is required.`);
@@ -244,17 +263,102 @@ export function customPricePrompt(body: Record<string, unknown>): string {
   return lines.join("\n");
 }
 
+function str(value: unknown): string {
+  return value === undefined || value === null ? "" : String(value);
+}
+
+function changeLine(pairs: [string, unknown][]): string | undefined {
+  const set = pairs.filter(([, value]) => value !== undefined && value !== "");
+  if (set.length === 0) return undefined;
+  return `  Change: ${set.map(([name, value]) => `${name} ${Array.isArray(value) ? value.join(", ") : str(value)}`).join(", ")}`;
+}
+
+function notificationPairs(details: Record<string, unknown>): [string, unknown][] {
+  const prefs = asRecord(details.NotificationPreferences);
+  return [
+    ["system notifications", prefs.EnabledSystemNotifications],
+    ["news notifications", prefs.EnabledNewsNotifications],
+    ["usage alerts", prefs.EnabledThresholdAlerts],
+  ];
+}
+
+/**
+ * Confirmation prompt for a write tool, built only from the validated request
+ * body (never from the tool description or raw arguments).
+ */
+export function realtimePrompt(spec: GrexxRealtimeSpec, body: Record<string, unknown>): string {
+  const lines: (string | undefined)[] = [];
+  switch (spec.tool) {
+    case "kpn_grexx_custom_price":
+      return customPricePrompt(body);
+    case "kpn_grexx_create_contact": {
+      const details = asRecord(body.ContactPostPutRequest);
+      lines.push(
+        "Add this contact to the KPN customer?",
+        `  Customer: ${str(body.CustomerId)}`,
+        changeLine([["name", details.DisplayName], ["email", details.Email], ["phone 1", details.Phone1], ["phone 2", details.Phone2], ...notificationPairs(details)]),
+        "  Reversible: yes, update or remove the contact later.",
+        "[Add contact] [Cancel]"
+      );
+      break;
+    }
+    case "kpn_grexx_update_contact": {
+      const details = asRecord(body.ContactPostPutRequest);
+      lines.push(
+        "Change this KPN contact?",
+        `  Contact: contact ${str(body.ContactId)} for customer ${str(body.CustomerId)}`,
+        changeLine([["name", details.DisplayName], ["email", details.Email], ["phone 1", details.Phone1], ["phone 2", details.Phone2], ...notificationPairs(details)]),
+        "  Reversible: yes, change it back later.",
+        "[Change contact] [Cancel]"
+      );
+      break;
+    }
+    case "kpn_grexx_modify_voip_user":
+      lines.push(
+        "Change this VoIP user?",
+        `  Order: ${str(body.OrderId)}`,
+        changeLine([["name", `${str(body.FirstName)} ${str(body.LastName)}`.trim()], ["email", body.Email], ["number", body.PhoneNumber], ["extension", body.Extension]]),
+        "  Reversible: yes, change it back later.",
+        "[Change VoIP user] [Cancel]"
+      );
+      break;
+    case "kpn_grexx_modify_device_profile":
+      lines.push(
+        "Change this VoIP device?",
+        `  Order: ${str(body.OrderId)}`,
+        changeLine([["device name", body.DeviceName], ["device type", body.DeviceType], ["MAC", body.MacAddress], ["device user name", body.DeviceUserName], ["line port", body.LinePort], ["SIP user name", body.SipUserName]]),
+        "  Reversible: yes, change it back later. A wrong value can stop the phone working until it's corrected.",
+        "[Change device] [Cancel]"
+      );
+      break;
+    case "kpn_grexx_delete_contact":
+      lines.push(
+        "Permanently delete this KPN contact?",
+        `  Contact: contact ${str(body.ContactId)} for customer ${str(body.CustomerId)}`,
+        "  This can't be undone.",
+        "[Delete contact] [Cancel]"
+      );
+      break;
+    default:
+      lines.push(`Run ${spec.tool}?`, changeLine(Object.entries(body).filter(([, value]) => typeof value !== "object")), "[Confirm] [Cancel]");
+  }
+  return lines.filter((line): line is string => line !== undefined).join("\n");
+}
+
 /** Post one realtime call and return its parsed response without raw XML. */
 export async function callRealtime(
   client: GrexxClient,
   spec: GrexxRealtimeSpec,
   args: Record<string, unknown>,
-  elicitation: ElicitationContext = NO_ELICITATION
+  elicitation: ElicitationContext = NO_ELICITATION,
+  adminEnabled: boolean = GREXX_ADMIN_TOOLS_ENABLED
 ): Promise<ToolResult | InputRequiredResult> {
+  // Defence in depth: hidden admin tools are not in the handler map either.
+  if (spec.admin === true && !adminEnabled) return errorResult(`Unknown tool: ${spec.tool}`);
+  // Validate first: invalid arguments never reach the confirmation prompt.
   const body = buildRealtimeBody(spec, args);
   if (spec.destructive === true || spec.confirm === true || spec.admin === true) {
-    const prompt = spec.destructive === true ? customPricePrompt(body) : spec.description;
-    const gate = confirmDestructive(elicitation, args, prompt);
+    const gate = confirmDestructive(elicitation, args, realtimePrompt(spec, body));
     if (gate.kind === "ask") return gate.result;
     if (gate.kind === "blocked") return errorResult(gate.message);
     if (gate.kind === "refused") return textResult("Cancelled; nothing was changed.");
@@ -305,11 +409,19 @@ export type GrexxRealtimeHandler = (
   elicitation?: ElicitationContext
 ) => Promise<ToolResult | InputRequiredResult>;
 
-export const GREXX_REALTIME_HANDLERS: Record<string, GrexxRealtimeHandler> =
-  Object.fromEntries(
-    GREXX_REALTIME_SPECS.map((spec) => [
+/** Handler map for a set of specs; tools not in `specs` are unknown to the dispatcher. */
+export function buildRealtimeHandlers(
+  specs: readonly GrexxRealtimeSpec[],
+  adminEnabled: boolean = GREXX_ADMIN_TOOLS_ENABLED
+): Record<string, GrexxRealtimeHandler> {
+  return Object.fromEntries(
+    specs.map((spec) => [
       spec.tool,
       (client: GrexxClient, args: Record<string, unknown>, elicitation: ElicitationContext = NO_ELICITATION) =>
-        callRealtime(client, spec, args, elicitation),
+        callRealtime(client, spec, args, elicitation, adminEnabled),
     ])
   );
+}
+
+/** Only enabled specs: admin-only tools are absent unless KPN_GREXX_ADMIN_TOOLS_ENABLED is set. */
+export const GREXX_REALTIME_HANDLERS: Record<string, GrexxRealtimeHandler> = buildRealtimeHandlers(ENABLED_GREXX_REALTIME_SPECS);

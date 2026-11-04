@@ -16,13 +16,13 @@ import {
   type GrexxRealtimeResult,
 } from "@wyre-ai/node-kpn";
 import { CONFIRM_ARG } from "../elicitation.js";
-import { buildRealtimeBody, customPricePrompt } from "../handlers/grexx-realtime.js";
-import { describeGrexxError, handleGrexxToolCall } from "../handlers/index.js";
+import { buildRealtimeBody, buildRealtimeHandlers, callRealtime, customPricePrompt, realtimePrompt } from "../handlers/grexx-realtime.js";
+import { describeGrexxError, handleGrexxToolCall, handleToolCall } from "../handlers/index.js";
 import { MASK } from "../handlers/masking.js";
 import type { ToolResult } from "../handlers/results.js";
 import { GREXX_TOOLS } from "../tools/grexx.js";
 import { GREXX_REALTIME_SPECS, type GrexxRealtimeSpec } from "../tools/grexx-realtime.js";
-import { GREXX_REALTIME_TOOLS } from "../tools/grexx-realtime.js";
+import { enabledRealtimeSpecs, grexxAdminToolsEnabled, GREXX_REALTIME_TOOLS, realtimeTool } from "../tools/grexx-realtime.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "grexx");
 
@@ -125,20 +125,20 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
       customerId: 28665,
       searchParameters: {
         keyword: "Duck",
-        enabledSystemNotification: ["Primary"],
-        enabledThresholdAlert: ["CustomerVoipBlockingLimit"],
+        enabledSystemNotification: "Primary",
+        enabledThresholdAlert: "CustomerVoipBlockingLimit",
       },
-      offset: 1,
+      offset: 0,
       limit: 20,
     },
     body: {
       CustomerId: 28665,
       SearchParameters: {
         KeyWord: "Duck",
-        EnabledSystemNotification: ["Primary"],
-        EnabledThresholdAlert: ["CustomerVoipBlockingLimit"],
+        EnabledSystemNotification: "Primary",
+        EnabledThresholdAlert: "CustomerVoipBlockingLimit",
       },
-      Offset: 1,
+      Offset: 0,
       Limit: 20,
     },
   },
@@ -232,7 +232,7 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
       deviceType: "Yealink T46G",
       macAddress: "AA:BB:CC:DD:EE:FF",
       deviceName: "Duck T46G",
-      deviceUserName: "duck.t46g",
+      deviceUserName: "duck-t46g",
       linePort: "12345",
       sipUserName: "sip.duck",
     },
@@ -241,7 +241,7 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
       DeviceType: "Yealink T46G",
       MacAddress: "AA:BB:CC:DD:EE:FF",
       DeviceName: "Duck T46G",
-      DeviceUserName: "duck.t46g",
+      DeviceUserName: "duck-t46g",
       LinePort: "12345",
       SipUserName: "sip.duck",
     },
@@ -263,7 +263,7 @@ describe("realtime tool surface", () => {
     expect(GREXX_TOOLS.map((tool) => tool.name)).not.toContain("kpn_grexx_delete_contact");
   });
 
-  it("appends the KPN-B5 WilroffReitsma contact and VOIP tools after the existing specs", () => {
+  it("appends the contact and VoIP pilot tools after the existing specs", () => {
     expect(GREXX_REALTIME_SPECS.filter((spec) => !spec.admin).slice(-6).map((spec) => spec.tool)).toEqual([
       "kpn_grexx_get_contact",
       "kpn_grexx_search_contacts",
@@ -473,7 +473,7 @@ describe("request bodies", () => {
 
   it.each([
     ["kpn_grexx_create_contact", { customerId: 28665, contactPostPutRequest: { displayName: "Duck Jansen", email: "duck.jansen@example.invalid" } }],
-    ["kpn_grexx_update_contact", { customerId: 28665, contactId: 1, contactPostPutRequest: { displayName: "Duck Jansen", email: "duck.jansen@example.invalid" } }],
+    ["kpn_grexx_update_contact", { customerId: 28665, contactId: 1, contactPostPutRequest: { displayName: "Duck Jansen", email: "duck.jansen@example.invalid", phone1: "0612345678" } }],
     ["kpn_grexx_modify_voip_user", { orderId: 123456, firstName: "Duck", lastName: "Jansen" }],
     ["kpn_grexx_modify_device_profile", { orderId: 123456, deviceType: "Yealink T46G", deviceName: "Duck T46G", linePort: "12345" }],
   ])("%s blocks an unconfirmed mutation before Grexx", async (tool, args) => {
@@ -516,7 +516,7 @@ describe("request bodies", () => {
     );
   });
 
-  it("emits contact and PBX mutation elements in XSD order", () => {
+  it("emits contact and VoIP mutation elements in XSD order", () => {
     const create = renderRealtimeBody(
       "CreateContactRequest_V1",
       buildRealtimeBody(spec("kpn_grexx_create_contact"), CASES.kpn_grexx_create_contact.args)
@@ -547,10 +547,10 @@ describe("request bodies", () => {
   });
 
   it.each([
-    ["kpn_grexx_create_contact", { customerId: 28665, contactPostPutRequest: { email: "duck.jansen@example.invalid" } }, 'Argument "displayName" is required.'],
-    ["kpn_grexx_update_contact", { customerId: 28665, contactId: 1, contactPostPutRequest: { displayName: "Duck Jansen" } }, 'Argument "email" is required.'],
-    ["kpn_grexx_modify_voip_user", { orderId: 123456, firstName: "Duck" }, 'Argument "lastName" is required.'],
-    ["kpn_grexx_modify_device_profile", { orderId: 123456, deviceType: "Yealink T46G", deviceName: "Duck T46G" }, 'Argument "linePort" is required.'],
+    ["kpn_grexx_create_contact", { customerId: 28665, contactPostPutRequest: { email: "duck.jansen@example.invalid" } }, "Name (displayName) is required."],
+    ["kpn_grexx_update_contact", { customerId: 28665, contactId: 1, contactPostPutRequest: { displayName: "Duck Jansen" } }, "Email (email) is required."],
+    ["kpn_grexx_modify_voip_user", { orderId: 123456, firstName: "Duck" }, "Last name (lastName) is required."],
+    ["kpn_grexx_modify_device_profile", { orderId: 123456, deviceType: "Yealink T46G", deviceName: "Duck T46G" }, "Line port (linePort) is required."],
   ])("%s rejects invalid arguments without calling Grexx", async (tool, args, message) => {
     const { client, postRealtime } = stub(fixture("ContactResponse_V1"));
     const result = (await handleGrexxToolCall(client, tool, { ...args, confirm_destructive_action: true })) as ToolResult;
@@ -855,5 +855,142 @@ describe("describeGrexxError", () => {
     })) as ToolResult;
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("The request may or may not have reached KPN; check the order in KPN before retrying.");
+  });
+});
+
+describe("B5 admin gate, confirmation prompts and contact search (review #16)", () => {
+  const ADMIN_ARGS = { customerId: 28665, contactId: 42 };
+
+  it("reads KPN_GREXX_ADMIN_TOOLS_ENABLED strictly", () => {
+    expect(grexxAdminToolsEnabled({})).toBe(false);
+    expect(grexxAdminToolsEnabled({ KPN_GREXX_ADMIN_TOOLS_ENABLED: "0" })).toBe(false);
+    expect(grexxAdminToolsEnabled({ KPN_GREXX_ADMIN_TOOLS_ENABLED: "yes" })).toBe(false);
+    expect(grexxAdminToolsEnabled({ KPN_GREXX_ADMIN_TOOLS_ENABLED: "1" })).toBe(true);
+    expect(grexxAdminToolsEnabled({ KPN_GREXX_ADMIN_TOOLS_ENABLED: "true" })).toBe(true);
+  });
+
+  it("rejects the hidden delete as an unknown tool through both dispatchers, without calling Grexx", async () => {
+    const { client, postRealtime } = stub(fixture("DeleteContactResponse_V1"));
+    const args = { ...ADMIN_ARGS, [CONFIRM_ARG]: true };
+    const direct = (await handleGrexxToolCall(client, "kpn_grexx_delete_contact", args)) as ToolResult;
+    expect(direct.isError).toBe(true);
+    expect(text(direct)).toContain("Unknown tool: kpn_grexx_delete_contact");
+    const routed = (await handleToolCall({ grexx: client }, "kpn_grexx_delete_contact", args)) as ToolResult;
+    expect(routed.isError).toBe(true);
+    expect(text(routed)).toContain("Unknown tool: kpn_grexx_delete_contact");
+    expect(postRealtime).not.toHaveBeenCalled();
+  });
+
+  it("refuses an admin spec in callRealtime when the flag is off (defence in depth)", async () => {
+    const { client, postRealtime } = stub(fixture("DeleteContactResponse_V1"));
+    const result = (await callRealtime(client, spec("kpn_grexx_delete_contact"), { ...ADMIN_ARGS, [CONFIRM_ARG]: true }, undefined, false)) as ToolResult;
+    expect(text(result)).toContain("Unknown tool: kpn_grexx_delete_contact");
+    expect(postRealtime).not.toHaveBeenCalled();
+  });
+
+  it("lists the delete only when the admin flag is on", () => {
+    expect(enabledRealtimeSpecs(false).map((s) => s.tool)).not.toContain("kpn_grexx_delete_contact");
+    expect(enabledRealtimeSpecs(true).map((s) => s.tool)).toContain("kpn_grexx_delete_contact");
+  });
+
+  it("with the flag on, blocks an unconfirmed delete and posts a confirmed one once, non-idempotent, with a generated header", async () => {
+    const handlers = buildRealtimeHandlers(enabledRealtimeSpecs(true), true);
+    const { client, postRealtime } = stub(fixture("DeleteContactResponse_V1"));
+    const blocked = (await handlers.kpn_grexx_delete_contact(client, ADMIN_ARGS)) as ToolResult;
+    expect(blocked.isError).toBe(true);
+    expect(text(blocked)).toContain(CONFIRM_ARG);
+    expect(text(blocked)).toContain("contact 42 for customer 28665");
+    expect(postRealtime).not.toHaveBeenCalled();
+
+    await handlers.kpn_grexx_delete_contact(client, { ...ADMIN_ARGS, [CONFIRM_ARG]: true });
+    expect(postRealtime).toHaveBeenCalledTimes(1);
+    const [request, body, options] = postRealtime.mock.calls[0] as unknown as [string, Record<string, unknown>, unknown];
+    expect(request).toBe("DeleteContactRequest_V1");
+    expect(options).toEqual({ idempotent: false });
+    const header = body.Header as Record<string, unknown>;
+    expect(typeof header.PartnerReference).toBe("string");
+    expect(String(header.PartnerReference).length).toBeGreaterThan(0);
+    expect(Number.isNaN(Date.parse(String(header.DateCreated)))).toBe(false);
+    const xml = renderRealtimeBody("DeleteContactRequest_V1", body as never);
+    expect(xml).toMatch(/<Header><PartnerReference>[^<]+<\/PartnerReference><DateCreated>[^<]+<\/DateCreated><\/Header><CustomerId>28665<\/CustomerId><ContactId>42<\/ContactId>/);
+  });
+
+  it("ignores a caller-supplied delete header and keeps it out of the input schema", () => {
+    const body = buildRealtimeBody(spec("kpn_grexx_delete_contact"), {
+      ...ADMIN_ARGS,
+      header: { partnerReference: "caller", dateCreated: "2000-01-01T00:00:00Z" },
+    });
+    expect((body.Header as Record<string, unknown>).PartnerReference).not.toBe("caller");
+    const schema = realtimeTool(spec("kpn_grexx_delete_contact")).inputSchema as { properties: Record<string, unknown>; required?: string[] };
+    expect(Object.keys(schema.properties)).toEqual(["customerId", "contactId", CONFIRM_ARG]);
+    expect(schema.required).toEqual(["customerId", "contactId"]);
+  });
+
+  it.each([
+    ["kpn_grexx_create_contact", { customerId: 28665, contactPostPutRequest: { email: "duck.jansen@example.invalid" } }],
+    ["kpn_grexx_update_contact", { customerId: 28665, contactPostPutRequest: { displayName: "Duck" } }],
+    ["kpn_grexx_modify_voip_user", { orderId: 123456, firstName: "Duck", lastName: "Jansen", phoneNumber: "0612345678" }],
+    ["kpn_grexx_modify_device_profile", { orderId: 123456, deviceType: "Yealink T46G", deviceName: "Duck", linePort: "line.1" }],
+  ])("%s validates before confirming: invalid args get no prompt and no post", async (tool, args) => {
+    const { client, postRealtime } = stub(fixture(spec(tool).response));
+    const result = (await handleGrexxToolCall(client, tool, args)) as ToolResult;
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain(`Invalid arguments for ${tool}`);
+    expect(text(result)).not.toContain(CONFIRM_ARG);
+    expect(postRealtime).not.toHaveBeenCalled();
+  });
+
+  it("builds each write prompt from the validated IDs and changed fields", () => {
+    const prompt = (tool: string) => realtimePrompt(spec(tool), buildRealtimeBody(spec(tool), CASES[tool]?.args ?? ADMIN_ARGS));
+    expect(prompt("kpn_grexx_create_contact")).toContain("Customer: 28665");
+    expect(prompt("kpn_grexx_create_contact")).toContain("name Duck Jansen, email duck.jansen@example.invalid");
+    expect(prompt("kpn_grexx_update_contact")).toContain("Contact: contact 1 for customer 28665");
+    expect(prompt("kpn_grexx_modify_voip_user")).toContain("Order: 123456");
+    expect(prompt("kpn_grexx_modify_voip_user")).toContain("number +31612345678, extension 12");
+    expect(prompt("kpn_grexx_modify_device_profile")).toContain("device name Duck T46G, device type Yealink T46G, MAC AA:BB:CC:DD:EE:FF");
+    expect(prompt("kpn_grexx_delete_contact")).toBe(
+      "Permanently delete this KPN contact?\n  Contact: contact 42 for customer 28665\n  This can't be undone.\n[Delete contact] [Cancel]"
+    );
+    for (const tool of ["kpn_grexx_create_contact", "kpn_grexx_update_contact", "kpn_grexx_modify_voip_user", "kpn_grexx_modify_device_profile"]) {
+      expect(prompt(tool), tool).not.toContain(spec(tool).description);
+      expect(prompt(tool), tool).toMatch(/\[Cancel\]$/);
+    }
+  });
+
+  it("puts the IDs in the blocked message for a client without elicitation", async () => {
+    const { client } = stub(fixture("ModifyVoipUserResponse_V1"));
+    const args = Object.fromEntries(Object.entries(CASES.kpn_grexx_modify_voip_user.args).filter(([key]) => key !== CONFIRM_ARG));
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_modify_voip_user", args)) as ToolResult;
+    expect(text(result)).toContain("Order: 123456");
+  });
+
+  it("accepts offset 0 as a skip count and rejects a negative offset or zero limit", () => {
+    const base = { customerId: 28665, searchParameters: {} };
+    expect(buildRealtimeBody(spec("kpn_grexx_search_contacts"), { ...base, offset: 0 })).toEqual({ CustomerId: 28665, SearchParameters: {}, Offset: 0 });
+    expect(() => buildRealtimeBody(spec("kpn_grexx_search_contacts"), { ...base, offset: -1 })).toThrow(/at least 0/);
+    expect(() => buildRealtimeBody(spec("kpn_grexx_search_contacts"), { ...base, offset: 0, limit: 0 })).toThrow(/at least 1/);
+  });
+
+  it("takes one value for each search notification filter and serializes it as one element", () => {
+    const tool = spec("kpn_grexx_search_contacts");
+    expect(() =>
+      buildRealtimeBody(tool, { customerId: 28665, offset: 0, searchParameters: { enabledSystemNotification: ["Primary"] } })
+    ).toThrow();
+    const xml = renderRealtimeBody(
+      tool.request,
+      buildRealtimeBody(tool, { customerId: 28665, offset: 0, searchParameters: { enabledSystemNotification: "Primary" } })
+    );
+    expect(xml).toContain("<SearchParameters><EnabledSystemNotification>Primary</EnabledSystemNotification></SearchParameters>");
+    const schema = realtimeTool(tool).inputSchema as unknown as { properties: Record<string, { properties: Record<string, { type: string }> }> };
+    expect(schema.properties.searchParameters.properties.enabledSystemNotification.type).toBe("string");
+    expect(schema.properties.searchParameters.properties.enabledThresholdAlert.type).toBe("string");
+  });
+
+  it("checks VoIP phone numbers and device names against the XSD formats", () => {
+    expect(() => buildRealtimeBody(spec("kpn_grexx_modify_voip_user"), { orderId: 1, firstName: "A", lastName: "B", phoneNumber: "0612345678" })).toThrow(/international format/);
+    const device = { orderId: 1, deviceType: "Yealink T46G", deviceName: "Desk" };
+    expect(() => buildRealtimeBody(spec("kpn_grexx_modify_device_profile"), { ...device, linePort: "line 1" })).toThrow(/letters, digits, - and _/);
+    expect(() => buildRealtimeBody(spec("kpn_grexx_modify_device_profile"), { ...device, linePort: "l1", deviceUserName: "a.b" })).toThrow(/letters, digits, - and _/);
+    expect(() => buildRealtimeBody(spec("kpn_grexx_modify_device_profile"), { ...device, linePort: "l1", macAddress: "not-a-mac" })).toThrow(/MAC address must be/);
   });
 });

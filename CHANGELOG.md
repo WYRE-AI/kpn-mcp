@@ -10,6 +10,14 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Fixed
 
+- Admin-only Grexx tools (`kpn_grexx_delete_contact`) are enforced, not just hidden: unless
+  `KPN_GREXX_ADMIN_TOOLS_ENABLED=1` they are neither listed nor callable (`Unknown tool`).
+- Contact and VoIP writes validate before confirming, and the prompt shows the validated IDs and
+  changed fields instead of the tool description. The delete header (`PartnerReference`,
+  `DateCreated`) is generated server-side.
+- `kpn_grexx_search_contacts`: `offset` is a skip count starting at 0 (XSD), `limit` is at least 1,
+  and the notification filters take a single value. VoIP phone numbers use international format;
+  device user name and line port accept only letters, digits, - and _.
 - Grexx realtime validation errors are caller-facing sentences per field (for example
   "Postcode must look like 1234AB: four digits, then two letters." or "Order number (orderId)
   is required.") and no longer show the regular expression.
@@ -81,7 +89,7 @@ Releases are cut by semantic-release from Conventional Commits.
   non-interactive callers) on the SIM block/unblock/replace, order authorize/cancel and
   PUK-reveal tools; destructive-warning convention enforced by
   `scripts/lint-destructive-warnings.mjs` in CI.
-- WilroffReitsma contact and VOIP pilot tools: `kpn_grexx_get_contact`,
+- Contact and VoIP pilot tools: `kpn_grexx_get_contact`,
   `kpn_grexx_search_contacts`, `kpn_grexx_create_contact`, `kpn_grexx_update_contact`,
   `kpn_grexx_modify_voip_user`, and `kpn_grexx_modify_device_profile`. Writes and the
   admin contact delete use fail-closed confirmation; the admin delete is hidden by default.

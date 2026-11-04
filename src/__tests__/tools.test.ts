@@ -150,8 +150,8 @@ describe("default Grexx surface", () => {
           destructiveHint: true,
           idempotentHint: false,
         });
-        expect(t.description).toContain("⚠");
-        expect(t.description).toMatch(/Confirm with the user before invoking\.$/u);
+        expect(t.description).not.toContain("⚠");
+        expect(t.description).toMatch(/Confirm with the user before invoking\. \(Grexx: .+\)$/u);
         expect(t.inputSchema.properties?.[CONFIRM_ARG]).toBeDefined();
       } else if (t.name === "kpn_grexx_custom_price") {
         expect(t.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true, idempotentHint: false });
@@ -458,7 +458,7 @@ describe("default Grexx surface", () => {
       email: { type: "string" },
     });
     expect(tool?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
-    expect(tool?.description).toMatch(/Confirm with the user before invoking\.$/u);
+    expect(tool?.description).toMatch(/Confirm with the user before invoking\. \(Grexx: .+\)$/u);
     expect(schema.properties?.[CONFIRM_ARG]).toMatchObject({ type: "boolean" });
   });
 
@@ -469,28 +469,28 @@ describe("default Grexx surface", () => {
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId", "contactId", "contactPostPutRequest", CONFIRM_ARG]);
     expect(schema.properties?.contactPostPutRequest?.type).toBe("object");
     expect(tool?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
-    expect(tool?.description).toMatch(/Confirm with the user before invoking\.$/u);
+    expect(tool?.description).toMatch(/Confirm with the user before invoking\. \(Grexx: .+\)$/u);
     expect(schema.properties?.[CONFIRM_ARG]).toMatchObject({ type: "boolean" });
   });
 
-  it("modify_voip_user requires the PBX user fields and confirmation", () => {
+  it("modify_voip_user requires the VoIP user fields and confirmation", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_modify_voip_user");
     const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
     expect(schema.required).toEqual(["orderId", "firstName", "lastName"]);
     expect(Object.keys(schema.properties ?? {})).toEqual(["orderId", "firstName", "lastName", "email", "phoneNumber", "extension", CONFIRM_ARG]);
-    expect(tool?.description).toContain("changes the PBX user");
-    expect(tool?.description).toMatch(/Confirm with the user before invoking\.$/u);
+    expect(tool?.description).toContain("Changes a VoIP user's settings");
+    expect(tool?.description).toMatch(/Confirm with the user before invoking\. \(Grexx: .+\)$/u);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
     expect(schema.properties?.[CONFIRM_ARG]).toMatchObject({ type: "boolean" });
   });
 
-  it("modify_device_profile requires the PBX device profile fields and confirmation", () => {
+  it("modify_device_profile requires the VoIP device profile fields and confirmation", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_modify_device_profile");
     const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
     expect(schema.required).toEqual(["orderId", "deviceType", "deviceName", "linePort"]);
     expect(Object.keys(schema.properties ?? {})).toEqual(["orderId", "deviceType", "macAddress", "deviceName", "deviceUserName", "linePort", "sipUserName", CONFIRM_ARG]);
-    expect(tool?.description).toContain("changes the PBX device profile");
-    expect(tool?.description).toMatch(/Confirm with the user before invoking\.$/u);
+    expect(tool?.description).toContain("Changes the setup of a desk phone or other VoIP device");
+    expect(tool?.description).toMatch(/Confirm with the user before invoking\. \(Grexx: .+\)$/u);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
     expect(schema.properties?.[CONFIRM_ARG]).toMatchObject({ type: "boolean" });
   });
