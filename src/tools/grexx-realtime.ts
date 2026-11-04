@@ -217,7 +217,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       "Total usage (data, voice, SMS and extra costs) per product for an IRMA customer " +
       "(GetMobileSubscriptionTotalUsageRequest_V1). Available from 5 minutes after activation.",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
     ],
   },
   {
@@ -253,7 +253,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       "Total usage (calls, amount and duration) per VOIP phone number for an IRMA customer " +
       "(GetVoipTotalUsageRequest_V1).",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
     ],
   },
   {
@@ -282,7 +282,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       "Invoice catalog for the last 12 months, including document metadata, for an IRMA customer " +
       "(CustomerInvoiceCatalogRequest_V1). Catalog only; invoice documents are not exposed.",
     fields: [
-      { arg: "customerId", element: "CustomerId", type: "integer", required: true, description: "IRMA customer ID, e.g. 28665." },
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "IRMA customer ID, e.g. 28665." },
     ],
   },
   {
@@ -362,8 +362,8 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       "Planned line details for a Dutch address and room (PlannedLineRequest_V3). " +
       "Returns fibre and copper planning, delivery, technology, and connection status.",
     fields: [
-      { arg: "zipCode", element: "ZipCode", type: "string", description: "Dutch postcode, e.g. 1012JS. Optional." },
-      { arg: "houseNumber", element: "HouseNr", type: "integer", required: true, description: "XSD HouseNr (xs:int)." },
+      { arg: "zipCode", element: "ZipCode", type: "string", postcode: true, description: "Dutch postcode, e.g. 1012JS. Optional." },
+      { arg: "houseNumber", element: "HouseNr", type: "integer", required: true, min: 1, description: "House number, e.g. 12." },
       { arg: "houseNumberExtension", element: "HouseNrExtension", type: "string", description: "House number addition. Optional." },
       { arg: "roomNumber", element: "RoomNumber", type: "string", description: "Room number. Optional." },
       { arg: "isRoomNumberKnown", element: "IsRoomNumberKnown", type: "boolean", required: true, description: "XSD IsRoomNumberKnown. Required. False when the room number is not known." },
@@ -458,7 +458,7 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
         ...(field.min !== undefined ? { minLength: field.min } : {}),
         ...(field.max !== undefined ? { maxLength: field.max } : {}),
         ...(field.enum ? { enum: [...field.enum] } : {}),
-        ...(field.pattern ? { pattern: field.pattern.source } : {}),
+        ...(field.postcode ? undefined : field.pattern ? { pattern: field.pattern.source } : {}),
       };
     case "dateTime":
       return { type: "string", format: "date-time", description };
@@ -466,8 +466,9 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
       return { type: "array", description, items: { type: "integer", minimum: 1 }, minItems: field.min, maxItems: field.max };
     case "decimal":
       return { type: "number", description, ...(field.min !== undefined ? { minimum: field.min } : {}), ...(field.max !== undefined ? { maximum: field.max } : {}) };
-    default:
-      return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}), ...(field.pattern ? { pattern: field.pattern.source } : {}) };
+    default: {
+      return { type: "string", description };
+    }
   }
 }
 

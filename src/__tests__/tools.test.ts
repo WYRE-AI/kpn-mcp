@@ -163,11 +163,40 @@ describe("default Grexx surface", () => {
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
+  it("carrier_info keeps the normalised postcode schema lenient", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_carrier_info");
+    const schema = tool?.inputSchema as { properties?: Record<string, { type?: string; pattern?: unknown }> };
+    expect(schema.properties?.zipCode).toEqual({
+      type: "string",
+      description: 'Dutch postcode, e.g. "1012JS".',
+    });
+    expect(schema.properties?.zipCode?.pattern).toBeUndefined();
+  });
+
+  it("planned_line keeps the postcode optional and validates the house number", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_planned_line");
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; description?: string; minimum?: number }>;
+    };
+    expect(schema.required).toEqual(["houseNumber", "isRoomNumberKnown"]);
+    expect(schema.properties?.zipCode).toEqual({ type: "string", description: "Dutch postcode, e.g. 1012JS. Optional." });
+    expect(schema.properties?.houseNumber).toEqual({
+      type: "integer",
+      description: "House number, e.g. 12.",
+      minimum: 1,
+    });
+  });
+
   it("mobile_total_usage requires the XSD customer id and stays read-only", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_mobile_total_usage");
-    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; minimum?: number }>;
+    };
     expect(schema.required).toEqual(["customerId"]);
     expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(schema.properties?.customerId?.minimum).toBe(1);
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
@@ -209,18 +238,26 @@ describe("default Grexx surface", () => {
 
   it("voip_total_usage requires the XSD customer id and stays read-only", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_voip_total_usage");
-    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; minimum?: number }>;
+    };
     expect(schema.required).toEqual(["customerId"]);
     expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(schema.properties?.customerId?.minimum).toBe(1);
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
   it("invoice_catalog requires the XSD customer id and stays read-only", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_invoice_catalog");
-    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; minimum?: number }>;
+    };
     expect(schema.required).toEqual(["customerId"]);
     expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(schema.properties?.customerId?.minimum).toBe(1);
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
