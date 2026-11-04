@@ -72,10 +72,10 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_microsoft_subscription_end_date` | `MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` | customer number, product code, optional order number; without the order number, the first matching subscription |
 | `kpn_grexx_upgrade_info` | `GetUpgradeInfoRequest_V1` | whether the order can be upgraded and the target products; read-only, places nothing |
 | `kpn_grexx_related_products` | `RelatedProductsRequest_V1` | add-ons a customer can add to a main product (product code up to 13 characters) |
-| `kpn_grexx_mobile_call_forwardings` | `GetMobileCallForwardingsRequest_V1` | mobile call-forwarding status |
-| `kpn_grexx_mobile_preferences` | `GetMobilePreferencesRequest_V1` | mobile call-preference settings |
-| `kpn_grexx_mobile_module` | `GetMobileModuleRequest_V1` | mobile module enablement status |
-| `kpn_grexx_planned_line` | `PlannedLineRequest_V3` | planned fibre/copper line details |
+| `kpn_grexx_mobile_call_forwardings` | `GetMobileCallForwardingsRequest_V1` | call forwarding: always, when not answered, when busy, when unreachable |
+| `kpn_grexx_mobile_preferences` | `GetMobilePreferencesRequest_V1` | roaming, usage alerts, SIM block and similar line settings; read-only |
+| `kpn_grexx_mobile_module` | `GetMobileModuleRequest_V1` | whether an add-on (module) is active or pending; `orderId` is the module's own order |
+| `kpn_grexx_planned_line` | `PlannedLineRequest_V3` | planned and existing fibre/copper line for an address; postcode optional but recommended |
 
 The tools added for the mobile line-troubleshooting and renewal/upsell batches are all reads. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
 

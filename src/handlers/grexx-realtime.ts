@@ -98,7 +98,10 @@ function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
     case "integer":
       return readInteger(field, value);
     case "boolean":
-      if (typeof value !== "boolean") fail(`${fieldLabel(field)} must be true or false.`);
+      if (typeof value !== "boolean") {
+        const text = typeof value === "string" ? ` (not the text "${value}")` : "";
+        fail(`${fieldLabel(field)} must be true or false${text}.`);
+      }
       return value;
     case "dateTime": {
       const text = readString(field, value);

@@ -186,10 +186,10 @@ describe("default Grexx surface", () => {
       properties?: Record<string, { type?: string; description?: string; minimum?: number }>;
     };
     expect(schema.required).toEqual(["houseNumber", "isRoomNumberKnown"]);
-    expect(schema.properties?.zipCode).toEqual({ type: "string", description: "Dutch postcode, e.g. 1012JS. Optional." });
+    expect(schema.properties?.zipCode).toEqual({ type: "string", description: "Dutch postcode: four digits and two letters, e.g. 1012JS. Optional, but strongly recommended: a house number alone may match several addresses." });
     expect(schema.properties?.houseNumber).toEqual({
       type: "integer",
-      description: "House number, e.g. 12.",
+      description: "House number, digits only, e.g. 12. Put any letter or suffix (A, bis, -1) in houseNumberExtension.",
       minimum: 1,
     });
   });
