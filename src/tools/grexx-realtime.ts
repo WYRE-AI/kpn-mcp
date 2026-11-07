@@ -219,7 +219,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetMobileSubscriptionTotalUsageResponse_V1",
     readOnly: true,
     description:
-      "Get total mobile usage (data, calls, SMS and extra costs) per subscription for a KPN customer. " +
+      "Get total mobile usage (data, calls, SMS and extra costs) per bundle for a KPN customer. " +
       "Read-only. Data appears about 5 minutes after a line is activated. " +
       "(Grexx: GetMobileSubscriptionTotalUsageRequest_V1)",
     fields: [
@@ -333,6 +333,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
   },
 ];
 
+/** Describe raw input without constraints that require handler normalization first. */
 function fieldSchema(field: GrexxField): Record<string, unknown> {
   const description = field.description;
   switch (field.type) {
@@ -345,9 +346,8 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
         type: "string",
         description,
         ...(field.min !== undefined ? { minLength: field.min } : {}),
-        ...(field.max !== undefined ? { maxLength: field.max } : {}),
         ...(field.enum ? { enum: [...field.enum] } : {}),
-        ...(field.postcode ? undefined : field.pattern ? { pattern: field.pattern.source } : {}),
+        // The handler validates patterns and maximum length after normalization.
       };
     case "dateTime":
       return { type: "string", format: "date-time", description };
