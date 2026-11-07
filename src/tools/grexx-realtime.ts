@@ -719,6 +719,7 @@ function inputFields(fields: readonly GrexxField[]): GrexxField[] {
   return fields.filter((field) => field.generated !== true);
 }
 
+/** List required caller-supplied fields, excluding server-generated fields. */
 function collectRequiredFields(fields: readonly GrexxField[]): string[] {
   return inputFields(fields).filter((field) => field.required).map((field) => field.arg);
 }
