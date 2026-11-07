@@ -46,9 +46,15 @@ const EXPECTED_TOOLS = [
   'kpn_grexx_get_sim',
   'kpn_grexx_mobile_settings',
   'kpn_grexx_mobile_usage',
+  'kpn_grexx_mobile_total_usage',
   'kpn_grexx_mobile_orders',
+  'kpn_grexx_voip_usage',
+  'kpn_grexx_voip_total_usage',
   'kpn_grexx_available_portings',
+  'kpn_grexx_invoice_catalog',
 ];
+
+const EXPECTED_TOOL_COUNT = EXPECTED_TOOLS.length;
 
 const failures = [];
 function check(label, ok, detail = '') {
@@ -209,7 +215,7 @@ async function legacyLeg() {
   check('tools/list HTTP 200', toolsRes.status === 200, `status=${toolsRes.status}`);
   const tools = (await mcpBody(toolsRes))?.result?.tools ?? [];
   check('tools/list returns the phase-1 Grexx tools',
-    tools.length === EXPECTED_TOOLS.length && EXPECTED_TOOLS.every((name, index) => tools[index]?.name === name),
+    tools.length === EXPECTED_TOOL_COUNT && EXPECTED_TOOLS.every((name, index) => tools[index]?.name === name),
     `count=${tools.length} names=${tools.map((tool) => tool.name).join(',')}`);
   return tools;
 }
@@ -232,7 +238,7 @@ async function modernLeg() {
 
   const { tools } = await client.listTools();
   check('tools/list returns the phase-1 Grexx tools',
-    tools.length === EXPECTED_TOOLS.length && EXPECTED_TOOLS.every((name, index) => tools[index]?.name === name),
+    tools.length === EXPECTED_TOOL_COUNT && EXPECTED_TOOLS.every((name, index) => tools[index]?.name === name),
     `count=${tools.length} names=${tools.map((tool) => tool.name).join(',')}`);
   await client.close();
   return tools;

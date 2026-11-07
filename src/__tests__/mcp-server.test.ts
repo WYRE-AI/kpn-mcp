@@ -259,8 +259,12 @@ describe("stateless tool surface", () => {
       "kpn_grexx_get_sim",
       "kpn_grexx_mobile_settings",
       "kpn_grexx_mobile_usage",
+      "kpn_grexx_mobile_total_usage",
       "kpn_grexx_mobile_orders",
+      "kpn_grexx_voip_usage",
+      "kpn_grexx_voip_total_usage",
       "kpn_grexx_available_portings",
+      "kpn_grexx_invoice_catalog",
     ]);
   });
 });

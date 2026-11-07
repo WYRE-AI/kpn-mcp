@@ -29,7 +29,7 @@ Token minting is the `^2.0.1` behavior from
 [node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4).
 Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
-## Tools (15)
+## Tools (19)
 
 | Tool | IRMA request | SDK |
 |---|---|---|
@@ -48,7 +48,7 @@ Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
 These four tools are reads. Realtime retries (network, HTTP 429 / code 108, 5xx) stay inside the SDK.
 
-### XSD-spec tools (11)
+### XSD-spec tools (15)
 
 Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: field names, order, types, limits and enums copied from the request XSDs in the portal (API Toolmodule → Webservice Beschrijvingen, export 2026-10-05). One handler (`src/handlers/grexx-realtime.ts`) validates arguments, emits the body in XSD order and posts it with `GrexxClient.postRealtime`. **IRMA enforces `xs:sequence` order**: an element out of place is a 109.
 
@@ -63,8 +63,14 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_get_sim` | `GetSimRequest_V1` | `Puc1`, eSIM `ActivationCode`/`ConfirmationCode` masked |
 | `kpn_grexx_mobile_settings` | `GetMobileSettingsRequest_V1` | |
 | `kpn_grexx_mobile_usage` | `GetMobileSubscriptionUsageRequest_V1` | |
+| `kpn_grexx_mobile_total_usage` | `GetMobileSubscriptionTotalUsageRequest_V1` | get total mobile usage per bundle; read-only |
 | `kpn_grexx_mobile_orders` | `GetMobileSubscriptionOrdersRequest_V1` | 1-50 ids; one bad id fails the batch; SIM codes masked |
+| `kpn_grexx_voip_usage` | `GetVoipUsageRequest_V1` | order plus international phone number; get current-period VoIP call usage |
+| `kpn_grexx_voip_total_usage` | `GetVoipTotalUsageRequest_V1` | get total VoIP call usage per phone number; read-only |
 | `kpn_grexx_available_portings` | `AvailablePortingsRequest_V1` | exactly one of customerId / hipGroupOrderId |
+| `kpn_grexx_invoice_catalog` | `CustomerInvoiceCatalogRequest_V1` | list invoices; does not return the PDFs |
+
+The four tools added for the usage and invoice-catalog batch are all reads. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
 
 Results are JSON: `request`, `response`, `code`, `messages`, `requestId`, `httpStatus`, `data` (the response document without `Status`), and `secretsMasked: true` when anything was masked. Lists come back as parsed: one element is an object, several are an array.
 

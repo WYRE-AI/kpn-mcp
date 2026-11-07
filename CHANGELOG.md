@@ -10,6 +10,11 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Fixed
 
+- Grexx realtime validation errors are caller-facing sentences per field (for example
+  "Postcode must look like 1234AB: four digits, then two letters." or "Order number (orderId)
+  is required.") and no longer show the regular expression.
+- Grexx tool descriptions start with a verb, say "Read-only." on every read, end with the Grexx
+  message name, and use "KPN customer number (IRMA customer ID)" and "VoIP" consistently.
 - HTTP mode fails closed when `CONDUIT_S2S_SECRET` is empty or a known placeholder
   (CWE-306). `MCP_ALLOW_INSECURE_DEV=1` is the only bypass and listens on
   `127.0.0.1`. Gateway mode still rejects requests that omit Grexx credential headers.
@@ -19,6 +24,9 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Added
 
+- Four Grexx IRMA realtime reads for usage and cost reporting:
+  `kpn_grexx_mobile_total_usage`, `kpn_grexx_voip_usage`,
+  `kpn_grexx_voip_total_usage`, and `kpn_grexx_invoice_catalog`.
 - 11 Grexx IRMA realtime tools built from the portal request XSDs: `kpn_grexx_carrier_info`,
   `kpn_grexx_radius_check`, `kpn_grexx_ras_check`, `kpn_grexx_start_line_diagnose`,
   `kpn_grexx_customer_data`, `kpn_grexx_order_summary`, `kpn_grexx_get_sim`,

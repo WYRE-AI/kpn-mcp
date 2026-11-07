@@ -85,8 +85,12 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
   kpn_grexx_get_sim: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
   kpn_grexx_mobile_settings: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
   kpn_grexx_mobile_usage: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
+  kpn_grexx_mobile_total_usage: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
   kpn_grexx_mobile_orders: { args: { orderIds: [1, 2] }, body: { OrderIds: { OrderId: [1, 2] } } },
+  kpn_grexx_voip_usage: { args: { orderId: 123456, phoneNumber: "+31612345678" }, body: { OrderId: 123456, PhoneNumber: "+31612345678" } },
+  kpn_grexx_voip_total_usage: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
   kpn_grexx_available_portings: { args: { customerId: 28665 }, body: { MobileSubscripionCustomerId: 28665 } },
+  kpn_grexx_invoice_catalog: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
 };
 
 describe("realtime tool surface", () => {
@@ -117,6 +121,20 @@ describe("realtime tool surface", () => {
       expect(tool.annotations?.readOnlyHint, s.tool).toBe(readOnly);
       expect(tool.annotations?.destructiveHint ?? false, s.tool).toBe(false);
     }
+  });
+
+  it("normalizes the postcode before building the XSD request", async () => {
+    const { client, postRealtime } = stub(fixture("CarrierInfoResponse_V1"));
+    const args = CASES.kpn_grexx_carrier_info.args;
+    const result = await handleGrexxToolCall(client, "kpn_grexx_carrier_info", args);
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledWith(
+      "CarrierInfoRequest_V1",
+      CASES.kpn_grexx_carrier_info.body,
+      { idempotent: true }
+    );
+    const xml = renderRealtimeBody("CarrierInfoRequest_V1", buildRealtimeBody(spec("kpn_grexx_carrier_info"), args));
+    expect(xml).toContain("<ZipCode>1012JS</ZipCode>");
   });
 });
 
@@ -156,20 +174,24 @@ describe("request bodies", () => {
   });
 
   it.each([
-    ["kpn_grexx_get_sim", {}, 'Argument "orderId" is required.'],
-    ["kpn_grexx_get_sim", { orderId: 1.5 }, "must be an integer"],
-    ["kpn_grexx_get_sim", { orderId: "0x10" }, "must be an integer"],
+    ["kpn_grexx_get_sim", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_get_sim", { orderId: 1.5 }, "Order number must be a whole number."],
+    ["kpn_grexx_get_sim", { orderId: "0x10" }, "Order number must be a whole number."],
     ["kpn_grexx_get_sim", { orderId: 3000000000 }, "at most 2147483647"],
     ["kpn_grexx_order_summary", { skip: 3000000000 }, "at most 2147483647"],
     ["kpn_grexx_customer_data", { take: 101 }, "at most 100"],
     ["kpn_grexx_order_summary", { take: 2501 }, "at most 2500"],
     ["kpn_grexx_order_summary", { orderState: "Open" }, "must be one of"],
-    ["kpn_grexx_order_summary", { dateActiveFrom: "yesterday" }, "xs:dateTime"],
-    ["kpn_grexx_order_summary", { dateModifiedFrom: "2025-01-01" }, "xs:dateTime"],
-    ["kpn_grexx_carrier_info", { ...CASES.kpn_grexx_carrier_info.args, phoneNumber: "612345678" }, "does not match"],
+    ["kpn_grexx_order_summary", { dateActiveFrom: "yesterday" }, 'Date active from must be a date and time, e.g. "2025-01-01T00:00:00Z".'],
+    ["kpn_grexx_order_summary", { dateModifiedFrom: "2025-01-01" }, 'Date modified from must be a date and time, e.g. "2025-01-01T00:00:00Z".'],
+    ["kpn_grexx_carrier_info", { ...CASES.kpn_grexx_carrier_info.args, phoneNumber: "612345678" }, "Phone number must be 10 digits starting with 0, e.g. 0201234567."],
     ["kpn_grexx_carrier_info", { ...CASES.kpn_grexx_carrier_info.args, houseNumber: 100000 }, "at most 99999"],
-    ["kpn_grexx_mobile_orders", { orderIds: [] }, "at least 1"],
+    ["kpn_grexx_mobile_orders", { orderIds: [] }, "Order numbers can't be empty."],
     ["kpn_grexx_mobile_orders", { orderIds: Array.from({ length: 51 }, (_, i) => i + 1) }, "at most 50"],
+    ["kpn_grexx_mobile_total_usage", { customerId: 2147483648 }, "at most 2147483647"],
+    ["kpn_grexx_voip_usage", { orderId: 1, phoneNumber: "0612345678" }, "Phone number must be in international format, e.g. +31612345678 (plus sign, country code, no spaces). Replace the leading 0 with +31."],
+    ["kpn_grexx_voip_usage", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_invoice_catalog", {}, "Customer number (customerId) is required."],
     ["kpn_grexx_available_portings", {}, "exactly one"],
     ["kpn_grexx_available_portings", { customerId: 1, hipGroupOrderId: 2 }, "exactly one"],
     ["kpn_grexx_start_line_diagnose", { orderId: 1, symptomCode: "Sym999" }, "Sym103"],
@@ -219,6 +241,42 @@ describe("responses", () => {
     expect(body.data.Sim.ESim.ConfirmationCode).toBe(MASK);
     expect(body.data.Sim.ICCId).toBeTruthy();
     expect(raw).not.toContain("12345678");
+  });
+
+  it("parses mobile total usage from its response fixture", async () => {
+    const { client } = stub(fixture("GetMobileSubscriptionTotalUsageResponse_V1"));
+    const result = (await handleGrexxToolCall(client, "kpn_grexx_mobile_total_usage", { customerId: 28665 })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.secretsMasked).toBeUndefined();
+    expect(body.data.CustomerId).toBe("28665");
+    expect(body.data.MobileBundleInfoUsage.MobileBundleInfoUsage_V1.DataCurrentValue).toBe("3456.78");
+  });
+
+  it("parses VOIP usage and total usage from their response fixtures", async () => {
+    const usage = JSON.parse(
+      text(await handleGrexxToolCall(stub(fixture("GetVoipUsageResponse_V1")).client, "kpn_grexx_voip_usage", {
+        orderId: 123456,
+        phoneNumber: "+31612345678",
+      }))
+    );
+    expect(usage.data.VoipUsage.CountCalls).toBe("12");
+    expect(usage.data.VoipUsage.Amount).toBe("3.5");
+
+    const total = JSON.parse(
+      text(await handleGrexxToolCall(stub(fixture("GetVoipTotalUsageResponse_V1")).client, "kpn_grexx_voip_total_usage", {
+        customerId: 28665,
+      }))
+    );
+    expect(total.data.VoipUsages.VoipUsage_V1.DurationInSeconds).toBe("1250");
+  });
+
+  it("parses the invoice catalog from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("CustomerInvoiceCatalogResponse_V1")).client, "kpn_grexx_invoice_catalog", {
+      customerId: 28665,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.CustomerInvoiceCatalogItems.CustomerInvoiceCatalogItem_V1.InvoiceNumber).toBe("INV-2026-001");
+    expect(body.data.CustomerInvoiceCatalogItems.CustomerInvoiceCatalogItem_V1.TotalAmountIncludingVat).toBe("123.45");
   });
 
   it("masks SIM codes inside mobile orders and the PPP password from RadiusCheck", async () => {

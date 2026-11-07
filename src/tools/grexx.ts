@@ -21,11 +21,9 @@ export const GREXX_TOOLS: Tool[] = [
   {
     name: "kpn_grexx_test_connection",
     description:
-      "Verify Grexx IRMA credentials. GrexxClient mints an OAuth 2.0 client_credentials token " +
-      "(scope=all): HTTP Basic first, then form-body client_id and client_secret after HTTP 400/401 invalid_client. " +
-      "It posts ZipCodeCheckRequest_V6 for the public reference address 1012JS 1, portfolio All, with the Bearer token. " +
-      "This server does not build the token request. Success means the token endpoint and POST /realtime accepted the call. " +
-      "The probe does not read a customer record.",
+      "Get Grexx IRMA connection status. Read-only. Verifies the OAuth token and posts ZipCodeCheckRequest_V6 " +
+      "for the public reference address 1012JS 1; success means the token endpoint and POST /realtime accepted the call. " +
+      "(Grexx: ZipCodeCheckRequest_V6)",
     inputSchema: {
       type: "object",
       properties: {},
@@ -35,9 +33,9 @@ export const GREXX_TOOLS: Tool[] = [
   {
     name: "kpn_grexx_zipcode_check",
     description:
-      "Technology and speeds at a Dutch address via Grexx ZipCodeCheckRequest_V6 " +
-      "(POST /realtime, OAuth Bearer). Returns ZipCodeCheckResponse_V5 suppliers and speeds. " +
-      "Portfolio is Business, SMB, Teleworker, or All. Omit suppliers to check every supplier. Read-only.",
+      "Check address technology and speeds for a Dutch address. Read-only. Returns ZipCodeCheckResponse_V5 " +
+      "suppliers and speeds. Portfolio is Business, SMB, Teleworker, or All. Omit suppliers to check every supplier. " +
+      "(Grexx: ZipCodeCheckRequest_V6)",
     inputSchema: {
       type: "object",
       properties: {
@@ -48,11 +46,11 @@ export const GREXX_TOOLS: Tool[] = [
         },
         zipCode: {
           type: "string",
-          description: 'Dutch postcode, for example "1012JS" or "1012 JS".',
+          description: 'Dutch postcode: four digits and two letters, with or without a space, e.g. "1012 JS" or "1012JS".',
         },
         houseNumber: {
           type: "integer",
-          description: "XSD HouseNr. Positive integer.",
+          description: "House number, digits only, e.g. 12.",
         },
         houseNumberExtension: {
           type: "string",
@@ -83,21 +81,20 @@ export const GREXX_TOOLS: Tool[] = [
   {
     name: "kpn_grexx_prequalification",
     description:
-      "Address and product-type availability per supplier via Grexx PrequalificationRequest_V2 " +
-      "(POST /realtime, OAuth Bearer). Returns PrequalificationResponse_V1 address fields and products " +
-      `(availability ${PREQUALIFICATION_AVAILABILITIES.join(", ")}). ` +
+      "Check address and product-type availability for a supplier. Read-only. Returns PrequalificationResponse_V1 " +
+      `address fields and products (availability ${PREQUALIFICATION_AVAILABILITIES.join(", ")}). ` +
       "When hasBroadband is true, serviceId or referencePhoneNumber is required. " +
-      "Omit suppliers to check every supplier. Read-only.",
+      "Omit suppliers to check every supplier. (Grexx: PrequalificationRequest_V2)",
     inputSchema: {
       type: "object",
       properties: {
         zipCode: {
           type: "string",
-          description: 'XSD ZipCode. Dutch postcode, for example "1012JS" or "9999ZZ".',
+          description: 'Dutch postcode: four digits and two letters, with or without a space, e.g. "1012 JS" or "1012JS".',
         },
         houseNumber: {
           type: "integer",
-          description: "XSD HouseNr. xs:int.",
+          description: "House number, digits only, e.g. 12.",
         },
         houseNumberExtension: {
           type: "string",
@@ -159,14 +156,14 @@ export const GREXX_TOOLS: Tool[] = [
   {
     name: "kpn_grexx_order_data",
     description:
-      "Customer id, product code, and quantity for an IRMA order via Grexx OrderDataRequest_V1 " +
-      "(POST /realtime, OAuth Bearer). Returns OrderDataResponse_V1. Read-only.",
+      "Get order data for a KPN order. Read-only. Returns the customer id, product code and quantity. " +
+      "(Grexx: OrderDataRequest_V1)",
     inputSchema: {
       type: "object",
       properties: {
         orderId: {
           type: "integer",
-          description: "XSD OrderId. xs:int.",
+          description: "KPN order number (IRMA order ID).",
         },
       },
       required: ["orderId"],
