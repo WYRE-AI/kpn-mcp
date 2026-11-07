@@ -40,7 +40,9 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   - `kpn_grexx_microsoft_domain_ownership`: check whether KPN has delegated (admin) access to a customer's
     Microsoft 365 tenant and whether it is ready to move to KPN.
   - `kpn_grexx_custom_price`: accept or reject a custom price KPN proposed on an order. A confirmed write
-    (tier D, destructive) that is sent once and can't be undone through this tool.
+    (tier D, destructive) that can't be undone through this tool. General retries are disabled;
+    after HTTP 401 the SDK can refresh the token and resend once, so a confirmed write can
+    produce more than one HTTP request.
   - `kpn_grexx_get_contact`: one customer contact.
   - `kpn_grexx_search_contacts`: customer contact search and paging.
   - `kpn_grexx_create_contact`: adds a contact; additive write (tier C, not destructive, reversible) plus confirmation.
@@ -49,7 +51,8 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   - `kpn_grexx_modify_device_profile`: changes a VoIP device profile; write plus confirmation.
   - `kpn_grexx_delete_contact`: admin delete; neither listed nor callable unless `KPN_GREXX_ADMIN_TOOLS_ENABLED=1`, and confirmation required.
   `start_line_diagnose` starts
-  a test at KPN, so it is not read-only and is never retried. SIM codes and the
+  a test at KPN, so it is not read-only. General retries are disabled, with the same HTTP 401
+  token-refresh retry exception. SIM codes and the
   RadiusCheck PPP password are masked.
 
 IRMA enforces XSD element order and rejects a bad request with an HTTP 200

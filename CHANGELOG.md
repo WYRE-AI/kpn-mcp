@@ -10,6 +10,9 @@ Releases are cut by semantic-release from Conventional Commits.
 
 ### Fixed
 
+- Custom-price decimal strings that would lose digits are rejected before confirmation.
+- Ambiguous successful-status Grexx write responses now advise checking the order before retrying.
+
 - Admin-only Grexx tools (`kpn_grexx_delete_contact`) are enforced, not just hidden: unless
   `KPN_GREXX_ADMIN_TOOLS_ENABLED=1` they are neither listed nor callable (`Unknown tool`).
 - Contact and VoIP writes validate before confirming, and the prompt shows the validated IDs and
@@ -51,7 +54,9 @@ Releases are cut by semantic-release from Conventional Commits.
   `kpn_grexx_cloud_tenant`, `kpn_grexx_microsoft_tenant_exists`, and
   `kpn_grexx_microsoft_domain_ownership`.
 - `kpn_grexx_custom_price` is a confirmed destructive write that submits an
-  accepted or rejected custom price decision; it is not retried.
+  accepted or rejected custom price decision. General retries are disabled; the SDK can
+  refresh the token and resend once after HTTP 401, so one confirmed write may produce
+  more than one HTTP request.
 - 11 Grexx IRMA realtime tools built from the portal request XSDs: `kpn_grexx_carrier_info`,
   `kpn_grexx_radius_check`, `kpn_grexx_ras_check`, `kpn_grexx_start_line_diagnose`,
   `kpn_grexx_customer_data`, `kpn_grexx_order_summary`, `kpn_grexx_get_sim`,

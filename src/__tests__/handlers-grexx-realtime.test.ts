@@ -871,6 +871,43 @@ describe("responses", () => {
 });
 
 describe("describeGrexxError", () => {
+  it.each([200, 201, 299])("warns before retrying a write with an unexpected HTTP %s response", (status) => {
+    const message = describeGrexxError(new GrexxError("Unexpected response", status), "kpn_grexx_custom_price");
+    expect(message).toContain("check the order in KPN before retrying");
+  });
+
+  it("warns when an unexpected write response carries a success code", () => {
+    const message = describeGrexxError(new GrexxError("Unexpected response", 200, undefined, "Success"), "kpn_grexx_custom_price");
+    expect(message).toContain("check the order in KPN before retrying");
+  });
+
+  it("does not add a write retry hint to an unexpected read response", () => {
+    const message = describeGrexxError(new GrexxError("Unexpected response", 200), "kpn_grexx_order_summary");
+    expect(message).not.toContain("check the order in KPN before retrying");
+  });
+
+  it("does not label a confirmed NinaResponse validation rejection as an ambiguous write", async () => {
+    const { client } = stub(nina("109", "XML validation error"));
+    const result = await handleGrexxToolCall(client, "kpn_grexx_custom_price", {
+      orderId: 123456, confirmationState: "Accepted", [CONFIRM_ARG]: true,
+    });
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("109");
+    expect(text(result)).not.toContain("check the order in KPN before retrying");
+  });
+
+  it("warns after a confirmed write returns an unexpected response without echoing its body", async () => {
+    const { client, postRealtime } = stub("<html><body>private response data</body></html>");
+    const result = await handleGrexxToolCall(client, "kpn_grexx_custom_price", {
+      orderId: 123456, confirmationState: "Accepted", [CONFIRM_ARG]: true,
+    });
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("Expected CustomPriceResponse_V1 but received <html>");
+    expect(text(result)).toContain("check the order in KPN before retrying");
+    expect(text(result)).not.toContain("private response data");
+    expect(postRealtime).toHaveBeenCalledTimes(1);
+  });
+
   it("never echoes a raw response body, which can hold SIM secrets", () => {
     const body = '<?xml version="1.0"?><GetSimResponse_V1><Status><Code>213</Code></Status><Sim><Puc1>98765432</Puc1></Sim></GetSimResponse_V1>';
     const message = describeGrexxError(new GrexxError(body, 200, body, "213"), "kpn_grexx_get_sim");
@@ -1038,6 +1075,26 @@ describe("B5 admin gate, confirmation prompts and contact search (review #16)", 
 });
 
 describe("Grexx dispatcher elicitation pass-through", () => {
+  it.each([undefined, false])("blocks custom_price through the non-eliciting dispatcher when confirmation is %s", async (confirmed) => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    const result = await handleToolCall({ grexx: client }, "kpn_grexx_custom_price", {
+      orderId: 123456, confirmationState: "Accepted", [CONFIRM_ARG]: confirmed,
+    });
+    expect((result as ToolResult).isError).toBe(true);
+    expect(text(result as ToolResult)).toContain(CONFIRM_ARG);
+    expect(postRealtime).not.toHaveBeenCalled();
+  });
+
+  it("submits a confirmed custom_price through the non-eliciting dispatcher once with retries disabled", async () => {
+    const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
+    const result = await handleToolCall({ grexx: client }, "kpn_grexx_custom_price", {
+      orderId: 123456, confirmationState: "Accepted", [CONFIRM_ARG]: true,
+    });
+    expect((result as ToolResult).isError).not.toBe(true);
+    expect(postRealtime).toHaveBeenCalledTimes(1);
+    expect(postRealtime).toHaveBeenCalledWith("CustomPriceRequest_V1", { OrderId: 123456, ConfirmationState: "Accepted" }, { idempotent: false });
+  });
+
   it("prompts an elicitation-capable client for custom_price through handleToolCall instead of using the confirm argument", async () => {
     const { client, postRealtime } = stub(fixture("CustomPriceResponse_V1"));
     const result = await handleToolCall(

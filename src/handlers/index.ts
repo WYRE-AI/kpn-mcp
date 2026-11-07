@@ -16,6 +16,7 @@ import {
   GrexxRateLimitError,
   GrexxServerError,
   GrexxValidationError,
+  isGrexxSuccessCode,
   type GrexxClient,
 } from "@wyre-ai/node-kpn";
 import {
@@ -102,7 +103,6 @@ export function describeKpnError(error: KpnError, toolName = ""): string {
   }
   const isAuthFailure = error instanceof AuthenticationError || error instanceof ForbiddenError;
   if (isAuthFailure && toolName.startsWith("kpn_mobile_")) text += ` ${MSM_HINT}`;
-  if (error instanceof GrexxServerError && isGrexxWriteTool(toolName)) text += ` ${GREXX_WRITE_RETRY_HINT}`;
   if (error instanceof ServerError && isWriteTool(toolName)) text += ` ${WRITE_RETRY_HINT}`;
   return text;
 }
@@ -146,7 +146,10 @@ export function describeGrexxError(sdkError: GrexxError, toolName = ""): string 
   if (error instanceof GrexxForbiddenError && error.code === "102") {
     text += " Grexx rejected the caller IP (code 102).";
   }
-  if (error instanceof GrexxServerError && isGrexxWriteTool(toolName)) {
+  // A vendor rejection code is definitive even when it arrives with HTTP 200.
+  const unexpectedSuccess = error.constructor === GrexxError && error.statusCode >= 200 && error.statusCode < 300 &&
+    (error.code === undefined || isGrexxSuccessCode(error.code));
+  if (isGrexxWriteTool(toolName) && (error instanceof GrexxServerError || unexpectedSuccess)) {
     text += ` ${GREXX_WRITE_RETRY_HINT}`;
   }
   return text;
