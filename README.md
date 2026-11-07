@@ -34,7 +34,7 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   RadiusCheck PPP password are masked.
 
 - `kpn_grexx_mobile_total_usage`: get total mobile usage (data, calls, SMS and extra costs) per
-  subscription for a KPN customer
+  bundle for a KPN customer
   (`GetMobileSubscriptionTotalUsageRequest_V1` → `GetMobileSubscriptionTotalUsageResponse_V1`).
 - `kpn_grexx_voip_usage`: get current-period VoIP call usage (number of calls, cost and duration) per
   KPN VoIP order

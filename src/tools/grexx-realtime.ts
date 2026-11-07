@@ -219,7 +219,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     response: "GetMobileSubscriptionTotalUsageResponse_V1",
     readOnly: true,
     description:
-      "Get total mobile usage (data, calls, SMS and extra costs) per subscription for a KPN customer. " +
+      "Get total mobile usage (data, calls, SMS and extra costs) per bundle for a KPN customer. " +
       "Read-only. Data appears about 5 minutes after a line is activated. " +
       "(Grexx: GetMobileSubscriptionTotalUsageRequest_V1)",
     fields: [
@@ -306,8 +306,9 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
     case "integerList":
       return { type: "array", description, items: { type: "integer", minimum: 1 }, minItems: field.min, maxItems: field.max };
     default: {
-      const pattern = field.postcode ? undefined : field.pattern;
-      return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}), ...(pattern ? { pattern: pattern.source } : {}) };
+      // Patterns apply to normalized values. Advertising the raw regex would
+      // reject whitespace (or postcode casing) before the handler can normalize it.
+      return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}) };
     }
   }
 }
