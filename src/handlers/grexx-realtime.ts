@@ -268,7 +268,7 @@ export async function callRealtime(
   elicitation: ElicitationContext = NO_ELICITATION
 ): Promise<ToolResult | InputRequiredResult> {
   const body = buildRealtimeBody(spec, args);
-  if (spec.destructive === true) {
+  if (spec.destructive === true || spec.confirm === true) {
     const gate = confirmDestructive(elicitation, args, customPricePrompt(body));
     if (gate.kind === "ask") return gate.result;
     if (gate.kind === "blocked") return errorResult(gate.message);

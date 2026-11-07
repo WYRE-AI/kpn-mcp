@@ -52,7 +52,7 @@ export interface GrexxRealtimeSpec {
   readOnly?: boolean;
   /** True for irreversible commercial actions that require confirmation. */
   destructive?: boolean;
-  /** True for irreversible commercial actions that require a confirmation gate. */
+  /** Require confirmation even when the write is reversible and not destructive. */
   confirm?: boolean;
 }
 
@@ -501,6 +501,7 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
 export function realtimeTool(spec: GrexxRealtimeSpec): Tool {
   const isWrite = spec.readOnly === false;
   const destructive = spec.destructive === true;
+  const requiresConfirmation = destructive || spec.confirm === true;
   return {
     name: spec.tool,
     description: spec.description,
@@ -510,7 +511,7 @@ export function realtimeTool(spec: GrexxRealtimeSpec): Tool {
         ...Object.fromEntries(
           spec.fields.map((field) => [field.arg, fieldSchema(field)])
         ),
-        ...(destructive ? { [CONFIRM_ARG]: CONFIRM_ARG_PROPERTY[CONFIRM_ARG] } : {}),
+        ...(requiresConfirmation ? { [CONFIRM_ARG]: CONFIRM_ARG_PROPERTY[CONFIRM_ARG] } : {}),
       } as NonNullable<Tool["inputSchema"]["properties"]>,
       ...(spec.fields.some((field) => field.required)
         ? { required: spec.fields.filter((field) => field.required).map((field) => field.arg) }

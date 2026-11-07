@@ -149,7 +149,9 @@ export function describeGrexxError(sdkError: GrexxError, toolName = ""): string 
   // A vendor rejection code is definitive even when it arrives with HTTP 200.
   const unexpectedSuccess = error.constructor === GrexxError && error.statusCode >= 200 && error.statusCode < 300 &&
     (error.code === undefined || isGrexxSuccessCode(error.code));
-  if (isGrexxWriteTool(toolName) && (error instanceof GrexxServerError || unexpectedSuccess)) {
+  // The SDK uses status 0 for malformed XML after receiving a successful HTTP response.
+  const invalidXmlResponse = error.constructor === GrexxError && error.statusCode === 0 && error.code === "invalid_xml";
+  if (isGrexxWriteTool(toolName) && (error instanceof GrexxServerError || unexpectedSuccess || invalidXmlResponse)) {
     text += ` ${GREXX_WRITE_RETRY_HINT}`;
   }
   return text;
