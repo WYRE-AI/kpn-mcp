@@ -130,9 +130,10 @@ const notificationPreferences = (): GrexxField => ({
   label: "Notification settings",
   description: "Which KPN notifications this contact receives. Optional.",
   fields: [
-    { arg: "enabledSystemNotifications", element: "EnabledSystemNotifications", type: "stringList", enum: CONTACT_SYSTEM_NOTIFICATIONS, label: "System notifications", description: "KPN service and outage notifications this contact receives." },
-    { arg: "enabledNewsNotifications", element: "EnabledNewsNotifications", type: "stringList", enum: CONTACT_NEWS_NOTIFICATIONS, label: "News notifications", description: "KPN news notifications this contact receives." },
-    { arg: "enabledThresholdAlerts", element: "EnabledThresholdAlerts", type: "stringList", enum: CONTACT_THRESHOLD_ALERTS, label: "Usage alerts", description: "Usage-limit alerts this contact receives (e.g. when a bundle is nearly used up)." },
+    // Empty arrays serialize to no elements, so they cannot represent a clearing change.
+    { arg: "enabledSystemNotifications", element: "EnabledSystemNotifications", type: "stringList", min: 1, enum: CONTACT_SYSTEM_NOTIFICATIONS, label: "System notifications", description: "KPN service and outage notifications this contact receives. Optional; supply at least one value if present. Empty lists cannot clear settings." },
+    { arg: "enabledNewsNotifications", element: "EnabledNewsNotifications", type: "stringList", min: 1, enum: CONTACT_NEWS_NOTIFICATIONS, label: "News notifications", description: "KPN news notifications this contact receives. Optional; supply at least one value if present. Empty lists cannot clear settings." },
+    { arg: "enabledThresholdAlerts", element: "EnabledThresholdAlerts", type: "stringList", min: 1, enum: CONTACT_THRESHOLD_ALERTS, label: "Usage alerts", description: "Usage-limit alerts this contact receives (e.g. when a bundle is nearly used up). Optional; supply at least one value if present. Empty lists cannot clear settings." },
   ],
 });
 

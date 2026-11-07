@@ -696,7 +696,11 @@ describe("responses", () => {
       expect(body.response).toBe(s.response);
       expect(body.requestId).toBe("req-1");
       expect(body.data).not.toHaveProperty("Status");
-      expect(Object.keys(body.data).length).toBeGreaterThanOrEqual(0);
+      if (s.tool === "kpn_grexx_modify_voip_user") {
+        expect(body.data).toEqual({}); // This fixture has only Status.
+      } else {
+        expect(Object.keys(body.data).length).toBeGreaterThan(0);
+      }
       expect(text(result)).not.toContain("<?xml");
     }
   );
@@ -935,6 +939,86 @@ describe("describeGrexxError", () => {
     expect(result.isError).toBe(true);
     expect(text(result)).toContain("The request may or may not have reached KPN; check the order in KPN before retrying.");
   });
+});
+
+describe.each(["kpn_grexx_create_contact", "kpn_grexx_update_contact"])("%s notification lists", (tool) => {
+  const lists = [
+    { arg: "enabledSystemNotifications", element: "EnabledSystemNotifications", label: "System notifications", values: ["Primary", "Technical"] },
+    { arg: "enabledNewsNotifications", element: "EnabledNewsNotifications", label: "News notifications", values: ["RoutITSales", "RoutITTechnical"] },
+    { arg: "enabledThresholdAlerts", element: "EnabledThresholdAlerts", label: "Usage alerts", values: ["CustomerVoipBlockingLimit", "CustomerMobileHighUsage"] },
+  ];
+  const preferences = Object.fromEntries(lists.map(({ arg, values }) => [arg, values]));
+  const argsWith = (notificationPreferences?: Record<string, string[]>) => ({
+    ...CASES[tool].args,
+    contactPostPutRequest: {
+      displayName: "Duck Jansen",
+      email: "duck.jansen@example.invalid",
+      phone1: "0612345678",
+      ...(notificationPreferences === undefined ? {} : { notificationPreferences }),
+    },
+  });
+
+  it.each(lists)("rejects an empty $arg, including alongside nonempty lists, before prompting or posting", async ({ arg, label }) => {
+    for (const prefs of [{ [arg]: [] }, { ...preferences, [arg]: [] }]) {
+      const args = argsWith(prefs);
+      expect(() => buildRealtimeBody(spec(tool), args)).toThrow(`${label} needs at least 1 item(s).`);
+      for (const context of [undefined, { clientCapabilities: { elicitation: {} } }]) {
+        const { client, postRealtime } = stub(fixture(spec(tool).response));
+        const result = (await handleGrexxToolCall(client, tool, args, context)) as ToolResult;
+        expect(result.isError).toBe(true);
+        expect(text(result)).toContain(`${label} needs at least 1 item(s).`);
+        expect(text(result)).not.toContain("Change:");
+        expect(text(result)).not.toContain(CONFIRM_ARG);
+        expect(postRealtime).not.toHaveBeenCalled();
+      }
+    }
+  });
+
+  it("advertises optional, nonempty lists in the input schema", () => {
+    const schema = realtimeTool(spec(tool)).inputSchema as unknown as {
+      properties: { contactPostPutRequest: { properties: { notificationPreferences: {
+        properties: Record<string, { minItems?: number; description: string }>;
+        required?: string[];
+      } } } };
+    };
+    const notifications = schema.properties.contactPostPutRequest.properties.notificationPreferences;
+    expect(notifications.required ?? []).toEqual([]);
+    for (const { arg } of lists) {
+      expect(notifications.properties[arg].minItems).toBe(1);
+      expect(notifications.properties[arg].description).toContain("Empty lists cannot clear settings");
+    }
+  });
+
+  it.each([undefined, ...lists.map(({ arg, values }) => ({ [arg]: values })), preferences])(
+    "keeps the body, confirmation and XML aligned for omitted or nonempty lists (%j)",
+    async (prefs) => {
+      const args = argsWith(prefs);
+      const body = buildRealtimeBody(spec(tool), args);
+      const expected = prefs === undefined ? undefined : Object.fromEntries(
+        lists.filter(({ arg }) => prefs[arg] !== undefined).map(({ arg, element }) => [element, prefs[arg]])
+      );
+      expect((body.ContactPostPutRequest as Record<string, unknown>).NotificationPreferences).toEqual(expected);
+      const xml = renderRealtimeBody(spec(tool).request, body);
+      const prompt = realtimePrompt(spec(tool), body);
+      for (const { arg, element, label } of lists) {
+        if (prefs?.[arg]) {
+          expect(xml).toContain(prefs[arg].map((value) => `<${element}>${value}</${element}>`).join(""));
+          expect(prompt).toContain(`${label.toLowerCase()} ${prefs[arg].join(", ")}`);
+        } else {
+          expect(xml).not.toContain(`<${element}>`);
+          expect(prompt).not.toContain(label.toLowerCase());
+        }
+      }
+      const { client, postRealtime } = stub(fixture(spec(tool).response));
+      const blocked = (await handleGrexxToolCall(client, tool, { ...args, [CONFIRM_ARG]: false })) as ToolResult;
+      expect(blocked.isError).toBe(true);
+      expect(text(blocked)).toContain(prompt);
+      expect(postRealtime).not.toHaveBeenCalled();
+      const result = (await handleGrexxToolCall(client, tool, args)) as ToolResult;
+      expect(result.isError).toBeUndefined();
+      expect(postRealtime).toHaveBeenCalledExactlyOnceWith(spec(tool).request, body, { idempotent: false });
+    }
+  );
 });
 
 describe("B5 admin gate, confirmation prompts and contact search (review #16)", () => {
