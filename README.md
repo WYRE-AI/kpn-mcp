@@ -10,7 +10,7 @@ with the same tool list for every caller. Ships as a GHCR container only (no MCP
 The client is [`@wyre-ai/node-kpn`](https://github.com/WYRE-AI/node-kpn) (Grexx export).
 Contract: [`docs/GREXX.md`](docs/GREXX.md).
 
-## Tools (22, flat)
+## Tools (26, flat)
 
 - `kpn_grexx_test_connection`: the SDK mints an OAuth client-credentials token and posts a
   `ZipCodeCheckRequest_V6` probe for the public reference address 1012JS 1 (portfolio All).
@@ -23,39 +23,19 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
 - `kpn_grexx_order_data`: customer id, product code, and quantity for an order id
   (`OrderDataRequest_V1` → `OrderDataResponse_V1`).
 
-- 18 more realtime tools built from the portal request XSDs (see `docs/GREXX.md`):
+- 22 more realtime tools built from the portal request XSDs (see `docs/GREXX.md`):
   `kpn_grexx_carrier_info`, `kpn_grexx_radius_check`, `kpn_grexx_ras_check`,
   `kpn_grexx_start_line_diagnose`, `kpn_grexx_customer_data`, `kpn_grexx_order_summary`,
   `kpn_grexx_get_sim`, `kpn_grexx_mobile_settings`, `kpn_grexx_mobile_usage`,
   `kpn_grexx_mobile_orders`, `kpn_grexx_mobile_total_usage`, `kpn_grexx_voip_usage`,
-  `kpn_grexx_voip_total_usage`, `kpn_grexx_available_portings`, `kpn_grexx_invoice_catalog`.
-  `kpn_grexx_microsoft_subscription_end_date`, `kpn_grexx_upgrade_info`, and
-  `kpn_grexx_related_products` close the renewal and upsell reads.
+  `kpn_grexx_voip_total_usage`, `kpn_grexx_available_portings`, `kpn_grexx_invoice_catalog`,
+  `kpn_grexx_microsoft_subscription_end_date`, `kpn_grexx_upgrade_info`, `kpn_grexx_related_products`,
+  `kpn_grexx_mobile_call_forwardings`, `kpn_grexx_mobile_preferences`, `kpn_grexx_mobile_module`,
+  and `kpn_grexx_planned_line`.
+  Mobile total usage reports data, calls, SMS and extra costs per bundle for a KPN customer.
   `start_line_diagnose` starts
   a test at KPN, so it is not read-only and is never retried. SIM codes and the
   RadiusCheck PPP password are masked.
-
-- `kpn_grexx_mobile_total_usage`: get total mobile usage (data, calls, SMS and extra costs) per
-  bundle for a KPN customer
-  (`GetMobileSubscriptionTotalUsageRequest_V1` → `GetMobileSubscriptionTotalUsageResponse_V1`).
-- `kpn_grexx_voip_usage`: get current-period VoIP call usage (number of calls, cost and duration) per
-  KPN VoIP order
-  (`GetVoipUsageRequest_V1` → `GetVoipUsageResponse_V1`).
-- `kpn_grexx_voip_total_usage`: get total VoIP call usage (number of calls, cost and duration) per phone
-  number for a KPN customer
-  (`GetVoipTotalUsageRequest_V1` → `GetVoipTotalUsageResponse_V1`).
-- `kpn_grexx_invoice_catalog`: list a KPN customer's invoices from the last 12 months (invoice number,
-  date, amount and document details); it does not return the invoice PDFs
-  (`CustomerInvoiceCatalogRequest_V1` → `CustomerInvoiceCatalogResponse_V1`).
-- `kpn_grexx_microsoft_subscription_end_date`: get the end (renewal) date of a customer's Microsoft 365
-  subscription; without an order number it returns the first matching subscription
-  (`MicrosoftProductOrderLineSubscriptionEndDateRequest_V1` →
-  `MicrosoftProductOrderLineSubscriptionEndDateResponse_V1`).
-- `kpn_grexx_upgrade_info`: check whether an order can be upgraded and list the products it can move to;
-  it doesn't place an upgrade
-  (`GetUpgradeInfoRequest_V1` → `GetUpgradeInfoResponse_V1`).
-- `kpn_grexx_related_products`: list add-ons and related products a customer can add to a product
-  (`RelatedProductsRequest_V1` → `RelatedProductsResponse_V1`).
 
 IRMA enforces XSD element order and rejects a bad request with an HTTP 200
 `NinaResponse`; both are handled by the server. Queued writes and Proxymodule

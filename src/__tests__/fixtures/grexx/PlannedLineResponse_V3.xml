@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PlannedLineResponse_V3>
+  <Status>
+    <Messages>
+      <string>Planned line retrieved.</string>
+    </Messages>
+    <Code>Success</Code>
+  </Status>
+  <PlannedLines>
+    <PlannedLine_V6>
+      <RoomNumber>1</RoomNumber>
+      <NlsType>Nls1</NlsType>
+      <ConstructionType>Existing</ConstructionType>
+      <BuildingType>Unknown</BuildingType>
+      <PassiveConnectionPermission>Yes</PassiveConnectionPermission>
+      <TechnologyStatus>Open</TechnologyStatus>
+      <PlannedLineStatus>DiggingPlanned</PlannedLineStatus>
+      <IsBisHas>false</IsBisHas>
+    </PlannedLine_V6>
+  </PlannedLines>
+</PlannedLineResponse_V3>

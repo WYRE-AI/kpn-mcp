@@ -55,6 +55,10 @@ const EXPECTED_TOOLS = [
   'kpn_grexx_microsoft_subscription_end_date',
   'kpn_grexx_upgrade_info',
   'kpn_grexx_related_products',
+  'kpn_grexx_mobile_call_forwardings',
+  'kpn_grexx_mobile_preferences',
+  'kpn_grexx_mobile_module',
+  'kpn_grexx_planned_line',
 ];
 
 const EXPECTED_TOOL_COUNT = EXPECTED_TOOLS.length;

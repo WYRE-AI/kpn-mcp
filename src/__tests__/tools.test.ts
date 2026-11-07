@@ -28,6 +28,10 @@ const GREXX_ORDER = [
   "kpn_grexx_microsoft_subscription_end_date",
   "kpn_grexx_upgrade_info",
   "kpn_grexx_related_products",
+  "kpn_grexx_mobile_call_forwardings",
+  "kpn_grexx_mobile_preferences",
+  "kpn_grexx_mobile_module",
+  "kpn_grexx_planned_line",
 ];
 const LEGACY_NAMES = LEGACY_TOOLS.map((tool) => tool.name);
 
@@ -96,8 +100,8 @@ describe("default Grexx surface", () => {
     expect(TOOL_NAMES).not.toContain("kpn_mobile_sim_block");
   });
 
-  it("serves a 22-tool default Grexx surface", () => {
-    expect(TOOL_NAMES).toHaveLength(22);
+  it("serves a 26-tool default Grexx surface", () => {
+    expect(TOOL_NAMES).toHaveLength(26);
   });
 
   it("returns the same TOOLS reference on each listToolsResult() call", () => {
@@ -175,6 +179,21 @@ describe("default Grexx surface", () => {
     expect(schema.properties?.zipCode?.pattern).toBeUndefined();
   });
 
+  it("planned_line keeps the postcode optional and validates the house number", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_planned_line");
+    const schema = tool?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string; description?: string; minimum?: number }>;
+    };
+    expect(schema.required).toEqual(["houseNumber", "isRoomNumberKnown"]);
+    expect(schema.properties?.zipCode).toEqual({ type: "string", description: "Dutch postcode: four digits and two letters, e.g. 1012JS. Optional, but strongly recommended: a house number alone may match several addresses." });
+    expect(schema.properties?.houseNumber).toEqual({
+      type: "integer",
+      description: "House number, digits only, e.g. 12. Put any letter or suffix (A, bis, -1) in houseNumberExtension.",
+      minimum: 1,
+    });
+  });
+
   it("mobile_total_usage requires the XSD customer id and stays read-only", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_mobile_total_usage");
     const schema = tool?.inputSchema as {
@@ -186,6 +205,31 @@ describe("default Grexx surface", () => {
     expect(schema.properties?.customerId?.minimum).toBe(1);
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("line troubleshooting realtime reads require their XSD inputs and stay read-only", () => {
+    const callForwardings = GREXX_TOOLS.find((tool) => tool.name === "kpn_grexx_mobile_call_forwardings");
+    expect(callForwardings?.inputSchema).toMatchObject({
+      required: ["orderId"],
+      properties: { orderId: { type: "integer" } },
+    });
+    expect(callForwardings?.annotations).toMatchObject({ readOnlyHint: true });
+
+    const module = GREXX_TOOLS.find((tool) => tool.name === "kpn_grexx_mobile_module");
+    expect(module?.inputSchema).toMatchObject({
+      required: ["orderId"],
+      properties: { orderId: { type: "integer" } },
+    });
+    expect(module?.annotations).toMatchObject({ readOnlyHint: true });
+
+    const plannedLine = GREXX_TOOLS.find((tool) => tool.name === "kpn_grexx_planned_line");
+    const plannedLineSchema = plannedLine?.inputSchema as {
+      required?: string[];
+      properties?: Record<string, { type?: string }>;
+    };
+    expect(plannedLineSchema.required).toEqual(["houseNumber", "isRoomNumberKnown"]);
+    expect(Object.keys(plannedLineSchema.properties ?? {})).toEqual(["zipCode", "houseNumber", "houseNumberExtension", "roomNumber", "isRoomNumberKnown"]);
+    expect(plannedLine?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
   it("voip_usage requires the XSD order id and international phone number and stays read-only", () => {

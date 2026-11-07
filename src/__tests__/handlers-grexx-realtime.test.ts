@@ -87,6 +87,13 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
   kpn_grexx_mobile_usage: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
   kpn_grexx_mobile_total_usage: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
   kpn_grexx_mobile_orders: { args: { orderIds: [1, 2] }, body: { OrderIds: { OrderId: [1, 2] } } },
+  kpn_grexx_mobile_call_forwardings: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
+  kpn_grexx_mobile_preferences: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
+  kpn_grexx_mobile_module: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
+  kpn_grexx_planned_line: {
+    args: { zipCode: "1012JS", houseNumber: 1, isRoomNumberKnown: true },
+    body: { ZipCode: "1012JS", HouseNr: 1, IsRoomNumberKnown: true },
+  },
   kpn_grexx_voip_usage: { args: { orderId: 123456, phoneNumber: "+31612345678" }, body: { OrderId: 123456, PhoneNumber: "+31612345678" } },
   kpn_grexx_voip_total_usage: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
   kpn_grexx_available_portings: { args: { customerId: 28665 }, body: { MobileSubscripionCustomerId: 28665 } },
@@ -142,6 +149,46 @@ describe("realtime tool surface", () => {
     const xml = renderRealtimeBody("CarrierInfoRequest_V1", buildRealtimeBody(spec("kpn_grexx_carrier_info"), args));
     expect(xml).toContain("<ZipCode>1012JS</ZipCode>");
   });
+
+  it("normalizes the planned line postcode and keeps it optional", async () => {
+    const { client, postRealtime } = stub(fixture("PlannedLineResponse_V3"));
+    const args = { zipCode: "1012 js", houseNumber: 1, isRoomNumberKnown: true };
+    const result = await handleGrexxToolCall(client, "kpn_grexx_planned_line", args);
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledWith(
+      "PlannedLineRequest_V3",
+      { ZipCode: "1012JS", HouseNr: 1, IsRoomNumberKnown: true },
+      { idempotent: true }
+    );
+    const xml = renderRealtimeBody("PlannedLineRequest_V3", buildRealtimeBody(spec("kpn_grexx_planned_line"), args));
+    expect(xml).toContain("<ZipCode>1012JS</ZipCode>");
+  });
+
+  it.each(["abc", "123AB", "12345AB", "1234A", "1234ABC"])("rejects malformed planned line postcode %s without posting", async (zipCode) => {
+    const { client, postRealtime } = stub(fixture("PlannedLineResponse_V3"));
+    const result = await handleGrexxToolCall(client, "kpn_grexx_planned_line", {
+      zipCode: ` ${zipCode} `,
+      houseNumber: 1,
+      isRoomNumberKnown: false,
+    });
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("Postcode must look like 1234AB: four digits, then two letters.");
+    expect(postRealtime).not.toHaveBeenCalled();
+  });
+
+  it("accepts a planned line without its optional postcode", async () => {
+    const { client, postRealtime } = stub(fixture("PlannedLineResponse_V3"));
+    const result = await handleGrexxToolCall(client, "kpn_grexx_planned_line", {
+      houseNumber: 1,
+      isRoomNumberKnown: true,
+    });
+    expect(result.isError).toBeUndefined();
+    expect(postRealtime).toHaveBeenCalledWith(
+      "PlannedLineRequest_V3",
+      { HouseNr: 1, IsRoomNumberKnown: true },
+      { idempotent: true }
+    );
+  });
 });
 
 describe("request bodies", () => {
@@ -164,6 +211,24 @@ describe("request bodies", () => {
     expect(xml).toContain(
       "<OrderSummaryRequest_V1><CustomerId>1</CustomerId><OrderState>Active</OrderState>" +
         "<ProductGroup>Mobile</ProductGroup><Take>4</Take></OrderSummaryRequest_V1>"
+    );
+  });
+
+  it("emits planned line elements in XSD order", () => {
+    const xml = renderRealtimeBody(
+      "PlannedLineRequest_V3",
+      buildRealtimeBody(spec("kpn_grexx_planned_line"), {
+        houseNumberExtension: "A",
+        roomNumber: "2",
+        zipCode: "1012JS",
+        houseNumber: 1,
+        isRoomNumberKnown: true,
+      })
+    );
+    expect(xml).toContain(
+      "<PlannedLineRequest_V3><ZipCode>1012JS</ZipCode><HouseNr>1</HouseNr>" +
+        "<HouseNrExtension>A</HouseNrExtension><RoomNumber>2</RoomNumber><IsRoomNumberKnown>true</IsRoomNumberKnown>" +
+        "</PlannedLineRequest_V3>"
     );
   });
 
@@ -198,6 +263,13 @@ describe("request bodies", () => {
     ["kpn_grexx_voip_usage", { orderId: 1, phoneNumber: "0612345678" }, "Phone number must be in international format, e.g. +31612345678 (plus sign, country code, no spaces). Replace the leading 0 with +31."],
     ["kpn_grexx_voip_usage", {}, "Order number (orderId) is required."],
     ["kpn_grexx_invoice_catalog", {}, "Customer number (customerId) is required."],
+    ["kpn_grexx_mobile_call_forwardings", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_mobile_preferences", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_mobile_module", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_planned_line", {}, "House number (houseNumber) is required."],
+    ["kpn_grexx_planned_line", { houseNumber: 1 }, "Room number known (isRoomNumberKnown) is required."],
+    ["kpn_grexx_planned_line", { houseNumber: 1, isRoomNumberKnown: "true" }, 'Room number known must be true or false (not the text "true").'],
+    ["kpn_grexx_planned_line", { houseNumber: 0, isRoomNumberKnown: true }, "House number must be at least 1."],
     ["kpn_grexx_available_portings", {}, "exactly one"],
     ["kpn_grexx_available_portings", { customerId: 1, hipGroupOrderId: 2 }, "exactly one"],
     ["kpn_grexx_start_line_diagnose", { orderId: 1, symptomCode: "Sym999" }, "Sym103"],
@@ -300,6 +372,46 @@ describe("responses", () => {
     const radius = text(await handleGrexxToolCall(stub(fixture("RadiusCheckResponse_V1")).client, "kpn_grexx_radius_check", { orderId: 1 }));
     expect(JSON.parse(radius).secretsMasked).toBe(true);
     expect(radius).toMatch(/"Password": "••••"/);
+  });
+
+  it("parses mobile call forwardings from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("GetMobileCallForwardingsResponse_V1")).client, "kpn_grexx_mobile_call_forwardings", {
+      orderId: 123456,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.CallForwardings.CallForwardingUnconditional.PhoneNumber).toBe("0612345678");
+    expect(body.data.CallForwardings.CallForwardingUnconditional.Pending).toBe("false");
+  });
+
+  it("parses mobile preferences from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("GetMobilePreferencesResponse_V1")).client, "kpn_grexx_mobile_preferences", {
+      orderId: 123456,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.RatesAbroadNotificationsEnabled).toBe("true");
+    expect(body.data.DataUsageNotificationsEnabled).toBe("false");
+    expect(body.data.SimBlock).toBe("false");
+  });
+
+  it("parses the mobile module from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("GetMobileModuleResponse_V1")).client, "kpn_grexx_mobile_module", {
+      orderId: 123456,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.MobileModule.Code).toBe("MOB-001");
+    expect(body.data.MobileModule.Status.IsPending).toBe("false");
+    expect(body.data.MobileModule.Status.Value).toBe("true");
+  });
+
+  it("parses planned line results from its response fixture", async () => {
+    const result = (await handleGrexxToolCall(stub(fixture("PlannedLineResponse_V3")).client, "kpn_grexx_planned_line", {
+      zipCode: "1012JS",
+      houseNumber: 1,
+      isRoomNumberKnown: true,
+    })) as ToolResult;
+    const body = JSON.parse(text(result));
+    expect(body.data.PlannedLines.PlannedLine_V6.RoomNumber).toBe("1");
+    expect(body.data.PlannedLines.PlannedLine_V6.TechnologyStatus).toBe("Open");
   });
 
   it("reports the HTTP 200 NinaResponse rejection as an error with its code and details", async () => {

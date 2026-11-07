@@ -331,6 +331,54 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       { arg: "productCode", element: "ProductCode", type: "string", required: true, min: 1, max: 13, label: "Product code", description: "KPN product code of the main product the add-ons belong to (up to 13 characters), e.g. a mobile subscription." },
     ],
   },
+  {
+    tool: "kpn_grexx_mobile_call_forwardings",
+    request: "GetMobileCallForwardingsRequest_V1",
+    response: "GetMobileCallForwardingsResponse_V1",
+    readOnly: true,
+    description:
+      "Get the call-forwarding settings of a KPN mobile line: always, when not answered, when busy and " +
+      "when unreachable. Read-only. (Grexx: GetMobileCallForwardingsRequest_V1)",
+    fields: [orderId("the mobile order")],
+  },
+  {
+    tool: "kpn_grexx_mobile_preferences",
+    request: "GetMobilePreferencesRequest_V1",
+    response: "GetMobilePreferencesResponse_V1",
+    readOnly: true,
+    description:
+      "Get a KPN mobile line's settings: roaming (use abroad), usage alerts, SIM block and similar " +
+      "preferences. Read-only. It doesn't change a SIM block. (Grexx: GetMobilePreferencesRequest_V1)",
+    fields: [orderId("the mobile order")],
+  },
+  {
+    tool: "kpn_grexx_mobile_module",
+    request: "GetMobileModuleRequest_V1",
+    response: "GetMobileModuleResponse_V1",
+    readOnly: true,
+    description:
+      "Check whether an add-on (module, e.g. a data or roaming bundle) is active or pending on a KPN mobile " +
+      "line. Read-only. The module is identified by its own order number (orderId), not the mobile line's. " +
+      "(Grexx: GetMobileModuleRequest_V1)",
+    fields: [orderId("the mobile module (add-on) order")],
+  },
+  {
+    tool: "kpn_grexx_planned_line",
+    request: "PlannedLineRequest_V3",
+    response: "PlannedLineResponse_V3",
+    readOnly: true,
+    description:
+      "Get planned and existing KPN internet line details for a Dutch address: fibre or copper, planned " +
+      "delivery dates, technology and connection status. Read-only. Use it to check whether and when fibre " +
+      "is coming to an address. (Grexx: PlannedLineRequest_V3)",
+    fields: [
+      { arg: "zipCode", element: "ZipCode", type: "string", postcode: true, pattern: /^\d{4}[A-Z]{2}$/, label: "Postcode", formatHint: "Postcode must look like 1234AB: four digits, then two letters.", description: "Dutch postcode: four digits and two letters, e.g. 1012JS. Optional, but strongly recommended: a house number alone may match several addresses." },
+      { arg: "houseNumber", element: "HouseNr", type: "integer", required: true, min: 1, description: "House number, digits only, e.g. 12. Put any letter or suffix (A, bis, -1) in houseNumberExtension." },
+      { arg: "houseNumberExtension", element: "HouseNrExtension", type: "string", description: "House number addition (toevoeging), e.g. A, bis or 3-hoog. Optional." },
+      { arg: "roomNumber", element: "RoomNumber", type: "string", description: "Room or unit number inside the building, e.g. in an office complex or care home. Only needed when isRoomNumberKnown is true." },
+      { arg: "isRoomNumberKnown", element: "IsRoomNumberKnown", type: "boolean", required: true, label: "Room number known", description: "Do you know the room number? Set true and fill in roomNumber, or set false if not (false is the usual value: most homes have no room number)." },
+    ],
+  },
 ];
 
 /** Describe raw input without constraints that require handler normalization first. */

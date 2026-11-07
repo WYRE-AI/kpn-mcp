@@ -17,6 +17,8 @@ Releases are cut by semantic-release from Conventional Commits.
   message name, and use "KPN customer number (IRMA customer ID)", "VoIP" and "Microsoft 365" consistently.
 - Length errors read "<Field> can't be empty." or "<Field> must be at least N characters."
   instead of "character(s)".
+- Boolean errors read "<Field> must be true or false." and point out a quoted "true"/"false" string.
+- Line-troubleshooting tools and the `kpn_grexx_planned_line` address fields use plain wording.
 - HTTP mode fails closed when `CONDUIT_S2S_SECRET` is empty or a known placeholder
   (CWE-306). `MCP_ALLOW_INSECURE_DEV=1` is the only bypass and listens on
   `127.0.0.1`. Gateway mode still rejects requests that omit Grexx credential headers.
@@ -52,6 +54,9 @@ Releases are cut by semantic-release from Conventional Commits.
 - `kpn_grexx_test_connection`: verify OAuth and realtime access with a zipcode probe
   of public reference address 1012JS 1.
 - `kpn_grexx_zipcode_check`: look up address technology and speeds through Grexx IRMA.
+- Four Grexx IRMA realtime reads for line troubleshooting: `kpn_grexx_mobile_call_forwardings`,
+  `kpn_grexx_mobile_preferences`, `kpn_grexx_mobile_module`, and `kpn_grexx_planned_line`.
+  Requests are sent in XSD element order and all four are read-only.
 - Initial KPN MCP server: flat 23-tool surface over `@wyre-ai/node-kpn` covering
   Disturbance Check, Internet Speed Check, SIM Swap and Mobile Services Management (MSM v11).
 - Dual-era serving on the v2 SDK (`^2.0.0-beta.5`): one shared `McpServerFactory` via

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GetMobilePreferencesResponse_V1>
+  <RatesAbroadNotificationsEnabled>true</RatesAbroadNotificationsEnabled>
+  <DataUsageNotificationsEnabled>false</DataUsageNotificationsEnabled>
+  <SimBlock>false</SimBlock>
+</GetMobilePreferencesResponse_V1>
