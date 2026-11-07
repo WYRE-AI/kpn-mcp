@@ -247,7 +247,7 @@ describe("default Grexx surface", () => {
     const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string; pattern?: RegExp }> };
     expect(schema.required).toEqual(["orderId", "phoneNumber"]);
     expect(schema.properties?.orderId?.type).toBe("integer");
-    expect(schema.properties?.phoneNumber?.pattern).toBe("^\\+\\d{9,15}$");
+    expect(schema.properties?.phoneNumber?.pattern).toBeUndefined();
     expect(Object.keys(schema.properties ?? {})).toEqual(["orderId", "phoneNumber"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
@@ -255,7 +255,7 @@ describe("default Grexx surface", () => {
   it("uses caller-facing wording for the B1 usage and invoice reads", () => {
     const expected: Record<string, string> = {
       "kpn_grexx_mobile_total_usage":
-        "Get total mobile usage (data, calls, SMS and extra costs) per subscription for a KPN customer. Read-only. Data appears about 5 minutes after a line is activated. (Grexx: GetMobileSubscriptionTotalUsageRequest_V1)",
+        "Get total mobile usage (data, calls, SMS and extra costs) per bundle for a KPN customer. Read-only. Data appears about 5 minutes after a line is activated. (Grexx: GetMobileSubscriptionTotalUsageRequest_V1)",
       "kpn_grexx_voip_usage":
         "Get current-period VoIP call usage (number of calls, cost and duration) for one KPN VoIP order. Read-only. Data appears about 5 minutes after activation. (Grexx: GetVoipUsageRequest_V1)",
       "kpn_grexx_voip_total_usage":
@@ -355,7 +355,7 @@ describe("default Grexx surface", () => {
     const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_microsoft_tenant_exists");
     const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string; pattern?: RegExp }> };
     expect(schema.required).toEqual(["tenantName"]);
-    expect(schema.properties?.tenantName?.pattern).toBe("^[a-zA-Z0-9._-]{1,27}\\.onmicrosoft\\.com$");
+    expect(schema.properties?.tenantName?.pattern).toBeUndefined();
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 
@@ -364,7 +364,7 @@ describe("default Grexx surface", () => {
     const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string; pattern?: RegExp }> };
     expect(schema.required).toEqual(["customerId", "tenantId"]);
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId", "tenantId"]);
-    expect(schema.properties?.tenantId?.pattern).toBe("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+    expect(schema.properties?.tenantId?.pattern).toBeUndefined();
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 

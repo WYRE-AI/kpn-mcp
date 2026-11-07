@@ -32,6 +32,7 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   `kpn_grexx_microsoft_subscription_end_date`, `kpn_grexx_upgrade_info`, `kpn_grexx_related_products`,
   `kpn_grexx_mobile_call_forwardings`, `kpn_grexx_mobile_preferences`, `kpn_grexx_mobile_module`,
   and `kpn_grexx_planned_line`.
+  Mobile total usage reports data, calls, SMS and extra costs per bundle for a KPN customer.
   - `kpn_grexx_hip_number_orders`: get order details, such as porting status, for up to 50 HIP phone numbers.
   - `kpn_grexx_clean_internet_info`: check whether Extra Safe Internet (CleanInternet) is on for an internet order.
   - `kpn_grexx_cloud_tenant`: get the Microsoft 365 tenant KPN manages for a customer.

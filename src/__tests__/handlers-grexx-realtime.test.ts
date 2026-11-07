@@ -336,6 +336,36 @@ describe("request bodies", () => {
     });
   });
 
+  it.each([
+    [0.0000001, "0.0000001"],
+    ["0.0000001", "0.0000001"],
+    [-0.0000001, "-0.0000001"],
+    [1.234567890123456e-7, "0.0000001234567890123456"],
+    [Number.MIN_VALUE, `0.${"0".repeat(323)}5`],
+  ])("serializes small custom prices as xs:decimal without rounding (%s)", (value, expected) => {
+    for (const [arg, element] of [["price", "Price"], ["setupPrice", "SetupPrice"], ["terminationPrice", "TerminationPrice"]]) {
+      const body = buildRealtimeBody(spec("kpn_grexx_custom_price"), {
+        orderId: 1, confirmationState: "Accepted", [arg]: value,
+      });
+      expect(body[element]).toBe(expected);
+      expect(Number(body[element])).toBe(Number(value));
+      const xml = renderRealtimeBody("CustomPriceRequest_V1", body);
+      expect(xml).toContain(`<${element}>${expected}</${element}>`);
+      expect(customPricePrompt(body)).toContain(String(expected));
+    }
+  });
+
+  it.each([0, -0, 24.95, -24.95, 0.000001, 2147483647, "24.95"])(
+    "keeps ordinary custom prices numeric (%s)", (value) => {
+      const body = buildRealtimeBody(spec("kpn_grexx_custom_price"), {
+        orderId: 1, confirmationState: "Accepted", price: value, setupPrice: value, terminationPrice: value,
+      });
+      for (const element of ["Price", "SetupPrice", "TerminationPrice"]) {
+        expect(body[element]).toBe(Number(value));
+      }
+    }
+  );
+
   it("emits elements in XSD order regardless of argument order", () => {
     const body = buildRealtimeBody(spec("kpn_grexx_order_summary"), {
       take: 4,
