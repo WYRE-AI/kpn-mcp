@@ -117,6 +117,22 @@ function generatedValue(field: GrexxField): XmlValue {
   throw new Error(`No generator for server-generated field ${field.element}.`);
 }
 
+/**
+ * xs:decimal forbids exponent notation. Expand only exponential number strings,
+ * keeping every digit of the validated number without rounding to a money scale.
+ * Ordinary decimal values stay numeric for existing request-body consumers.
+ */
+function decimalXmlValue(value: number): number | string {
+  const match = /^(-?)(\d+)(?:\.(\d+))?e([+-]?\d+)$/.exec(String(value));
+  if (!match) return value;
+  const [, sign, whole, fraction = "", exponent] = match;
+  const digits = whole + fraction;
+  const point = whole.length + Number(exponent);
+  if (point <= 0) return `${sign}0.${"0".repeat(-point)}${digits}`;
+  if (point >= digits.length) return `${sign}${digits}${"0".repeat(point - digits.length)}`;
+  return `${sign}${digits.slice(0, point)}.${digits.slice(point)}`;
+}
+
 /** Convert one argument to its XSD value; undefined when the optional argument is absent. */
 function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
   if (field.generated === true) return generatedValue(field);
@@ -134,7 +150,7 @@ function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
       const min = field.min ?? XS_INT_MIN;
       const max = field.max ?? XS_INT_MAX;
       if (num < min || num > max) fail(`${fieldLabel(field)} must be between ${min} and ${max}.`);
-      return num;
+      return decimalXmlValue(num);
     }
     case "boolean":
       if (typeof value !== "boolean") {

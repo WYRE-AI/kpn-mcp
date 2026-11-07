@@ -63,7 +63,7 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_get_sim` | `GetSimRequest_V1` | `Puc1`, eSIM `ActivationCode`/`ConfirmationCode` masked |
 | `kpn_grexx_mobile_settings` | `GetMobileSettingsRequest_V1` | |
 | `kpn_grexx_mobile_usage` | `GetMobileSubscriptionUsageRequest_V1` | |
-| `kpn_grexx_mobile_total_usage` | `GetMobileSubscriptionTotalUsageRequest_V1` | get total mobile usage per subscription; read-only |
+| `kpn_grexx_mobile_total_usage` | `GetMobileSubscriptionTotalUsageRequest_V1` | get total mobile usage per bundle; read-only |
 | `kpn_grexx_mobile_orders` | `GetMobileSubscriptionOrdersRequest_V1` | 1-50 ids; one bad id fails the batch; SIM codes masked |
 | `kpn_grexx_voip_usage` | `GetVoipUsageRequest_V1` | order plus international phone number; get current-period VoIP call usage |
 | `kpn_grexx_voip_total_usage` | `GetVoipTotalUsageRequest_V1` | get total VoIP call usage per phone number; read-only |
