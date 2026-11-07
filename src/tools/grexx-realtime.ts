@@ -64,7 +64,7 @@ export interface GrexxRealtimeSpec {
   readOnly?: boolean;
   /** Off by default for destructive/admin tools; writes use the confirm gate. */
   admin?: boolean;
-  /** Require interactive or explicit confirmation before one mutating call. */
+  /** Require confirmation even when the write is reversible and not destructive. */
   confirm?: boolean;
   /** High-impact writes use destructive annotations and the confirmation gate. */
   destructive?: boolean;
@@ -729,6 +729,7 @@ export function realtimeTool(spec: GrexxRealtimeSpec): Tool {
   const readOnly = spec.readOnly !== false;
   const requiredArguments = collectRequiredFields(spec.fields);
   const destructive = spec.admin === true || spec.destructive === true;
+  const requiresConfirmation = destructive || spec.confirm === true;
   return {
     name: spec.tool,
     description: spec.description,
@@ -738,7 +739,7 @@ export function realtimeTool(spec: GrexxRealtimeSpec): Tool {
         ...Object.fromEntries(
           inputFields(spec.fields).map((field) => [field.arg, fieldSchema(field)])
         ) as NonNullable<Tool["inputSchema"]["properties"]>,
-        ...(spec.confirm || spec.admin ? { ...CONFIRM_ARG_PROPERTY } : {}),
+        ...(requiresConfirmation ? { ...CONFIRM_ARG_PROPERTY } : {}),
       },
       ...(requiredArguments.length > 0 ? { required: requiredArguments } : {}),
     },
