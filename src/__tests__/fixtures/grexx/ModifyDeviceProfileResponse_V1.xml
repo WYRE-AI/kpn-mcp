@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModifyDeviceProfileResponse_V1>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+  <Password>FAKE-DEVICE-PASSWORD</Password>
+  <SipPassword>FAKE-SIP-PASSWORD</SipPassword>
+</ModifyDeviceProfileResponse_V1>

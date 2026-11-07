@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContactResponsePagingResult_V1>
+  <Items>
+    <ContactResponse_V1>
+      <ContactId>1</ContactId>
+      <DisplayName>Duck Jansen</DisplayName>
+      <Email>duck.jansen@example.invalid</Email>
+      <Phone1>0612345678</Phone1>
+      <IsUserContact>true</IsUserContact>
+      <NotificationPreferences>
+        <EnabledSystemNotifications>
+          <string>Primary</string>
+        </EnabledSystemNotifications>
+      </NotificationPreferences>
+      <Status>
+        <Code>Success</Code>
+      </Status>
+    </ContactResponse_V1>
+  </Items>
+  <PagingResult>
+    <Count>1</Count>
+    <Total>1</Total>
+    <Offset>0</Offset>
+    <Limit>20</Limit>
+  </PagingResult>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+</ContactResponsePagingResult_V1>

@@ -43,10 +43,13 @@ describe("ambiguous invalid XML responses", () => {
 });
 
 describe("confirmation without a destructive annotation", () => {
-  it("advertises the confirmation argument without marking the tool destructive", () => {
-    const tool = realtimeTool(CONFIRM_ONLY);
+  it.each([
+    { name: "confirm-only", spec: CONFIRM_ONLY, destructive: false },
+    { name: "destructive-only", spec: { ...CUSTOM_PRICE, confirm: false, destructive: true }, destructive: true },
+  ])("advertises confirmation for $name while preserving destructive annotations", ({ spec, destructive }) => {
+    const tool = realtimeTool(spec);
     expect(tool.inputSchema.properties).toHaveProperty(CONFIRM_ARG);
-    expect(tool.annotations?.destructiveHint).toBe(false);
+    expect(tool.annotations?.destructiveHint).toBe(destructive);
   });
 
   it("blocks an unconfirmed non-eliciting caller", async () => {

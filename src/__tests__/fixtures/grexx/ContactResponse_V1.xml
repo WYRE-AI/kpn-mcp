@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContactResponse_V1>
+  <ContactId>1</ContactId>
+  <DisplayName>Duck Jansen</DisplayName>
+  <Email>duck.jansen@example.invalid</Email>
+  <Phone1>0612345678</Phone1>
+  <Phone2>0645678910</Phone2>
+  <IsUserContact>true</IsUserContact>
+  <NotificationPreferences>
+    <EnabledSystemNotifications>
+      <string>Primary</string>
+    </EnabledSystemNotifications>
+  </NotificationPreferences>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+</ContactResponse_V1>

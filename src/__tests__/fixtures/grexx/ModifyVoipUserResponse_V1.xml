@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModifyVoipUserResponse_V1>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+</ModifyVoipUserResponse_V1>

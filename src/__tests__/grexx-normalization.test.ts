@@ -12,6 +12,10 @@ const CASES = [
   { tool: "kpn_grexx_related_products", arg: "productCode", element: "ProductCode", value: "1234567890123", invalid: "12345678901234", args: { customerId: 28665 } },
   { tool: "kpn_grexx_microsoft_tenant_exists", arg: "tenantName", element: "TenantName", value: "example.onmicrosoft.com", invalid: "example.com", args: {} },
   { tool: "kpn_grexx_microsoft_domain_ownership", arg: "tenantId", element: "TenantId", value: "1b2c3d4e-0000-1111-2222-333344445555", invalid: "not-a-guid", args: { customerId: 28665 } },
+  {"tool": "kpn_grexx_modify_device_profile", "arg": "deviceName", "element": "DeviceName", "value": "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD", "invalid": "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD", "args": {"orderId": 123456, "deviceType": "Yealink T46G", "deviceName": "Desk", "linePort": "12345"}},
+  {"tool": "kpn_grexx_modify_device_profile", "arg": "deviceUserName", "element": "DeviceUserName", "value": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu", "invalid": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu", "args": {"orderId": 123456, "deviceType": "Yealink T46G", "deviceName": "Desk", "linePort": "12345"}},
+  {"tool": "kpn_grexx_modify_device_profile", "arg": "linePort", "element": "LinePort", "value": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL", "invalid": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL", "args": {"orderId": 123456, "deviceType": "Yealink T46G", "deviceName": "Desk", "linePort": "12345"}},
+  {"tool": "kpn_grexx_modify_device_profile", "arg": "macAddress", "element": "MacAddress", "value": "00:1A:2B:3C:4D:5E", "invalid": "00:1A:2B:3C:4D:5E:6F", "args": {"orderId": 123456, "deviceType": "Yealink T46G", "deviceName": "Desk", "linePort": "12345"}},
 ];
 
 describe("normalized Grexx string inputs", () => {
