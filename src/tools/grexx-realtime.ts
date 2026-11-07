@@ -48,7 +48,7 @@ export interface GrexxRealtimeSpec {
   fields: GrexxField[];
   /** Cross-field rule; return an error message when the arguments are invalid. */
   check?: (args: Record<string, unknown>) => string | undefined;
-  /** False for calls that start work at KPN (not retried, not read-only). */
+  /** False for calls that start work at KPN; disables general retries, but not the SDK's HTTP 401 token-refresh retry. */
   readOnly?: boolean;
   /** True for irreversible commercial actions that require confirmation. */
   destructive?: boolean;
@@ -137,7 +137,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     readOnly: false,
     description:
       "Starts a KPN line diagnose on an xDSL (Ethernet) order. Use it when a line is out of sync. " +
-      "This starts a test at KPN; it is not retried automatically. The response confirms the start and " +
+      "This starts a test at KPN; general retries are disabled, but the SDK may refresh the token and resend once after HTTP 401. The response confirms the start and " +
       "returns an AnalysisId. Fetching the result (GetLatest) is not exposed yet. (Grexx: StartLineDiagnoseRequest_V1)",
     fields: [
       orderId("the xDSL order"),
@@ -456,7 +456,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     confirm: true,
     description:
       "⚠ DESTRUCTIVE. Accepts or rejects a custom (maatwerk) price that KPN proposed on an order. " +
-      "Submits your decision to KPN in one call and is not retried; it can't be undone through this tool. " +
+      "Submits your decision to KPN and can't be undone through this tool. General retries are disabled, but the SDK may refresh the token and resend once after HTTP 401. " +
       "Confirm with the user before invoking. (Grexx: CustomPriceRequest_V1)",
     fields: [
       { arg: "orderId", element: "OrderId", type: "integer", required: true, min: 1, label: "Order number", description: "KPN order number (IRMA order ID) the custom price applies to." },

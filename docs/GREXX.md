@@ -57,7 +57,7 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_carrier_info` | `CarrierInfoRequest_V1` | acceptatie stub address 9999ZZ 1 |
 | `kpn_grexx_radius_check` | `RadiusCheckRequest_V1` | PPP `Password` masked |
 | `kpn_grexx_ras_check` | `RasCheckRequest_V1` | |
-| `kpn_grexx_start_line_diagnose` | `StartLineDiagnoseRequest_V1` | starts a test at KPN: not read-only, never retried; GetLatest is not exposed |
+| `kpn_grexx_start_line_diagnose` | `StartLineDiagnoseRequest_V1` | starts a test at KPN: not read-only, general retries disabled (HTTP 401 exception below); GetLatest is not exposed |
 | `kpn_grexx_customer_data` | `CustomerDataRequest_V1` | take ≤ 100 |
 | `kpn_grexx_order_summary` | `OrderSummaryRequest_V1` | take ≤ 2500; dates need a time |
 | `kpn_grexx_get_sim` | `GetSimRequest_V1` | `Puc1`, eSIM `ActivationCode`/`ConfirmationCode` masked |
@@ -81,7 +81,9 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_cloud_tenant` | `CloudTenantRequest_V2` | the Microsoft 365 tenant KPN manages for a customer |
 | `kpn_grexx_microsoft_tenant_exists` | `MicrosoftTenantExistsCheckRequest_V1` | whether a `yourcompany.onmicrosoft.com` tenant name is taken |
 | `kpn_grexx_microsoft_domain_ownership` | `MicrosoftTenantDomainOwnershipCheckRequest_V1` | whether KPN has delegated (admin) access to the tenant and it is ready to move to KPN |
-| `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | accept or reject KPN's proposed custom price; tier D, destructive, confirmed, sent once |
+| `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | accept or reject KPN's proposed custom price; tier D, destructive, confirmed; general retries disabled (HTTP 401 exception below) |
+
+Grexx writes use `idempotent: false`, disabling automatic retries for network errors, rate limits and server errors. The node-kpn 2.2.1 SDK still refreshes the token and resends once after HTTP 401. A confirmed write is therefore not guaranteed to produce only one HTTP request. Check the order in KPN before manually retrying an ambiguous result.
 
 The tools added for the mobile line-troubleshooting and renewal/upsell batches are reads except `kpn_grexx_custom_price`, which is a confirmed destructive write. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
 

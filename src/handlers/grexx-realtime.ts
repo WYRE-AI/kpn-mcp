@@ -114,6 +114,18 @@ function decimalXmlValue(value: number): number | string {
   return `${sign}${digits.slice(0, point)}.${digits.slice(point)}`;
 }
 
+/** Compare exponent-free decimals by value, ignoring redundant zeros and the sign of zero. */
+function canonicalDecimal(value: string): string {
+  const negative = value.startsWith("-");
+  const [whole, fraction = ""] = (negative ? value.slice(1) : value).split(".");
+  const integer = whole.replace(/^0+/, "") || "0";
+  let end = fraction.length;
+  while (end > 0 && fraction[end - 1] === "0") end--;
+  const fractional = fraction.slice(0, end);
+  const magnitude = fractional ? `${integer}.${fractional}` : integer;
+  return negative && magnitude !== "0" ? `-${magnitude}` : magnitude;
+}
+
 /** Convert one argument to its XSD value; undefined when the optional argument is absent. */
 function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
   const value = args[field.arg];
@@ -130,7 +142,12 @@ function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
       const min = field.min ?? XS_INT_MIN;
       const max = field.max ?? XS_INT_MAX;
       if (num < min || num > max) fail(`${fieldLabel(field)} must be between ${min} and ${max}.`);
-      return decimalXmlValue(num);
+      const decimal = decimalXmlValue(num);
+      // Converting a string must not change the decimal price shown for confirmation or sent to KPN.
+      if (typeof value === "string" && canonicalDecimal(value.trim()) !== canonicalDecimal(String(decimal))) {
+        fail(`${fieldLabel(field)} can't be represented without losing decimal precision.`);
+      }
+      return decimal;
     }
     case "boolean":
       if (typeof value !== "boolean") {
