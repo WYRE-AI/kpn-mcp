@@ -382,7 +382,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       "delivery dates, technology and connection status. Read-only. Use it to check whether and when fibre " +
       "is coming to an address. (Grexx: PlannedLineRequest_V3)",
     fields: [
-      { arg: "zipCode", element: "ZipCode", type: "string", postcode: true, description: "Dutch postcode: four digits and two letters, e.g. 1012JS. Optional, but strongly recommended: a house number alone may match several addresses." },
+      { arg: "zipCode", element: "ZipCode", type: "string", postcode: true, pattern: /^\d{4}[A-Z]{2}$/, label: "Postcode", formatHint: "Postcode must look like 1234AB: four digits, then two letters.", description: "Dutch postcode: four digits and two letters, e.g. 1012JS. Optional, but strongly recommended: a house number alone may match several addresses." },
       { arg: "houseNumber", element: "HouseNr", type: "integer", required: true, min: 1, description: "House number, digits only, e.g. 12. Put any letter or suffix (A, bis, -1) in houseNumberExtension." },
       { arg: "houseNumberExtension", element: "HouseNrExtension", type: "string", description: "House number addition (toevoeging), e.g. A, bis or 3-hoog. Optional." },
       { arg: "roomNumber", element: "RoomNumber", type: "string", description: "Room or unit number inside the building, e.g. in an office complex or care home. Only needed when isRoomNumberKnown is true." },
