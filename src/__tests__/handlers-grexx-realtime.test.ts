@@ -164,6 +164,18 @@ describe("realtime tool surface", () => {
     expect(xml).toContain("<ZipCode>1012JS</ZipCode>");
   });
 
+  it.each(["abc", "123AB", "12345AB", "1234A", "1234ABC"])("rejects malformed planned line postcode %s without posting", async (zipCode) => {
+    const { client, postRealtime } = stub(fixture("PlannedLineResponse_V3"));
+    const result = await handleGrexxToolCall(client, "kpn_grexx_planned_line", {
+      zipCode: ` ${zipCode} `,
+      houseNumber: 1,
+      isRoomNumberKnown: false,
+    });
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("Postcode must look like 1234AB: four digits, then two letters.");
+    expect(postRealtime).not.toHaveBeenCalled();
+  });
+
   it("accepts a planned line without its optional postcode", async () => {
     const { client, postRealtime } = stub(fixture("PlannedLineResponse_V3"));
     const result = await handleGrexxToolCall(client, "kpn_grexx_planned_line", {
