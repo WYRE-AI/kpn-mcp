@@ -43,6 +43,7 @@ function humanize(arg: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/** Choose the field label used in caller-facing validation errors. */
 export function fieldLabel(field: GrexxField): string {
   return field.label ?? DEFAULT_LABELS[field.arg] ?? humanize(field.arg);
 }
@@ -65,6 +66,7 @@ const XS_INT_MAX = 2147483647;
 /** xs:dateTime needs a date AND a time. IRMA rejects a date-only value with 109. */
 const XS_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/;
 
+/** Accept a numeric value or decimal digit string within the field bounds. */
 function readInteger(field: GrexxField, value: unknown): number {
   const num = typeof value === "string" && /^-?\d+$/.test(value.trim()) ? Number(value) : value;
   if (typeof num !== "number" || !Number.isInteger(num)) fail(`${fieldLabel(field)} must be a whole number.`);
@@ -75,6 +77,7 @@ function readInteger(field: GrexxField, value: unknown): number {
   return num;
 }
 
+/** Normalize whitespace before checking string length, enums and patterns. */
 function readString(field: GrexxField, value: unknown): string {
   if (typeof value !== "string" || value.trim() === "") fail(`${fieldLabel(field)} can't be empty.`);
   const text = field.postcode ? value.replace(/\s+/g, "").toUpperCase() : value.trim();
@@ -150,10 +153,12 @@ export function maskSecrets(value: unknown, state = { masked: false }): unknown 
   return out;
 }
 
+/** Narrow a parsed XML value to an object, or return an empty object. */
 function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
+/** Read a nonempty string from a parsed XML leaf. */
 function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
 }

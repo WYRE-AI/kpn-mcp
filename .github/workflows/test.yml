@@ -45,4 +45,6 @@ jobs:
         run: node scripts/smoke-dual-era.mjs
 
       - name: Test Docker build
-        run: docker build --platform linux/amd64 --build-arg GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} -t kpn-mcp:test .
+        run: docker build --platform linux/amd64 --build-arg GITHUB_TOKEN -t kpn-mcp:test .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
