@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelatedProductsResponse_V1>
+  <Status>
+    <Code>Success</Code>
+    <Messages>
+      <string>Related products retrieved.</string>
+    </Messages>
+  </Status>
+  <RelatedProducts>
+    <Product_V1>
+      <ProductCode>MOB-001</ProductCode>
+      <ProductName>Mobile subscription module</ProductName>
+    </Product_V1>
+  </RelatedProducts>
+</RelatedProductsResponse_V1>

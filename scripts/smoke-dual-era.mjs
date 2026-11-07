@@ -52,6 +52,9 @@ const EXPECTED_TOOLS = [
   'kpn_grexx_voip_total_usage',
   'kpn_grexx_available_portings',
   'kpn_grexx_invoice_catalog',
+  'kpn_grexx_microsoft_subscription_end_date',
+  'kpn_grexx_upgrade_info',
+  'kpn_grexx_related_products',
 ];
 
 const EXPECTED_TOOL_COUNT = EXPECTED_TOOLS.length;

@@ -292,8 +292,48 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
     ],
   },
+  {
+    tool: "kpn_grexx_microsoft_subscription_end_date",
+    request: "MicrosoftProductOrderLineSubscriptionEndDateRequest_V1",
+    response: "MicrosoftProductOrderLineSubscriptionEndDateResponse_V1",
+    readOnly: true,
+    description:
+      "Get the end (renewal) date of a customer's Microsoft 365 subscription bought through KPN. Read-only. " +
+      "If you pass an order number you get that subscription. Without one you get the first matching " +
+      "subscription, which may not be the one you want when the customer has several. " +
+      "(Grexx: MicrosoftProductOrderLineSubscriptionEndDateRequest_V1)",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
+      { arg: "productId", element: "ProductId", type: "string", required: true, label: "Product code", description: "KPN product code of the Microsoft 365 subscription." },
+      { arg: "orderId", element: "OrderId", type: "integer", required: false, min: 1, max: 2147483647, label: "Order number", description: "KPN order number of the Microsoft 365 subscription. Optional. Leave it empty to get the customer's first matching subscription." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_upgrade_info",
+    request: "GetUpgradeInfoRequest_V1",
+    response: "GetUpgradeInfoResponse_V1",
+    readOnly: true,
+    description:
+      "Check whether a KPN order can be upgraded and list the products it can move to. Read-only. " +
+      "Doesn't place an upgrade. (Grexx: GetUpgradeInfoRequest_V1)",
+    fields: [orderId("the order")],
+  },
+  {
+    tool: "kpn_grexx_related_products",
+    request: "RelatedProductsRequest_V1",
+    response: "RelatedProductsResponse_V1",
+    readOnly: true,
+    description:
+      "List add-ons and related products a KPN customer can add to a product, e.g. extra bundles for a " +
+      "mobile subscription. Read-only. (Grexx: RelatedProductsRequest_V1)",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
+      { arg: "productCode", element: "ProductCode", type: "string", required: true, min: 1, max: 13, label: "Product code", description: "KPN product code of the main product the add-ons belong to (up to 13 characters), e.g. a mobile subscription." },
+    ],
+  },
 ];
 
+/** Describe raw input without constraints that require handler normalization first. */
 function fieldSchema(field: GrexxField): Record<string, unknown> {
   const description = field.description;
   switch (field.type) {
@@ -301,14 +341,20 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
       return { type: "integer", description, ...(field.min !== undefined ? { minimum: field.min } : {}), ...(field.max !== undefined ? { maximum: field.max } : {}) };
     case "boolean":
       return { type: "boolean", description };
+    case "string":
+      return {
+        type: "string",
+        description,
+        ...(field.min !== undefined ? { minLength: field.min } : {}),
+        ...(field.enum ? { enum: [...field.enum] } : {}),
+        // The handler validates patterns and maximum length after normalization.
+      };
     case "dateTime":
       return { type: "string", format: "date-time", description };
     case "integerList":
       return { type: "array", description, items: { type: "integer", minimum: 1 }, minItems: field.min, maxItems: field.max };
     default: {
-      // Patterns apply to normalized values. Advertising the raw regex would
-      // reject whitespace (or postcode casing) before the handler can normalize it.
-      return { type: "string", description, ...(field.enum ? { enum: [...field.enum] } : {}) };
+      return { type: "string", description };
     }
   }
 }

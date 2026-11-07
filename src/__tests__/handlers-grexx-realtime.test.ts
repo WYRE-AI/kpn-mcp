@@ -91,6 +91,12 @@ const CASES: Record<string, { args: Record<string, unknown>; body: Record<string
   kpn_grexx_voip_total_usage: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
   kpn_grexx_available_portings: { args: { customerId: 28665 }, body: { MobileSubscripionCustomerId: 28665 } },
   kpn_grexx_invoice_catalog: { args: { customerId: 28665 }, body: { CustomerId: 28665 } },
+  kpn_grexx_microsoft_subscription_end_date: {
+    args: { customerId: 28665, productId: "MS-001", orderId: 123456 },
+    body: { CustomerId: 28665, ProductId: "MS-001", OrderId: 123456 },
+  },
+  kpn_grexx_upgrade_info: { args: { orderId: 123456 }, body: { OrderId: 123456 } },
+  kpn_grexx_related_products: { args: { customerId: 28665, productCode: "MOB-001" }, body: { CustomerId: 28665, ProductCode: "MOB-001" } },
 };
 
 describe("realtime tool surface", () => {
@@ -195,6 +201,12 @@ describe("request bodies", () => {
     ["kpn_grexx_available_portings", {}, "exactly one"],
     ["kpn_grexx_available_portings", { customerId: 1, hipGroupOrderId: 2 }, "exactly one"],
     ["kpn_grexx_start_line_diagnose", { orderId: 1, symptomCode: "Sym999" }, "Sym103"],
+    ["kpn_grexx_microsoft_subscription_end_date", { customerId: 28665 }, "Product code (productId) is required."],
+    ["kpn_grexx_microsoft_subscription_end_date", { customerId: 28665, productId: "MS-001", orderId: 0 }, "Order number must be at least 1."],
+    ["kpn_grexx_upgrade_info", {}, "Order number (orderId) is required."],
+    ["kpn_grexx_related_products", { customerId: 28665 }, "Product code (productCode) is required."],
+    ["kpn_grexx_related_products", { customerId: 28665, productCode: "MOB-0012345678901234" }, "Product code can be at most 13 characters."],
+    ["kpn_grexx_related_products", { customerId: 28665, productCode: "  " }, "Product code can't be empty."],
   ])("%s rejects %j without calling Grexx", async (tool, args, message) => {
     const { client, postRealtime } = stub(fixture("OrderDataResponse_V1"));
     const result = (await handleGrexxToolCall(client, tool, args)) as ToolResult;

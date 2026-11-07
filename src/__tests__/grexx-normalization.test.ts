@@ -8,15 +8,17 @@ const CASES = [
   { tool: "kpn_grexx_carrier_info", arg: "israSpecification", element: "IsraSpecification", value: "001", invalid: "01", args: { productType: "xDSL", zipCode: "1012 js", houseNumber: 1 } },
   { tool: "kpn_grexx_carrier_info", arg: "houseNumberExtension", element: "HouseNumberExt", value: "bis", invalid: "abcde", args: { productType: "All", zipCode: "1012 js", houseNumber: 1 } },
   { tool: "kpn_grexx_voip_usage", arg: "phoneNumber", element: "PhoneNumber", value: "+31201234567", invalid: "0201234567", args: { orderId: 123456 } },
+  { tool: "kpn_grexx_related_products", arg: "productCode", element: "ProductCode", value: "1234567890123", invalid: "12345678901234", args: { customerId: 28665 } },
 ];
 
 describe("normalized Grexx string inputs", () => {
   it.each(CASES)("$tool / $arg allows whitespace before handler validation", ({ tool, arg, element, value, args }) => {
     const spec = GREXX_REALTIME_SPECS.find((item) => item.tool === tool)!;
-    const schema = realtimeTool(spec).inputSchema.properties?.[arg] as { type?: string; pattern?: string };
+    const schema = realtimeTool(spec).inputSchema.properties?.[arg] as { type?: string; pattern?: string; maxLength?: number };
     expect(schema.type).toBe("string");
     // A raw anchored pattern would reject this input before the handler can trim it.
     expect(schema.pattern).toBeUndefined();
+    expect(schema.maxLength).toBeUndefined();
     const body = buildRealtimeBody(spec, { ...args, [arg]: ` \t${value}\n ` });
     expect(body[element]).toBe(value);
     if (tool === "kpn_grexx_carrier_info") expect(body.ZipCode).toBe("1012JS");

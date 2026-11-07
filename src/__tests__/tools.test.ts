@@ -25,6 +25,9 @@ const GREXX_ORDER = [
   "kpn_grexx_voip_total_usage",
   "kpn_grexx_available_portings",
   "kpn_grexx_invoice_catalog",
+  "kpn_grexx_microsoft_subscription_end_date",
+  "kpn_grexx_upgrade_info",
+  "kpn_grexx_related_products",
 ];
 const LEGACY_NAMES = LEGACY_TOOLS.map((tool) => tool.name);
 
@@ -91,6 +94,10 @@ describe("default Grexx surface", () => {
     expect(TOOL_NAMES).toEqual(GREXX_ORDER);
     expect(TOOL_NAMES).not.toContain("kpn_disturbances_check");
     expect(TOOL_NAMES).not.toContain("kpn_mobile_sim_block");
+  });
+
+  it("serves a 22-tool default Grexx surface", () => {
+    expect(TOOL_NAMES).toHaveLength(22);
   });
 
   it("returns the same TOOLS reference on each listToolsResult() call", () => {
@@ -231,6 +238,36 @@ describe("default Grexx surface", () => {
     expect(schema.properties?.customerId?.type).toBe("integer");
     expect(schema.properties?.customerId?.minimum).toBe(1);
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("microsoft_subscription_end_date requires the XSD fields and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_microsoft_subscription_end_date");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    expect(schema.required).toEqual(["customerId", "productId"]);
+    expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(schema.properties?.productId?.type).toBe("string");
+    expect(schema.properties?.orderId?.type).toBe("integer");
+    expect(Object.keys(schema.properties ?? {})).toEqual(["customerId", "productId", "orderId"]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("upgrade_info requires the XSD order id and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_upgrade_info");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    expect(schema.required).toEqual(["orderId"]);
+    expect(schema.properties?.orderId?.type).toBe("integer");
+    expect(Object.keys(schema.properties ?? {})).toEqual(["orderId"]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("related_products requires the XSD customer id and product code and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_related_products");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    expect(schema.required).toEqual(["customerId", "productCode"]);
+    expect(schema.properties?.customerId?.type).toBe("integer");
+    expect(schema.properties?.productCode?.type).toBe("string");
+    expect(Object.keys(schema.properties ?? {})).toEqual(["customerId", "productCode"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
   });
 });
