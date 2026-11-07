@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CustomPriceResponse_V1>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+  <CustomPriceData>
+    <OrderId>123456</OrderId>
+    <ProductId>CLOUD-001</ProductId>
+    <ProductName>Microsoft 365 E3</ProductName>
+    <Attribute>Cloud</Attribute>
+    <Price>12.34</Price>
+    <SetupPrice>1.23</SetupPrice>
+    <TerminationPrice>34.56</TerminationPrice>
+    <Specification>Monthly</Specification>
+  </CustomPriceData>
+</CustomPriceResponse_V1>

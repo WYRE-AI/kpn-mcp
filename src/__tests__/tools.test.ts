@@ -32,6 +32,12 @@ const GREXX_ORDER = [
   "kpn_grexx_mobile_preferences",
   "kpn_grexx_mobile_module",
   "kpn_grexx_planned_line",
+  "kpn_grexx_hip_number_orders",
+  "kpn_grexx_clean_internet_info",
+  "kpn_grexx_cloud_tenant",
+  "kpn_grexx_microsoft_tenant_exists",
+  "kpn_grexx_microsoft_domain_ownership",
+  "kpn_grexx_custom_price",
 ];
 const LEGACY_NAMES = LEGACY_TOOLS.map((tool) => tool.name);
 
@@ -100,8 +106,8 @@ describe("default Grexx surface", () => {
     expect(TOOL_NAMES).not.toContain("kpn_mobile_sim_block");
   });
 
-  it("serves a 26-tool default Grexx surface", () => {
-    expect(TOOL_NAMES).toHaveLength(26);
+  it("serves a 32-tool default Grexx surface", () => {
+    expect(TOOL_NAMES).toHaveLength(32);
   });
 
   it("returns the same TOOLS reference on each listToolsResult() call", () => {
@@ -109,16 +115,20 @@ describe("default Grexx surface", () => {
     expect(listToolsResult().tools).toBe(listToolsResult().tools);
   });
 
-  it("every Grexx tool is an object schema with no destructive warning; only start_line_diagnose is not read-only", () => {
+  it("every Grexx tool is an object schema with the expected read-only annotations", () => {
     for (const t of GREXX_TOOLS) {
       expect(t.name).toMatch(/^kpn_grexx_[a-z_]+$/);
       expect(t.description).toBeTruthy();
       expect(t.inputSchema.type).toBe("object");
       expect(t.annotations).toMatchObject({
-        readOnlyHint: t.name !== "kpn_grexx_start_line_diagnose",
+        readOnlyHint: t.name !== "kpn_grexx_start_line_diagnose" && t.name !== "kpn_grexx_custom_price",
         openWorldHint: true,
       });
-      expect(t.description).not.toContain("⚠");
+      if (t.name === "kpn_grexx_custom_price") {
+        expect(t.description).toContain("⚠ DESTRUCTIVE.");
+      } else {
+        expect(t.description).not.toContain("⚠");
+      }
       expect(t.description?.toLowerCase()).not.toContain("basic auth is the default");
     }
   });
@@ -313,6 +323,73 @@ describe("default Grexx surface", () => {
     expect(schema.properties?.productCode?.type).toBe("string");
     expect(Object.keys(schema.properties ?? {})).toEqual(["customerId", "productCode"]);
     expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("hip_number_orders requires up to 50 order IDs and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_hip_number_orders");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string; minItems?: number; maxItems?: number }> };
+    expect(schema.required).toEqual(["orderIds"]);
+    expect(schema.properties?.orderIds?.type).toBe("array");
+    expect(schema.properties?.orderIds?.minItems).toBe(1);
+    expect(schema.properties?.orderIds?.maxItems).toBe(50);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("clean_internet_info requires the XSD order id and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_clean_internet_info");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    expect(schema.required).toEqual(["orderId"]);
+    expect(Object.keys(schema.properties ?? {})).toEqual(["orderId"]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("cloud_tenant requires the XSD customer id and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_cloud_tenant");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    expect(schema.required).toEqual(["customerId"]);
+    expect(Object.keys(schema.properties ?? {})).toEqual(["customerId"]);
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("microsoft_tenant_exists requires a valid tenant name and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_microsoft_tenant_exists");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string; pattern?: RegExp }> };
+    expect(schema.required).toEqual(["tenantName"]);
+    expect(schema.properties?.tenantName?.pattern).toBeUndefined();
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("microsoft_domain_ownership requires the XSD customer and tenant fields and stays read-only", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_microsoft_domain_ownership");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string; pattern?: RegExp }> };
+    expect(schema.required).toEqual(["customerId", "tenantId"]);
+    expect(Object.keys(schema.properties ?? {})).toEqual(["customerId", "tenantId"]);
+    expect(schema.properties?.tenantId?.pattern).toBeUndefined();
+    expect(tool?.annotations).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("custom_price requires an order and confirmation state and is a destructive write", () => {
+    const tool = GREXX_TOOLS.find((item) => item.name === "kpn_grexx_custom_price");
+    const schema = tool?.inputSchema as { required?: string[]; properties?: Record<string, { type?: string }> };
+    expect(schema.required).toEqual(["orderId", "confirmationState"]);
+    expect(Object.keys(schema.properties ?? {})).toEqual([
+      "orderId",
+      "confirmationState",
+      "remark",
+      "price",
+      "setupPrice",
+      "terminationPrice",
+      "confirm_destructive_action",
+    ]);
+    expect(schema.properties?.price?.type).toBe("number");
+    expect(tool?.annotations).toMatchObject({
+      readOnlyHint: false,
+      idempotentHint: false,
+      destructiveHint: true,
+      openWorldHint: true,
+    });
+    expect(tool?.description?.startsWith("⚠ DESTRUCTIVE.")).toBe(true);
+    expect(schema.properties?.confirm_destructive_action?.type).toBe("boolean");
   });
 });
 

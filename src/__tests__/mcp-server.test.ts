@@ -272,6 +272,12 @@ describe("stateless tool surface", () => {
       "kpn_grexx_mobile_preferences",
       "kpn_grexx_mobile_module",
       "kpn_grexx_planned_line",
+      "kpn_grexx_hip_number_orders",
+      "kpn_grexx_clean_internet_info",
+      "kpn_grexx_cloud_tenant",
+      "kpn_grexx_microsoft_tenant_exists",
+      "kpn_grexx_microsoft_domain_ownership",
+      "kpn_grexx_custom_price",
     ]);
   });
 });

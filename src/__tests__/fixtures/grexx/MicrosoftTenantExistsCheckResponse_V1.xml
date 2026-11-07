@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MicrosoftTenantExistsCheckResponse_V1>
+  <Status>
+    <Code>Success</Code>
+  </Status>
+  <IsExistingTenant>true</IsExistingTenant>
+</MicrosoftTenantExistsCheckResponse_V1>

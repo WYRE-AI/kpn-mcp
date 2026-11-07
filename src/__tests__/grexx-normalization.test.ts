@@ -10,6 +10,8 @@ const CASES = [
   { tool: "kpn_grexx_carrier_info", arg: "houseNumberExtension", element: "HouseNumberExt", value: "bis", invalid: "abcde", args: { productType: "All", zipCode: "1012 js", houseNumber: 1 } },
   { tool: "kpn_grexx_voip_usage", arg: "phoneNumber", element: "PhoneNumber", value: "+31201234567", invalid: "0201234567", args: { orderId: 123456 } },
   { tool: "kpn_grexx_related_products", arg: "productCode", element: "ProductCode", value: "1234567890123", invalid: "12345678901234", args: { customerId: 28665 } },
+  { tool: "kpn_grexx_microsoft_tenant_exists", arg: "tenantName", element: "TenantName", value: "example.onmicrosoft.com", invalid: "example.com", args: {} },
+  { tool: "kpn_grexx_microsoft_domain_ownership", arg: "tenantId", element: "TenantId", value: "1b2c3d4e-0000-1111-2222-333344445555", invalid: "not-a-guid", args: { customerId: 28665 } },
 ];
 
 describe("normalized Grexx string inputs", () => {

@@ -14,7 +14,9 @@ import {
   GrexxError,
   GrexxForbiddenError,
   GrexxRateLimitError,
+  GrexxServerError,
   GrexxValidationError,
+  isGrexxSuccessCode,
   type GrexxClient,
 } from "@wyre-ai/node-kpn";
 import {
@@ -29,6 +31,7 @@ import { NO_ELICITATION, type ElicitationContext } from "../elicitation.js";
 import { LEGACY_DEVELOPER_API_ENABLED, LEGACY_TOOLS, TOOLS } from "../tools/index.js";
 import { GREXX_HANDLERS, type GrexxToolHandler } from "./grexx.js";
 import { ninaErrorFromResponse } from "./grexx-realtime.js";
+import { isGrexxWriteTool } from "../tools/grexx-realtime.js";
 import { CORE_HANDLERS } from "./core.js";
 import { MOBILE_READ_HANDLERS } from "./mobile-read.js";
 import { MOBILE_WRITE_HANDLERS } from "./mobile-write.js";
@@ -77,6 +80,9 @@ const MSM_HINT =
 // authorize is a real-world side effect, so the user decides after checking.
 const WRITE_RETRY_HINT =
   "The order may or may not have been created; check kpn_mobile_orders_list before retrying.";
+
+const GREXX_WRITE_RETRY_HINT =
+  "The request may or may not have reached KPN; check the order in KPN before retrying.";
 
 function isWriteTool(name: string): boolean {
   return Object.hasOwn(MOBILE_WRITE_HANDLERS, name);
@@ -140,6 +146,14 @@ export function describeGrexxError(sdkError: GrexxError, toolName = ""): string 
   if (error instanceof GrexxForbiddenError && error.code === "102") {
     text += " Grexx rejected the caller IP (code 102).";
   }
+  // A vendor rejection code is definitive even when it arrives with HTTP 200.
+  const unexpectedSuccess = error.constructor === GrexxError && error.statusCode >= 200 && error.statusCode < 300 &&
+    (error.code === undefined || isGrexxSuccessCode(error.code));
+  // The SDK uses status 0 for malformed XML after receiving a successful HTTP response.
+  const invalidXmlResponse = error.constructor === GrexxError && error.statusCode === 0 && error.code === "invalid_xml";
+  if (isGrexxWriteTool(toolName) && (error instanceof GrexxServerError || unexpectedSuccess || invalidXmlResponse)) {
+    text += ` ${GREXX_WRITE_RETRY_HINT}`;
+  }
   return text;
 }
 
@@ -170,7 +184,11 @@ async function runHandler(
       return errorResult(describe(error));
     }
     const message = error instanceof Error ? error.message : String(error);
-    const hint = isWriteTool(name) ? ` ${WRITE_RETRY_HINT}` : "";
+    const hint = isWriteTool(name)
+      ? ` ${WRITE_RETRY_HINT}`
+      : isGrexxWriteTool(name)
+        ? ` ${GREXX_WRITE_RETRY_HINT}`
+        : "";
     return errorResult(`Error calling ${name}: ${message}${hint}`);
   }
 }
@@ -194,12 +212,13 @@ export async function handleLegacyToolCall(
 export async function handleGrexxToolCall(
   client: GrexxClient,
   name: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  elicitation: ElicitationContext = NO_ELICITATION
 ): Promise<ToolResult | InputRequiredResult> {
   if (!Object.hasOwn(GREXX_HANDLERS, name)) {
     return errorResult(`Unknown tool: ${name}`);
   }
-  return runHandler(GREXX_HANDLERS[name], client, name, args, NO_ELICITATION, (error) =>
+  return runHandler(GREXX_HANDLERS[name], client, name, args, elicitation, (error) =>
     describeGrexxError(error as GrexxError, name)
   );
 }
@@ -221,7 +240,7 @@ export async function handleToolCall(
           "send X-KPN-Grexx-Username and X-KPN-Grexx-Password."
       );
     }
-    return handleGrexxToolCall(clients.grexx, name, args);
+    return handleGrexxToolCall(clients.grexx, name, args, elicitation);
   }
   if (LEGACY_DEVELOPER_API_ENABLED && Object.hasOwn(LEGACY_HANDLERS, name)) {
     if (!clients.legacy) {

@@ -10,7 +10,7 @@ with the same tool list for every caller. Ships as a GHCR container only (no MCP
 The client is [`@wyre-ai/node-kpn`](https://github.com/WYRE-AI/node-kpn) (Grexx export).
 Contract: [`docs/GREXX.md`](docs/GREXX.md).
 
-## Tools (26, flat)
+## Tools (32, flat)
 
 - `kpn_grexx_test_connection`: the SDK mints an OAuth client-credentials token and posts a
   `ZipCodeCheckRequest_V6` probe for the public reference address 1012JS 1 (portfolio All).
@@ -23,7 +23,7 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
 - `kpn_grexx_order_data`: customer id, product code, and quantity for an order id
   (`OrderDataRequest_V1` → `OrderDataResponse_V1`).
 
-- 22 more realtime tools built from the portal request XSDs (see `docs/GREXX.md`):
+- 28 more realtime tools built from the portal request XSDs (see `docs/GREXX.md`):
   `kpn_grexx_carrier_info`, `kpn_grexx_radius_check`, `kpn_grexx_ras_check`,
   `kpn_grexx_start_line_diagnose`, `kpn_grexx_customer_data`, `kpn_grexx_order_summary`,
   `kpn_grexx_get_sim`, `kpn_grexx_mobile_settings`, `kpn_grexx_mobile_usage`,
@@ -33,8 +33,19 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   `kpn_grexx_mobile_call_forwardings`, `kpn_grexx_mobile_preferences`, `kpn_grexx_mobile_module`,
   and `kpn_grexx_planned_line`.
   Mobile total usage reports data, calls, SMS and extra costs per bundle for a KPN customer.
+  - `kpn_grexx_hip_number_orders`: get order details, such as porting status, for up to 50 HIP phone numbers.
+  - `kpn_grexx_clean_internet_info`: check whether Extra Safe Internet (CleanInternet) is on for an internet order.
+  - `kpn_grexx_cloud_tenant`: get the Microsoft 365 tenant KPN manages for a customer.
+  - `kpn_grexx_microsoft_tenant_exists`: check whether a Microsoft 365 tenant name is already taken.
+  - `kpn_grexx_microsoft_domain_ownership`: check whether KPN has delegated (admin) access to a customer's
+    Microsoft 365 tenant and whether it is ready to move to KPN.
+  - `kpn_grexx_custom_price`: accept or reject a custom price KPN proposed on an order. A confirmed write
+    (tier D, destructive) that can't be undone through this tool. General retries are disabled;
+    after HTTP 401 the SDK can refresh the token and resend once, so a confirmed write can
+    produce more than one HTTP request.
   `start_line_diagnose` starts
-  a test at KPN, so it is not read-only and is never retried. SIM codes and the
+  a test at KPN, so it is not read-only. General retries are disabled, with the same HTTP 401
+  token-refresh retry exception. SIM codes and the
   RadiusCheck PPP password are masked.
 
 IRMA enforces XSD element order and rejects a bad request with an HTTP 200

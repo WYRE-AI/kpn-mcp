@@ -29,7 +29,7 @@ Token minting is the `^2.0.1` behavior from
 [node-kpn#4](https://github.com/WYRE-AI/node-kpn/pull/4).
 Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
-## Tools (26)
+## Tools (32)
 
 | Tool | IRMA request | SDK |
 |---|---|---|
@@ -48,7 +48,7 @@ Legacy tools keep importing `KpnClient` from `@wyre-ai/node-kpn/legacy`.
 
 These four tools are reads. Realtime retries (network, HTTP 429 / code 108, 5xx) stay inside the SDK.
 
-### XSD-spec tools (22)
+### XSD-spec tools (28)
 
 Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: field names, order, types, limits and enums copied from the request XSDs in the portal (API Toolmodule → Webservice Beschrijvingen, export 2026-10-05). One handler (`src/handlers/grexx-realtime.ts`) validates arguments, emits the body in XSD order and posts it with `GrexxClient.postRealtime`. **IRMA enforces `xs:sequence` order**: an element out of place is a 109.
 
@@ -57,7 +57,7 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_carrier_info` | `CarrierInfoRequest_V1` | acceptatie stub address 9999ZZ 1 |
 | `kpn_grexx_radius_check` | `RadiusCheckRequest_V1` | PPP `Password` masked |
 | `kpn_grexx_ras_check` | `RasCheckRequest_V1` | |
-| `kpn_grexx_start_line_diagnose` | `StartLineDiagnoseRequest_V1` | starts a test at KPN: not read-only, never retried; GetLatest is not exposed |
+| `kpn_grexx_start_line_diagnose` | `StartLineDiagnoseRequest_V1` | starts a test at KPN: not read-only, general retries disabled (HTTP 401 exception below); GetLatest is not exposed |
 | `kpn_grexx_customer_data` | `CustomerDataRequest_V1` | take ≤ 100 |
 | `kpn_grexx_order_summary` | `OrderSummaryRequest_V1` | take ≤ 2500; dates need a time |
 | `kpn_grexx_get_sim` | `GetSimRequest_V1` | `Puc1`, eSIM `ActivationCode`/`ConfirmationCode` masked |
@@ -76,8 +76,16 @@ Calls without a node-kpn builder are specs in `src/tools/grexx-realtime.ts`: fie
 | `kpn_grexx_mobile_preferences` | `GetMobilePreferencesRequest_V1` | roaming, usage alerts, SIM block and similar line settings; read-only |
 | `kpn_grexx_mobile_module` | `GetMobileModuleRequest_V1` | whether an add-on (module) is active or pending; `orderId` is the module's own order |
 | `kpn_grexx_planned_line` | `PlannedLineRequest_V3` | planned and existing fibre/copper line for an address; postcode optional but recommended |
+| `kpn_grexx_hip_number_orders` | `GetHipPhoneNumberOrdersRequest_V1` | 1 to 50 order numbers per call; order details such as porting status |
+| `kpn_grexx_clean_internet_info` | `GetCleanInternetInfoRequest_V1` | whether Extra Safe Internet (CleanInternet) is on for an internet order |
+| `kpn_grexx_cloud_tenant` | `CloudTenantRequest_V2` | the Microsoft 365 tenant KPN manages for a customer |
+| `kpn_grexx_microsoft_tenant_exists` | `MicrosoftTenantExistsCheckRequest_V1` | whether a `yourcompany.onmicrosoft.com` tenant name is taken |
+| `kpn_grexx_microsoft_domain_ownership` | `MicrosoftTenantDomainOwnershipCheckRequest_V1` | whether KPN has delegated (admin) access to the tenant and it is ready to move to KPN |
+| `kpn_grexx_custom_price` | `CustomPriceRequest_V1` | accept or reject KPN's proposed custom price; tier D, destructive, confirmed; general retries disabled (HTTP 401 exception below) |
 
-The tools added for the mobile line-troubleshooting and renewal/upsell batches are all reads. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
+Grexx writes use `idempotent: false`, disabling automatic retries for network errors, rate limits and server errors. The node-kpn 2.2.1 SDK still refreshes the token and resends once after HTTP 401. A confirmed write is therefore not guaranteed to produce only one HTTP request. Check the order in KPN before manually retrying an ambiguous result.
+
+The tools added for the mobile line-troubleshooting and renewal/upsell batches are reads except `kpn_grexx_custom_price`, which is a confirmed destructive write. They use the same response envelope, XSD-order body builder and secret masking as the existing realtime specs.
 
 Results are JSON: `request`, `response`, `code`, `messages`, `requestId`, `httpStatus`, `data` (the response document without `Status`), and `secretsMasked: true` when anything was masked. Lists come back as parsed: one element is an object, several are an array.
 

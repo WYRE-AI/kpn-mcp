@@ -7,6 +7,7 @@
  * envelope (`IsSuccess=false`, e.g. 109 XML validation error), which carries
  * no `Status` and would otherwise look like success.
  */
+import type { InputRequiredResult } from "@modelcontextprotocol/server";
 import {
   GrexxError,
   parseGrexxError,
@@ -17,7 +18,14 @@ import {
 } from "@wyre-ai/node-kpn";
 import { GREXX_REALTIME_SPECS, type GrexxField, type GrexxRealtimeSpec } from "../tools/grexx-realtime.js";
 import { MASK } from "./masking.js";
-import { errorResult, jsonResult, ToolInputError, type ToolResult } from "./results.js";
+import {
+  errorResult,
+  jsonResult,
+  textResult,
+  ToolInputError,
+  type ToolResult,
+} from "./results.js";
+import { confirmDestructive, NO_ELICITATION, type ElicitationContext } from "../elicitation.js";
 
 /**
  * SIM and line secrets: PIN/PUK/PUC codes, eSIM activation and confirmation
@@ -90,6 +98,34 @@ function readString(field: GrexxField, value: unknown): string {
   return text;
 }
 
+/**
+ * xs:decimal forbids exponent notation. Expand only exponential number strings,
+ * keeping every digit of the validated number without rounding to a money scale.
+ * Ordinary decimal values stay numeric for existing request-body consumers.
+ */
+function decimalXmlValue(value: number): number | string {
+  const match = /^(-?)(\d+)(?:\.(\d+))?e([+-]?\d+)$/.exec(String(value));
+  if (!match) return value;
+  const [, sign, whole, fraction = "", exponent] = match;
+  const digits = whole + fraction;
+  const point = whole.length + Number(exponent);
+  if (point <= 0) return `${sign}0.${"0".repeat(-point)}${digits}`;
+  if (point >= digits.length) return `${sign}${digits}${"0".repeat(point - digits.length)}`;
+  return `${sign}${digits.slice(0, point)}.${digits.slice(point)}`;
+}
+
+/** Compare exponent-free decimals by value, ignoring redundant zeros and the sign of zero. */
+function canonicalDecimal(value: string): string {
+  const negative = value.startsWith("-");
+  const [whole, fraction = ""] = (negative ? value.slice(1) : value).split(".");
+  const integer = whole.replace(/^0+/, "") || "0";
+  let end = fraction.length;
+  while (end > 0 && fraction[end - 1] === "0") end--;
+  const fractional = fraction.slice(0, end);
+  const magnitude = fractional ? `${integer}.${fractional}` : integer;
+  return negative && magnitude !== "0" ? `-${magnitude}` : magnitude;
+}
+
 /** Convert one argument to its XSD value; undefined when the optional argument is absent. */
 function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
   const value = args[field.arg];
@@ -100,6 +136,19 @@ function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
   switch (field.type) {
     case "integer":
       return readInteger(field, value);
+    case "decimal": {
+      const num = typeof value === "string" && /^-?(\d+(\.\d+)?|\.\d+)$/.test(value.trim()) ? Number(value) : value;
+      if (typeof num !== "number" || !Number.isFinite(num)) fail(`${fieldLabel(field)} must be a number, e.g. 24.95.`);
+      const min = field.min ?? XS_INT_MIN;
+      const max = field.max ?? XS_INT_MAX;
+      if (num < min || num > max) fail(`${fieldLabel(field)} must be between ${min} and ${max}.`);
+      const decimal = decimalXmlValue(num);
+      // Converting a string must not change the decimal price shown for confirmation or sent to KPN.
+      if (typeof value === "string" && canonicalDecimal(value.trim()) !== canonicalDecimal(String(decimal))) {
+        fail(`${fieldLabel(field)} can't be represented without losing decimal precision.`);
+      }
+      return decimal;
+    }
     case "boolean":
       if (typeof value !== "boolean") {
         const text = typeof value === "string" ? ` (not the text "${value}")` : "";
@@ -116,7 +165,7 @@ function readField(field: GrexxField, args: Record<string, unknown>): XmlValue {
     case "integerList": {
       if (!Array.isArray(value)) fail(`${fieldLabel(field)} must be a list.`);
       if (field.min !== undefined && value.length < field.min) fail(field.min === 1 ? `${fieldLabel(field)} can't be empty.` : `${fieldLabel(field)} needs at least ${field.min} items.`);
-      if (field.max !== undefined && value.length > field.max) fail(`${fieldLabel(field)} allows at most ${field.max} items.`);
+      if (field.max !== undefined && value.length > field.max) fail(`${fieldLabel(field)} can have at most ${field.max} items.`);
       const items = value.map((item) => readInteger({ ...field, min: 1, max: undefined }, item));
       return { [field.item ?? field.element]: items };
     }
@@ -192,13 +241,40 @@ export function ninaErrorFromResponse(error: GrexxError): GrexxError | undefined
   }
 }
 
+/** Confirmation prompt for kpn_grexx_custom_price, built only from the validated request body. */
+export function customPricePrompt(body: Record<string, unknown>): string {
+  const decision = String(body.ConfirmationState ?? "");
+  const orderId = String(body.OrderId ?? "");
+  const verb = decision === "Rejected" ? "Reject" : "Accept";
+  const prices: string[] = [];
+  if (body.Price !== undefined) prices.push(`price: ${String(body.Price)}`);
+  if (body.SetupPrice !== undefined) prices.push(`setup: ${String(body.SetupPrice)}`);
+  if (body.TerminationPrice !== undefined) prices.push(`termination: ${String(body.TerminationPrice)}`);
+  const lines = [`${verb} KPN's custom price on order ${orderId}?`, `  Order: ${orderId}`, `  Decision: ${decision}`];
+  if (prices.length > 0) {
+    const text = prices.join(", ");
+    lines.push(`  ${text.charAt(0).toUpperCase()}${text.slice(1)}`);
+  }
+  if (body.Remark !== undefined) lines.push(`  Remark: ${String(body.Remark)}`);
+  lines.push("  Reversible: not through this tool.", `[${verb} custom price] [Cancel]`);
+  return lines.join("\n");
+}
+
 /** Post one realtime call and return its parsed response without raw XML. */
 export async function callRealtime(
   client: GrexxClient,
   spec: GrexxRealtimeSpec,
-  args: Record<string, unknown>
-): Promise<ToolResult> {
+  args: Record<string, unknown>,
+  elicitation: ElicitationContext = NO_ELICITATION
+): Promise<ToolResult | InputRequiredResult> {
   const body = buildRealtimeBody(spec, args);
+  if (spec.destructive === true || spec.confirm === true) {
+    const gate = confirmDestructive(elicitation, args, customPricePrompt(body));
+    if (gate.kind === "ask") return gate.result;
+    if (gate.kind === "blocked") return errorResult(gate.message);
+    if (gate.kind === "refused") return textResult("Cancelled; nothing was changed.");
+    if (gate.kind !== "proceed") throw new Error("Unexpected destructive confirmation outcome.");
+  }
   const result = await client.postRealtime(spec.request, body, { idempotent: spec.readOnly !== false });
   const rejected = ninaError(result.document, result.requestId);
   if (rejected) throw rejected;
@@ -238,5 +314,17 @@ export async function callRealtime(
   return jsonResult(output);
 }
 
-export const GREXX_REALTIME_HANDLERS: Record<string, (client: GrexxClient, args: Record<string, unknown>) => Promise<ToolResult>> =
-  Object.fromEntries(GREXX_REALTIME_SPECS.map((spec) => [spec.tool, (client: GrexxClient, args: Record<string, unknown>) => callRealtime(client, spec, args)]));
+export type GrexxRealtimeHandler = (
+  client: GrexxClient,
+  args: Record<string, unknown>,
+  elicitation?: ElicitationContext
+) => Promise<ToolResult | InputRequiredResult>;
+
+export const GREXX_REALTIME_HANDLERS: Record<string, GrexxRealtimeHandler> =
+  Object.fromEntries(
+    GREXX_REALTIME_SPECS.map((spec) => [
+      spec.tool,
+      (client: GrexxClient, args: Record<string, unknown>, elicitation: ElicitationContext = NO_ELICITATION) =>
+        callRealtime(client, spec, args, elicitation),
+    ])
+  );

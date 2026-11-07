@@ -10,8 +10,9 @@
  * live in grexx.ts instead.
  */
 import type { Tool } from "@modelcontextprotocol/server";
+import { CONFIRM_ARG, CONFIRM_ARG_PROPERTY } from "../elicitation.js";
 
-export type GrexxFieldType = "string" | "integer" | "boolean" | "dateTime" | "integerList";
+export type GrexxFieldType = "string" | "integer" | "boolean" | "dateTime" | "integerList" | "decimal";
 
 export interface GrexxField {
   /** Tool argument name. */
@@ -47,8 +48,12 @@ export interface GrexxRealtimeSpec {
   fields: GrexxField[];
   /** Cross-field rule; return an error message when the arguments are invalid. */
   check?: (args: Record<string, unknown>) => string | undefined;
-  /** False for calls that start work at KPN (not retried, not read-only). */
+  /** False for calls that start work at KPN; disables general retries, but not the SDK's HTTP 401 token-refresh retry. */
   readOnly?: boolean;
+  /** True for irreversible commercial actions that require confirmation. */
+  destructive?: boolean;
+  /** Require confirmation even when the write is reversible and not destructive. */
+  confirm?: boolean;
 }
 
 const orderId = (what: string): GrexxField => ({
@@ -81,6 +86,11 @@ const CUSTOMER_ORDER_BY = [
 const CARRIER_PRODUCT_TYPES = ["xDSL", "FttH", "WeasFiber", "All"] as const;
 
 const LINE_DIAGNOSE_SYMPTOMS = ["Sym103", "Sym104", "Sym105", "Sym111"] as const;
+
+/** Grexx realtime tools that submit a request rather than return data. */
+export function isGrexxWriteTool(name: string): boolean {
+  return GREXX_REALTIME_SPECS.some((spec) => spec.tool === name && spec.readOnly === false);
+}
 
 export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
   // Connectivity
@@ -127,7 +137,7 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
     readOnly: false,
     description:
       "Starts a KPN line diagnose on an xDSL (Ethernet) order. Use it when a line is out of sync. " +
-      "This starts a test at KPN; it is not retried automatically. The response confirms the start and " +
+      "This starts a test at KPN; general retries are disabled, but the SDK may refresh the token and resend once after HTTP 401. The response confirms the start and " +
       "returns an AnalysisId. Fetching the result (GetLatest) is not exposed yet. (Grexx: StartLineDiagnoseRequest_V1)",
     fields: [
       orderId("the xDSL order"),
@@ -379,6 +389,84 @@ export const GREXX_REALTIME_SPECS: GrexxRealtimeSpec[] = [
       { arg: "isRoomNumberKnown", element: "IsRoomNumberKnown", type: "boolean", required: true, label: "Room number known", description: "Do you know the room number? Set true and fill in roomNumber, or set false if not (false is the usual value: most homes have no room number)." },
     ],
   },
+  {
+    tool: "kpn_grexx_hip_number_orders",
+    request: "GetHipPhoneNumberOrdersRequest_V1",
+    response: "GetHipPhoneNumberOrdersResponse_V1",
+    readOnly: true,
+    description:
+      "Get order details for up to 50 KPN HIP phone numbers, e.g. number porting status. Read-only. " +
+      "(Grexx: GetHipPhoneNumberOrdersRequest_V1)",
+    fields: [
+      { arg: "orderIds", element: "OrderIds", type: "integerList", item: "OrderId", required: true, min: 1, max: 50, label: "Order numbers", description: "KPN order numbers (IRMA order IDs) of the phone numbers to look up: 1 to 50 per call." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_clean_internet_info",
+    request: "GetCleanInternetInfoRequest_V1",
+    response: "GetCleanInternetInfoResponse_V1",
+    readOnly: true,
+    description:
+      "Check whether Extra Safe Internet (CleanInternet) is switched on for a KPN internet order. Read-only. " +
+      "(Grexx: GetCleanInternetInfoRequest_V1)",
+    fields: [orderId("the Extra Safe Internet order")],
+  },
+  {
+    tool: "kpn_grexx_cloud_tenant",
+    request: "CloudTenantRequest_V2",
+    response: "CloudTenantResponse_V2",
+    readOnly: true,
+    description:
+      "Get the Microsoft 365 tenant (the customer's Microsoft account environment) that KPN manages for a " +
+      "customer. Read-only. A customer only has one after their first Microsoft 365 order. " +
+      "(Grexx: CloudTenantRequest_V2)",
+    fields: [{ arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." }],
+  },
+  {
+    tool: "kpn_grexx_microsoft_tenant_exists",
+    request: "MicrosoftTenantExistsCheckRequest_V1",
+    response: "MicrosoftTenantExistsCheckResponse_V1",
+    readOnly: true,
+    description:
+      "Check whether a Microsoft 365 tenant name is already taken, e.g. before ordering Microsoft 365. " +
+      "Read-only. Use the yourcompany.onmicrosoft.com form. (Grexx: MicrosoftTenantExistsCheckRequest_V1)",
+    fields: [
+      { arg: "tenantName", element: "TenantName", type: "string", required: true, pattern: /^[a-zA-Z0-9._-]{1,27}\.onmicrosoft\.com$/, label: "Tenant name", formatHint: "Tenant name must end in .onmicrosoft.com, e.g. yourcompany.onmicrosoft.com.", description: "Microsoft 365 tenant name ending in .onmicrosoft.com, up to 27 characters before it, e.g. \"yourcompany.onmicrosoft.com\"." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_microsoft_domain_ownership",
+    request: "MicrosoftTenantDomainOwnershipCheckRequest_V1",
+    response: "MicrosoftTenantDomainOwnershipCheckResponse_V1",
+    readOnly: true,
+    description:
+      "Check whether KPN has been given admin access (delegated access) to a customer's existing Microsoft 365 " +
+      "tenant, and whether it's ready to move to KPN. Read-only. (Grexx: MicrosoftTenantDomainOwnershipCheckRequest_V1)",
+    fields: [
+      { arg: "customerId", element: "CustomerId", type: "integer", required: true, min: 1, description: "KPN customer number (IRMA customer ID), e.g. 28665." },
+      { arg: "tenantId", element: "TenantId", type: "string", required: true, pattern: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, label: "Tenant ID", formatHint: "Tenant ID must be a 36-character ID like 1b2c3d4e-0000-1111-2222-333344445555. You can find it in the Microsoft 365 admin center.", description: "Microsoft 365 tenant ID: a 36-character ID like 1b2c3d4e-0000-1111-2222-333344445555. You can find it in the Microsoft 365 admin center." },
+    ],
+  },
+  {
+    tool: "kpn_grexx_custom_price",
+    request: "CustomPriceRequest_V1",
+    response: "CustomPriceResponse_V1",
+    readOnly: false,
+    destructive: true,
+    confirm: true,
+    description:
+      "⚠ DESTRUCTIVE. Accepts or rejects a custom (maatwerk) price that KPN proposed on an order. " +
+      "Submits your decision to KPN and can't be undone through this tool. General retries are disabled, but the SDK may refresh the token and resend once after HTTP 401. " +
+      "Confirm with the user before invoking. (Grexx: CustomPriceRequest_V1)",
+    fields: [
+      { arg: "orderId", element: "OrderId", type: "integer", required: true, min: 1, label: "Order number", description: "KPN order number (IRMA order ID) the custom price applies to." },
+      { arg: "confirmationState", element: "ConfirmationState", type: "string", required: true, enum: ["Accepted", "Rejected"], label: "Decision", description: "Your decision on KPN's proposed custom price: Accepted or Rejected." },
+      { arg: "remark", element: "Remark", type: "string", description: "Remark sent with your decision. Optional." },
+      { arg: "price", element: "Price", type: "decimal", required: false, description: "Custom price, e.g. 24.95. Optional." },
+      { arg: "setupPrice", element: "SetupPrice", type: "decimal", required: false, label: "Setup price", description: "Custom one-time setup price, e.g. 0.00. Optional." },
+      { arg: "terminationPrice", element: "TerminationPrice", type: "decimal", required: false, label: "Termination price", description: "Custom termination price, e.g. 0.00. Optional." },
+    ],
+  },
 ];
 
 /** Describe raw input without constraints that require handler normalization first. */
@@ -401,6 +489,8 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
       return { type: "string", format: "date-time", description };
     case "integerList":
       return { type: "array", description, items: { type: "integer", minimum: 1 }, minItems: field.min, maxItems: field.max };
+    case "decimal":
+      return { type: "number", description, ...(field.min !== undefined ? { minimum: field.min } : {}), ...(field.max !== undefined ? { maximum: field.max } : {}) };
     default: {
       return { type: "string", description };
     }
@@ -409,22 +499,30 @@ function fieldSchema(field: GrexxField): Record<string, unknown> {
 
 /** Build the MCP tool definition for a spec. */
 export function realtimeTool(spec: GrexxRealtimeSpec): Tool {
-  const readOnly = spec.readOnly !== false;
+  const isWrite = spec.readOnly === false;
+  const destructive = spec.destructive === true;
+  const requiresConfirmation = destructive || spec.confirm === true;
   return {
     name: spec.tool,
     description: spec.description,
     inputSchema: {
       type: "object",
-      properties: Object.fromEntries(
-        spec.fields.map((field) => [field.arg, fieldSchema(field)])
-      ) as NonNullable<Tool["inputSchema"]["properties"]>,
+      properties: {
+        ...Object.fromEntries(
+          spec.fields.map((field) => [field.arg, fieldSchema(field)])
+        ),
+        ...(requiresConfirmation ? { [CONFIRM_ARG]: CONFIRM_ARG_PROPERTY[CONFIRM_ARG] } : {}),
+      } as NonNullable<Tool["inputSchema"]["properties"]>,
       ...(spec.fields.some((field) => field.required)
         ? { required: spec.fields.filter((field) => field.required).map((field) => field.arg) }
         : {}),
     },
-    annotations: readOnly
-      ? { readOnlyHint: true, openWorldHint: true, idempotentHint: true }
-      : { readOnlyHint: false, destructiveHint: false, openWorldHint: true, idempotentHint: false },
+    annotations: {
+      readOnlyHint: !isWrite,
+      destructiveHint: destructive,
+      idempotentHint: !isWrite,
+      openWorldHint: true,
+    },
   };
 }
 
