@@ -32,6 +32,7 @@ Contract: [`docs/GREXX.md`](docs/GREXX.md).
   `kpn_grexx_microsoft_subscription_end_date`, `kpn_grexx_upgrade_info`, `kpn_grexx_related_products`,
   `kpn_grexx_mobile_call_forwardings`, `kpn_grexx_mobile_preferences`, `kpn_grexx_mobile_module`,
   and `kpn_grexx_planned_line`.
+  Mobile total usage reports data, calls, SMS and extra costs per bundle for a KPN customer.
   `start_line_diagnose` starts
   a test at KPN, so it is not read-only and is never retried. SIM codes and the
   RadiusCheck PPP password are masked.
