@@ -4,6 +4,7 @@ import { buildRealtimeBody } from "../handlers/grexx-realtime.js";
 import { GREXX_REALTIME_SPECS, realtimeTool } from "../tools/grexx-realtime.js";
 
 const CASES = [
+  { tool: "kpn_grexx_planned_line", arg: "zipCode", element: "ZipCode", value: "1012JS", invalid: "abc", args: { houseNumber: 1, isRoomNumberKnown: false } },
   { tool: "kpn_grexx_carrier_info", arg: "phoneNumber", element: "PhoneNumber", value: "0201234567", invalid: "020123", args: { productType: "xDSL", zipCode: "1012 js", houseNumber: 1 } },
   { tool: "kpn_grexx_carrier_info", arg: "israSpecification", element: "IsraSpecification", value: "001", invalid: "01", args: { productType: "xDSL", zipCode: "1012 js", houseNumber: 1 } },
   { tool: "kpn_grexx_carrier_info", arg: "houseNumberExtension", element: "HouseNumberExt", value: "bis", invalid: "abcde", args: { productType: "All", zipCode: "1012 js", houseNumber: 1 } },
